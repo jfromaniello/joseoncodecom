@@ -1,0 +1,150 @@
+--- 
+layout: post
+title: JavaScript continuous testing with QUnit, PhantomJS and Powershell
+tags: 
+- javascript
+- qunit
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "380213931"
+---
+<p>I’ve started to write more JavaScript code lately, and since the software development process I follow most is TDD I have been using <a href="http://docs.jquery.com/Qunit">QUnit</a> used by the famous JQuery project.</p>  <p>Writing tests with qunit is very simple;</p>  <pre class="brush: js; wrap-line: false;">test(&quot;a basic test example&quot;, function() {
+  ok( true, &quot;this test is fine&quot; );
+  var value = &quot;hello&quot;;
+  equal( value, &quot;hello&quot;, &quot;We expect value to be hello&quot; );
+});</pre>
+
+<p>with some small differences we can say that QUnit is the *Unit framework for javascript (JUnit, NUnit, etc.).</p>
+
+<p>In order to run your tests suite, you need to write an htm document as explained in the qunit website. You will normally open the page from several browsers in order to run the tests with different JavaScript engines.</p>
+
+<h2>PhantomJS</h2>
+
+<p>PhantomJS is a command-line tool that packs and embeds <a href="http://es.wikipedia.org/wiki/WebKit">WebKit</a>. It comes for windows, mac and linux. The windows version is a single exe file called “phantomjs.exe”.</p>
+
+<p>If you google PhantomJS + Qunit you will find several scripts and most of them are outdated and will not run with the current version of PhantomJS (1.2.0 at the moment). I am using this script which is an slightly modified version of one that I found;</p>
+
+<pre class="brush: js; wrap-line: false;">/**
+ * Wait until the test condition is true or a timeout occurs. Useful for waiting
+ * on a server response or for a ui change (fadeIn, etc.) to occur.
+ *
+ * @param testFx javascript condition that evaluates to a boolean,
+ * it can be passed in as a string (e.g.: &quot;1 == 1&quot; or &quot;$('#bar').is(':visible')&quot; or
+ * as a callback function.
+ * @param onReady what to do when testFx condition is fulfilled,
+ * it can be passed in as a string (e.g.: &quot;1 == 1&quot; or &quot;$('#bar').is(':visible')&quot; or
+ * as a callback function.
+ * @param timeOutMillis the max amount of time to wait. If not specified, 3 sec is used.
+ */
+function waitFor(testFx, onReady, timeOutMillis) {
+    var maxtimeOutMillis = timeOutMillis ? timeOutMillis : 3001, //&lt; Default Max Timout is 3s
+        start = new Date().getTime(),
+        condition = false,
+        interval = setInterval(function() {
+            if ( (new Date().getTime() - start &lt; maxtimeOutMillis) &amp;&amp; !condition ) {
+                // If not time-out yet and condition not yet fulfilled
+                condition = (typeof(testFx) === &quot;string&quot; ? eval(testFx) : testFx()); //&lt; defensive code
+            } else {
+                if(!condition) {
+                    // If condition still not fulfilled (timeout but condition is 'false')
+                    console.log(&quot;'waitFor()' timeout&quot;);
+                    phantom.exit(1);
+                } else {
+                    // Condition fulfilled (timeout and/or condition is 'true')
+                    console.log(&quot;'waitFor()' finished in &quot; + (new Date().getTime() - start) + &quot;ms.&quot;);
+                    typeof(onReady) === &quot;string&quot; ? eval(onReady) : onReady(); //&lt; Do what it's supposed to do once the condition is fulfilled
+                    clearInterval(interval); //&lt; Stop this interval
+                }
+            }
+        }, 100); //&lt; repeat check every 250ms
+};
+
+
+if (phantom.args.length === 0 || phantom.args.length &gt; 2) {
+    console.log('Usage: run-qunit.js URL');
+    phantom.exit(1);
+}
+
+var page = new WebPage();
+
+// Route &quot;console.log()&quot; calls from within the Page context to the main Phantom context (i.e. current &quot;this&quot;)
+page.onConsoleMessage = function(msg) {
+    console.log(msg);
+};
+
+page.open(phantom.args[0], function(status){
+    if (status !== &quot;success&quot;) {
+        console.log(&quot;Unable to access network&quot;);
+        phantom.exit(1);
+    } else {
+        waitFor(function(){
+            return page.evaluate(function(){
+                var el = document.getElementById('qunit-testresult');
+                if (el &amp;&amp; el.innerText.match('completed')) {
+                    return true;
+                }
+                return false;
+            });
+        }, function(){
+            var failedNum = page.evaluate(function(){
+
+                var tests = document.getElementById(&quot;qunit-tests&quot;).childNodes;
+                console.log(&quot;\nTest name (failed, passed, total)\n&quot;);
+                for(var i in tests){
+                    var text = tests[i].innerText;
+                    if(text !== undefined){
+                        if(/Rerun$/.test(text)) text = text.substring(0, text.length - 5);
+                        console.log(text + &quot;\n&quot;);    
+                    }
+                }
+
+                var el = document.getElementById('qunit-testresult');
+                console.log(el.innerText);
+                try {
+                    return el.getElementsByClassName('failed')[0].innerHTML;
+                } catch (e) { }
+                return 10000;
+            });
+            phantom.exit((parseInt(failedNum, 10) &gt; 0) ? 1 : 0);
+        });
+    }
+});</pre>
+
+<p>Then, in order to run your tests you have to execute this from the command-line:</p>
+
+<blockquote>
+  <p><font color="#000000">phantomjs.exe run-qunit.js path\to\your_qunit.htm</font></p>
+</blockquote>
+
+<p>where run-qunit.js is the above script. This will run all your tests and give important information as if you where running them from a WebKit browser (Safari, Chrome, etc.). This doesn’t means your tests are okay for other browsers but it is a good start.</p>
+
+<h2>Continuous testing</h2>
+
+<p>Now that we can run our tests suite from the console and given that JavaScript is an interpreted language (i.e. we don’t have to wait the compiler ;) ) my question was if we can run those tests continuously.</p>
+
+<p>Continuous testing is something beyond continuous integration; the methodology is simple; there is something watching for your source code files, when you save the files the program will run of all your tests ins background. This technique is often used in dynamic languages; for instance in the Ruby ecosystem is <a href="http://ph7spot.com/musings/getting-started-with-autotest">Autotest</a>.</p>
+
+<h2>Powershell script</h2>
+
+<p>My continuous testing tool in windows, is this pretty simple PowerShell script;</p>
+
+<pre class="brush: plain; wrap-line: false;">$m = Get-Module -List pswatch 
+if(!$m) {
+    Write-Host &quot;Uh-Oh you don't have the pswatch cmdlet installed. Let me handle that for you.&quot;
+    iex ((new-object net.webclient).DownloadString(&quot;http://bit.ly/Install-PsWatch&quot;))
+} 
+
+Import-Module pswatch
+
+watch | %{
+    write-host &quot;Change in $_.Path&quot;
+    phantomjs.exe run-qunit.js $_.Path
+}</pre>
+
+<p>This script uses a CmdLet I wrote called <a href="http://github.com/jfromaniello/pswatch">PsWatch</a>. It will auto-install the CmdLet if you don’t already have it.</p>
+
+<h2>Other scripts</h2>
+
+<p>If you are working on a Linux box, instead of Powershell and PsWatch you can use <a href="https://github.com/mynyml/watchr">ruby watchr</a>.</p>

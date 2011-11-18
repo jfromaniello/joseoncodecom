@@ -1,0 +1,353 @@
+--- 
+layout: post
+title: LinqSpecs; the why
+tags: 
+- LinqSpecs
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/06/linqspecs-why.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  dsq_thread_id: "317565677"
+  blogger_images: "1"
+---
+<p>I will show in this post the why of linqspecs.</p>  <p>As an example; lets imagine the domain of <a href="http://chinookdatabase.codeplex.com">Chinook</a> where you have Artists, Albums and Tracks. I will start with this simple View Model;</p>  <p></p>  <pre class="brush: csharp; wrap-lines: false;highlight: [10];">public class AlbumBrowserViewModel
+{
+    public Artist SelectedArtist { get; set; }
+    
+    public DateTime? ReleasedDateFrom { get; set; }
+    public DateTime? ReleasedDateTo { get; set; }
+
+    public void Filter()
+    {
+        CurrentAlbums = 
+    }
+
+    public IEnumerable&lt;Album&gt; CurrentAlbums { get; private set; }
+}</pre>
+
+<p>Pay attention to the line 10, because now I will explain four different approaches to query the data, abstracting the data access code and the separation of concerns for this case. </p>
+
+<hr />
+
+<h2>Data Access Object pattern (without Expressions)</h2>
+
+<p>We are going to start a Data Access Object with the following interface:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public interface IAlbumDao
+{
+    IEnumerable&lt;Album&gt; GetAlbumByArtist(Artist artist);
+    IEnumerable&lt;Album&gt; GetAlbumReleasedBetweenDates(DateTime? fromDate, DateTime? toDate);
+    IEnumerable&lt;Album&gt; GetAlbumByArtistReleasedBetweenDates(Artist artist, DateTime? fromDate, DateTime? toDate);
+}</pre>
+
+<p>So, now we can start writing the first test as follows: </p>
+
+<pre class="brush: csharp; wrap-lines: false;">public void can_filter_by_artist()
+{
+    var dao = new Mock&lt;IAlbumDao&gt;();
+    var rollingStones = new Artist();
+    var someAlbum = new Album();
+    var albumList = new List&lt;Album&gt;{someAlbum};
+
+    dao.Setup(d =&gt; d.GetAlbumByArtist(rollingStones))
+        .Returns(albumList);
+
+    var browser = new AlbumBrowserViewModel(dao.Object);
+    
+    browser.SelectedArtist = rollingStones;
+    browser.ReleasedDateFrom = null;
+    browser.ReleasedDateTo = null;
+
+    browser.Filter();
+
+    browser.CurrentAlbums
+        .Should().Have.SameValuesAs(albumList);
+}</pre>
+
+<p>Injecting the dao in the view model, the implementation, so far is: </p>
+
+<pre class="brush: csharp; wrap-lines: false;">public void Filter()
+{
+    CurrentAlbums = albumDao.GetAlbumByArtist(SelectedArtist);
+}</pre>
+but in the end it will looks like: 
+
+<pre class="brush: csharp; wrap-lines: false;">public void Filter()
+{
+    if(SelectedArtist != null 
+    &amp;&amp; (ReleasedDateFrom == null || ReleasedDateTo == null))
+    {
+        CurrentAlbums = albumDao.GetAlbumByArtist(SelectedArtist);
+        return;
+    }
+    if(SelectedArtist == null 
+    &amp;&amp; (ReleasedDateFrom != null || ReleasedDateTo != null))
+    {
+        CurrentAlbums = albumDao
+                .GetAlbumReleasedBetweenDates(ReleasedDateFrom, ReleasedDateTo);
+        return;
+    }
+    if(SelectedArtist != null 
+    &amp;&amp; (ReleasedDateFrom != null || ReleasedDateTo != null))
+    {
+        CurrentAlbums = albumDao
+                .GetAlbumByArtistReleasedBetweenDates(ReleasedDateFrom, ReleasedDateTo);
+        return;
+    }
+    CurrentAlbums = albumDao.GetAllAlbums(); //What?
+}</pre>
+
+<p>As you can see our Dao needs three different methods for these queries, although you can call the GetAlbumByArtistReleasedBetweenDates method always (sometimes with null parameters) but still suffer from a severe symptom: <strong><u>this is not flexible</u></strong>. On the other hand it violates the SOLID principles, because often you will need to touch the IDao and Dao. So forget about the Open Closed principle.</p>
+
+<h5>Pros:</h5>
+
+<ul>
+  <li>Easy to test. </li>
+
+  <li>You can use the full feature set of the ORM inside the method. </li>
+</ul>
+
+<h5>Cons:</h5>
+
+<ul>
+  <li>Violates OCP. </li>
+
+  <li>You could end with DAOs with 30 query methods inside. </li>
+</ul>
+
+<hr />
+
+<h2>Data Access Object pattern (with Expressions)</h2>
+
+<p>Now, I will talk about this interface:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public interface IDao&lt;T&gt;
+{
+    IEnumerable&lt;T&gt; Retrieve(Expression&lt;Func&lt;T, bool&gt;&gt; predicate);
+}</pre>
+
+<p>This Data Access Object is much better than the former, but yet still have an issue. This IDao is hard, and almost impossible to mock. The main problem is that you can’t easily compare expressions. So, in my personal experience i know two ways of mocking it:</p>
+
+<ul>
+  <li>Compile the expression and assert the return value for some inputs. </li>
+
+  <li>Use a DaoStub with an in-memory collection inside. </li>
+</ul>
+
+<p>I am not going to talk about the former, because I’ve a <a href="http://jfromaniello.blogspot.com/2009/10/howto-mock-linq-based-dao.html">post</a> about the subject. </p>
+
+<p>The second is easy to understand, reading this test:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public void can_filter_by_artist()
+{
+    var rollingStones = new Artist();
+    var someGirls = new Album {Artist = rollingStones};
+    var daoStub = new DaoStub&lt;Album&gt;()
+                    .Insert(someGirls, new Album());
+    
+    var browser = new AlbumBrowserViewModel(daoStub);
+    
+    browser.SelectedArtist = rollingStones;
+    browser.ReleasedDateFrom = null;
+    browser.ReleasedDateTo = null;
+
+    browser.Filter();
+
+    browser.CurrentAlbums
+        .Should().Contain(someGirls)
+                 .And.Have.Count.EqualTo(1);
+}
+
+The DaoStub&lt;T&gt;:</pre>
+
+<pre class="brush: csharp; wrap-lines: false;">public class DaoStub&lt;T&gt; : IDao&lt;T&gt;
+{
+    private readonly ICollection&lt;T&gt; repository = new List&lt;T&gt;();
+
+    public IDao&lt;T&gt; Insert(params T[] someGirls)
+    {
+        someGirls.ToList().ForEach(repository.Add);
+        return this;
+    }
+
+    public IEnumerable&lt;T&gt; Retrieve(Expression&lt;Func&lt;T, bool&gt;&gt; predicate)
+    {
+        return repository.Where(predicate.Compile());
+    }
+}</pre>
+
+<p><font face="Courier New">and the implementation to pass the first test:</font></p>
+
+<pre class="brush: csharp; wrap-lines: false;">public class AlbumBrowserViewModel
+{
+    private readonly IDao&lt;Album&gt; albumDao;
+
+    public AlbumBrowserViewModel(IDao&lt;Album&gt; albumDao)
+    {
+        this.albumDao = albumDao;
+    }
+
+    public Artist SelectedArtist { get; set; }
+    
+    public DateTime? ReleasedDateFrom { get; set; }
+    public DateTime? ReleasedDateTo { get; set; }
+
+    public void Filter()
+    {
+        CurrentAlbums = albumDao
+            .Retrieve(a =&gt; a.Artist == SelectedArtist);
+    }
+
+    public IEnumerable&lt;Album&gt; CurrentAlbums { get; private set; }
+}</pre>
+
+<p>I like this approach, however the two methods has a conceptual issue, you are “testing” a query that will be never executed. The linq provider for objects may work different than the Entity framework linq provider, or the NHibernate provider. So, you need to test the queries against the database provider, and if is possible I will highly recommend to test against the real world database. To summarize</p>
+
+<h4>Pros:</h4>
+
+<ul>
+  <li>Very flexible and powerful. </li>
+
+  <li>Doesn’t violate OCP. </li>
+</ul>
+
+<h4>Cons:</h4>
+
+<ul>
+  <li>It is hard to test and mock. </li>
+
+  <li>If you don’t use carefully you can end with a lot of predicates all over the code. </li>
+</ul>
+
+<hr />
+
+<h2>Query object pattern (or my style of query object pattern)</h2>
+
+<p>Forget about the dao, and start thinking in the following interface:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public interface IAlbumBrowseQuery
+{
+    Artist SelectedArtist { get; set; }
+    DateTime? ReleasedDateFrom { get; set; }
+    DateTime? ReleasedDateTo { get; set; }
+
+    IEnumerable&lt;Album&gt; Execute();
+}</pre>
+
+<p>For this case, you will only have to map, the UI fields to the query properties, but believe me there are few cases like this. I have named the query like the use case on purpose, because for this case I don’t want anybody modifying this interface unless is required for the use case. </p>
+
+<p>The test and implementation are very simple, and you can mock this interface as we have mocked the first IDao. So, you can test your ViewModel.</p>
+
+<p>Pros:</p>
+
+<ul>
+  <li>If you give to the query an <u>specific</u> responsibility, this pattern does not violate the OCP principle. </li>
+
+  <li>You can use the full featured set of the ORM tool, for instance, you can write your queries even in hql but for this case I will highly recommend you the Criteria API. This is not so important when you are using EF because linq is the only way you can write queries. </li>
+</ul>
+
+<p>Cons:</p>
+
+<ul>
+  <li>You have to write an interface and the implementation per each query. </li>
+
+  <li>This pattern is less flexible than using dao with expression, if you only use this pattern you can end with a lot of query objects. </li>
+</ul>
+
+<hr />
+
+<h2>LinqSpecs; my baby project</h2>
+
+<p>I will use a DAO interface like this:</p>
+
+<pre class="brush: csharp; ">public interface IDao&lt;T&gt;
+{
+    IEnumerable&lt;T&gt; Retrieve(Specification&lt;T&gt; specification);
+}</pre>
+
+<p>And I’ve two specs like this:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public class ByArtistSpecification : Specification&lt;Album&gt;
+{
+    public ByArtistSpecification(Artist artist)
+    {
+        Artist = artist;
+    }
+
+    public Artist Artist { get; private set; }
+
+    public override Expression&lt;Func&lt;Album, bool&gt;&gt; IsSatisfiedBy()
+    {
+        return a =&gt; a.Artist == Artist;
+    }
+
+    protected override object[] Parameters { get { return new[]{ Artist }; } }
+}</pre>
+
+<p>You don’t need to mock this class in order to test your ViewModel. Lets add a test for this VM: </p>
+
+<pre class="brush: csharp;">public void can_filter_by_artist()
+{
+    var rollingStones = new Artist();
+    var someGirls = new Album ();
+    var dao = new Mock&lt;IDao&lt;Album&gt;&gt;();
+
+
+    dao.Setup(d =&gt; d.Retrieve(new ByArtistSpecification(rollingStones)))
+        .Returns(new List&lt;Album&gt;{someGirls});
+
+    var browser = new AlbumBrowserViewModel(dao.Object);
+    
+    browser.SelectedArtist = rollingStones;
+    browser.ReleasedDateFrom = null;
+    browser.ReleasedDateTo = null;
+
+    browser.Filter();
+
+    browser.CurrentAlbums
+        .Should().Contain(someGirls);
+}</pre>
+
+<p>It doesn't matter that you have two instances of ByArtistSpecification, they are equals if they share the same parameters (last method in the specification.</p>
+
+<p>In fact I can write a setup like this:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">dao.Setup(d =&gt; d.Retrieve(new ByArtistSpecification(rollingStones) &amp;
+                          new ByReleasedDateRangeSpecification(new DateTime(1984, 1, 1), 
+                                                               new DateTime(1989, 1, 1))))
+    .Returns(new List&lt;Album&gt;{someGirls});</pre>
+
+<p>&#160;</p>
+
+<p>Pros:</p>
+
+<ul>
+  <li>You write tests for what you should test </li>
+
+  <li>It is very flexible and powerful </li>
+
+  <li>You write less than with query objects </li>
+
+  <li>You can operate specifications &amp;, | and ! are supported. </li>
+
+  <li>You can easily test the specifications targeting against the real provider. </li>
+
+  <li>Specifications are cheaper, you can even serialize them- </li>
+</ul>
+
+<p>Cons:</p>
+
+<ul>
+  <li>Only works for linq, so you can access the full feature set of your ORM. </li>
+
+  <li>You need to write specifications (yet another artifact) :) </li>
+</ul>
+
+<p>It goes without saying that the specification pattern is not a silver bullet, so you should choose the best pattern to meet your needs.</p>
+
+<p>&#160;</p>
+
+<p>Thank you all! and I’m waiting for your comments.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-4241918042347796552' alt='' /></div>

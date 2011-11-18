@@ -1,0 +1,178 @@
+--- 
+layout: post
+title: INotifyPropertyChanged as AOP
+tags: 
+- NHibernate
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/inotifypropertychanged-as-aop.html
+  dsq_thread_id: "314363371"
+---
+The purpose of this post is to demonstrate several ways to use <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged.aspx">INotifyPropertyChanged</a> as an AOP aspect in your business entities. I will use <a href="http://www.castleproject.org/dynamicproxy/index.html">DynamicProxy</a> for AOP and <a href="https://www.hibernate.org/343.html">NHibernate</a> as orm mapper. Althought all methods can be plugged into nhibernate using tuplizer, I will skip this part until the final solution.   <h2>The Problem</h2> Let’s say you have to implement INotifyPropertyChanged for several entities of your domain. This is an example of implementation:   <pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">Customer </span>: <span style="color: #2b91af">INotifyPropertyChanged
+   </span>{
+       <span style="color: blue">public event </span><span style="color: #2b91af">PropertyChangedEventHandler </span>PropertyChanged;
+
+       <span style="color: blue">protected virtual void </span>OnPropertyChanged(<span style="color: #2b91af">PropertyChangedEventArgs </span>e)
+       {
+           <span style="color: #2b91af">PropertyChangedEventHandler </span>changed = PropertyChanged;
+           <span style="color: blue">if </span>(changed != <span style="color: blue">null</span>) changed(<span style="color: blue">this</span>, e);
+       }
+
+       <span style="color: blue">private string </span>_name;
+       <span style="color: blue">public string </span>Name
+       {
+           <span style="color: blue">get </span>{ <span style="color: blue">return </span>_name; }
+           <span style="color: blue">set
+           </span>{
+               _name = <span style="color: blue">value</span>;
+               OnPropertyChanged(<span style="color: blue">new </span><span style="color: #2b91af">PropertyChangedEventArgs</span>(<span style="color: #a31515">&quot;Name&quot;</span>));
+           }
+       }
+
+       <span style="color: blue">private string </span>_address;
+       <span style="color: blue">public string </span>Address
+       {
+           <span style="color: blue">get </span>{ <span style="color: blue">return </span>_address; }
+           <span style="color: blue">set
+           </span>{
+               _address = <span style="color: blue">value</span>;
+               OnPropertyChanged(<span style="color: blue">new </span><span style="color: #2b91af">PropertyChangedEventArgs</span>(<span style="color: #a31515">&quot;Address&quot;</span>));
+           }
+       }
+   }</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<h2>First way: proxy with concrete target </h2>
+
+<p>I will start with proxies right now. If you want to know more about dynamic proxy I suggest this <a href="http://kozmic.pl/archive/2009/04/27/castle-dynamic-proxy-tutorial.aspx">link</a>. 
+
+  <br />The big picture </p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/first%5B28%5D.png"><img style="display: inline" title="first" alt="first" src="" width="604" height="476" /></a> </p>
+
+<p>The client api call “set_Name” on the proxy, the proxy forwards this call to the interceptor stack. The PropertyInterceptor “proceed and wait” this invocation to the concrete type. The operaton is completed in the concrete type and then the interceptor raise the PropertyChanged event to the client. 
+  <br />The domain entity is defined as follows: </p>
+
+<pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">Customer </span>: <span style="color: #2b91af">INotifyPropertyChanged
+</span>{
+    <span style="color: blue">public event </span><span style="color: #2b91af">PropertyChangedEventHandler </span>PropertyChanged;
+    <span style="color: blue">public string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">public string </span>Address { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+}</pre>
+
+<p><a href="http://11011.net/software/vspaste"></a><strong>Note:</strong> the event is never raised inside the concrete class. 
+
+  <br />My proxy could by generated this way: </p>
+
+<pre class="code"><span style="color: blue">var </span>proxyGenerator = <span style="color: blue">new </span><span style="color: #2b91af">ProxyGenerator</span>();
+proxyGenerator.CreateInterfaceProxyWithTarget(<span style="color: blue">typeof </span>(<span style="color: #2b91af">Customer</span>), 
+                                                            <span style="color: blue">new </span><span style="color: #2b91af">Customer</span>(), 
+                                                            <span style="color: blue">new </span><span style="color: #2b91af">PropertyInterceptor</span>());</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>The class PropertyInterceptor is trivial so I wont talk about it for now. 
+  <br /><strong>It’s an horrible workaround and don’t worth it. Why? because you end up with some kind of partial class that doesn’t work as expected if you don’t hang the interceptor. 
+    <br /></strong>Let’s clarify it, if you see “Customer : INotifyPropertyChanged” and it has a suitable constructor, you can assume that this class will work well even without proxy, interceptor or any kind of initialization.</p>
+
+<h2>Second way: proxy with concrete target (not INotifyPropertyChanged)</h2>
+
+<p>Maybe you are thinking right now: why do not remove INotifyPropertyChanged and put this interface into the proxy. Because the proxy is automatically generated your client api will need to do something like this:</p>
+
+<pre class="code"><span style="color: #2b91af">Customer </span>customer; <span style="color: green">//= Get the customer from somewhere;
+            </span><span style="color: blue">var </span>notificable = customer <span style="color: blue">as </span><span style="color: #2b91af">INotifyPropertyChanged</span>;
+            <span style="color: blue">if</span>(notificable != <span style="color: blue">null</span>)
+                notificable.PropertyChanged += <span style="color: green">//...</span></pre>
+
+<p><a href="http://11011.net/software/vspaste"></a>And again, <strong>this is an horrible workaround</strong>. What happens if notificable is null? somebody has removed the additional interface from the proxy.</p>
+
+<h2>Third way: enough is enough</h2>
+
+<p>GoF: <strong>Program to an interface, not an implementation.</strong> I like very much this <a href="http://www.artima.com/lejava/articles/designprinciples.html">interview</a>. 
+
+  <br />Then… your interface could be implemented in many ways (¿or not implemented at all?). 
+
+  <br />I will start showing this interface:</p>
+
+<pre class="code"><span style="color: blue">public interface </span><span style="color: #2b91af">ICustomer </span>: <span style="color: #2b91af">INotifyPropertyChanged
+</span>{
+    <span style="color: blue">string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">string </span>Address { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+}</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>I can guarantee that if you hold an ICustomer instance somewhere, it will work as you expect. 
+  <br />Do I need to code twice, one for the interface and one for the concrete class? <strong>NO.</strong> If this were the case I would not be bothered to write this beautiful post. 
+
+  <br />You don’t need to code twice because you don’t need any concrete implementation of ICustomer. I know, you are more confused now. 
+
+  <br /><a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a> wrote a great <a href="http://fabiomaulo.blogspot.com/2008/10/less-than-few-is-gof.html">post</a>. My first impression when I read it was “Fabio is insane”, the second impression was “Fabio is <strong>really</strong> insane”. Here I’m, with a good reason to let my entities to be “services” in terms of IoC. 
+
+  <br />The big picture:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/third%5B34%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="third" border="0" alt="third" src="" width="579" height="381" /></a> </p>
+
+<p></p>
+
+<p>The client api invokes set_Name and the proxy pass this call over the interceptor stack. The PropertyChangedInterceptor still behave as the first example. The second interceptor “DataStore” store the data in a Dictionary and <strong>doesn’t proceed with the invocation </strong>because there isn’t any target! 
+
+  <br />Despite the fact that there is not a real implementation of ICustomer, there is an implementation that dynamic proxy has generated for me. The profit of using this approach is that you really need just one interceptor or two for the whole domain. Let me guess: not all of your entities are <a href="http://en.wikipedia.org/wiki/Plain_Old_CLR_Object">POCO</a>. Nor mine, so the point is that you can go with “abstract” (search the interview about this) and if you really really need a concrete implementation write it, but write his interface first. </p>
+
+<h2>My implementation</h2>
+
+<p>Last but not least, I let the container to generate the proxies when a consumer of ICustomer interface needs it. I managed to create an extension for the registration api in Windsor:</p>
+
+<pre class="code">container.Register(<span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">ICustomer</span>&gt;()
+                            .NotifyOnPropertyChange()
+                            .TargetIsCommonDatastore());</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>There are two different things, you could service with a concrete type and still use “NotifyOnPropertyChange”. If you use NotifyOnPropertyChange, the service must implement INotifyPropertyChanged. 
+  <br />For instance the consumer of the ICustomer could be an API that wants to create a new Customer in our system, or NHiberante. In NHibernate I just have to map the interface to the database. 
+
+  <br />On the other hand, NHibernate need to know how to create an instance of an ICustomer, “Tuplizer” and “IInstantiator” is the solution (as Fabio has mentioned in his blog). </p>
+
+<pre class="code"><span style="color: gray">/// &lt;summary&gt;
+/// </span><span style="color: green">Resolve an entity through ServiceLocator.
+</span><span style="color: gray">/// </span><span style="color: green">This allow to inject a proxy and intercepted entity.
+</span><span style="color: gray">/// &lt;/summary&gt;
+</span><span style="color: blue">public class </span><span style="color: #2b91af">ServiceLocatorInstantiator </span>: <span style="color: #2b91af">IInstantiator
+</span>{
+    <span style="color: blue">#region </span>IInstantiator Members
+
+    <span style="color: blue">private readonly </span><span style="color: #2b91af">Type </span>_entityType;
+
+    <span style="color: blue">public </span>ServiceLocatorInstantiator(<span style="color: #2b91af">Type </span>entityType)
+    {
+        _entityType = entityType;
+    }
+
+    <span style="color: blue">public object </span>Instantiate(<span style="color: blue">object </span>id)
+    {
+        <span style="color: blue">var </span>obj = <span style="color: #2b91af">ServiceLocator</span>.Current.GetInstance(_entityType);
+        <span style="color: blue">return </span>obj;
+    }
+
+    <span style="color: blue">public object </span>Instantiate()
+    {
+        <span style="color: blue">return </span>Instantiate(<span style="color: blue">null</span>);
+    }
+
+    <span style="color: blue">public bool </span>IsInstance(<span style="color: blue">object </span>obj)
+    {
+        <span style="color: blue">return </span>_entityType.IsInstanceOfType(obj);
+    }
+
+    <span style="color: blue">#endregion
+</span>}</pre>
+
+<p>Fabio’s instantiator and mine have the same aim. The main difference is that my IInstantiator uses a ServiceLocator while the other uses DynamicProxy directly. 
+  <br />The sample project is in <a href="http://code.google.com/p/unhaddins/source/browse/#svn/trunk/Examples/uNHAddIns.Examples.CustomInterceptor">unhaddins</a>. 
+
+  <br />I hope you enjoy this history as I did. </p>
+<a href="http://www.dotnetkicks.com/kick/?url=http%3a%2f%2fjfromaniello.blogspot.com%2f2009%2f07%2finotifypropertychanged-as-aop.html"><img border="0" alt="kick it on DotNetKicks.com" src="" /></a>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-7913537263938775172?l=jfromaniello.blogspot.com' alt='' /></div>

@@ -1,0 +1,61 @@
+--- 
+layout: post
+title: ExtJs + ASP.Net MVC + Fluent Helper = My spike
+tags: 
+- extjs
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/05/extjs-aspnet-mvc-fluent-helper-my-spike.html
+  dsq_thread_id: "314389674"
+---
+The goal of why I begun to write a &quot;Helper&quot; is very simple &quot;Write less code&quot;. <a href="http://extjs.com/deploy/dev/examples/grid/array-grid.js">This</a> is a basic configuration of ExtJs Grid with javascript. On the other hand, this is the code to configure it with my helper:   <pre class="c-sharp" name="code">ExtGrid&lt;person&gt;.Start()
+.WithLoadMask()
+.WithAutoSize()
+.WithPaging(20)
+.WithSelectionMode(SelectionMode.SingleSelect)
+.SetDataStore(&quot;Person/JsonList&quot;)
+.Columns(colBuilder=&gt;
+        {
+            colBuilder.For(x =&gt; x.Id).Named(&quot;Código&quot;);
+            colBuilder.For(x =&gt; x.Descripcion).Named(&quot;Descripción&quot;);
+            colBuilder.For(x =&gt; x.Id).LinksTo(&quot;Edit&quot;, &quot;Person/Edit/{Id}&quot;);
+        })</pre>
+Almost all of these configurations are optional and have some overloads. <big style="font-weight: bold">So, How I've achieved this </big>I've added another &quot;level of indirection&quot;. Ext JS and JQuery frameworks use something called Joln (Javascript Object Literal Notation). This is like JSON but the member names are not quoted (more info <a href="http://www.fotiweb.com/2006/12/13/javascript-object-literal-notation/">here</a>). <big style="font-weight: bold">Take a look to my other level of indirection</big> For instance, this is a javascript configuration for JsonStore: 
+
+<pre class="js" name="code">var store = new Ext.data.JsonStore({
+url: 'get-images.php',
+root: 'images'})</pre>
+Then I wrote the following class: 
+
+<pre class="c-sharp" name="code">public class ExtJsonStore : JsObject&lt;ExtJsonStore{
+public ExtJsonStore(string url){...}
+public string Root { get; set; }
+public string Url { get; set; }
+protected override string GetJsClassName()
+{
+return &quot;Ext.data.JsonStore&quot;;
+}
+protected override string GetConfiguratorConstructor()
+{
+return JolnBuilder.Start()
+          .With(&quot;url&quot;, Url)
+          .With(&quot;root&quot;, Root)
+          .Build();
+}
+}</pre>
+In this class the function called GetConfiguratorConstructor returns this string: {url: 'foo', root: 'bar'}. The abstract class JsObject has some methods as follows: 
+
+<ul>
+  <li>string CreateNewInstance() =&gt; return &quot;new Ext.data.JsonStore({url: 'foo', root: 'bar'})&quot;</li>
+
+  <li>JsObject<t> CreateNewInstanceAndAssignToVar(string varName) =&gt; stack &quot;var foo = new Ext.data.JsonStore({url: 'foo', root: 'bar'})&quot;</t></li>
+
+  <li>JsObject<t><t> WithMethodCall(string method) =&gt; stack &quot;foo.doSomething()&quot;</t></t></li>
+</ul>
+Finally this is a tdd spike! Don't use it in a real word application. <a href="http://jfromaniello.googlepages.com/Asp.NetMVCExtjs-ExtensiveJsHelper.zip">Here</a> is the project for download.
+
+  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-4423218151899743190?l=jfromaniello.blogspot.com' alt='' /></div>

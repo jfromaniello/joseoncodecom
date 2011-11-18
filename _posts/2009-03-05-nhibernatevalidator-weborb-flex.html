@@ -1,0 +1,120 @@
+--- 
+layout: post
+title: NHibernateValidator - WebOrb - Flex
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/03/blog-post.html
+  dsq_thread_id: "314363179"
+---
+Estoy por comenzar un proyecto con una arquitectura basada en Flex - WebOrb - .Net  - Nhibernate.
+Los detalles de por que están involucradas estas tecnologías, escapan del alcance del artículo.
+
+Nhibernate funciona bien con flex, dado que la arquitectura Flex-Weborb.net es la de un sitio web común y corriente.
+
+Lo que quería integrar era el nuevo framework de validación Nhibernate Validator a Flex.
+
+Del lado de .Net hubo una complicación dado a que WebOrb.Net no tiene un buen manejo de excepciones customizadas (como lo es la InvalidStateException de nhv).
+
+Por lo tanto definí una función que se llama ReThrowInvalidState de la siguiente forma:
+
+<pre name="code" class="c-sharp">
+public void ReThrowInvalidState(InvalidStateException ex)
+{
+var newException = new Weborb.Exceptions.ServiceException(ex.GetType().FullName);
+newException.Data.Add("InvalidValues", ex.GetInvalidValues());
+throw newException;
+}
+</pre>
+
+Para manejar la excepción se puede hacer algo así:
+
+<pre name="code" class="c-sharp">
+try
+{
+   repPersonas.Save(persona);
+}
+catch (InvalidStateException ex)
+{
+  ReThrowInvalidState(ex);
+}
+</pre>
+
+Ok, ahora como interceptar y mostrar la excepción en flex. Para ello defini una clase en actionscript:
+
+<pre name="code" class="c-sharp">
+package util
+{
+import mx.core.Container;
+import mx.rpc.events.FaultEvent;
+import mx.messaging.messages.ErrorMessage;
+
+public class nhvDisplayer
+{
+private var _container:mx.core.Container ;
+
+
+public function nhvDisplayer(container:mx.core.Container){
+_container = container;
+}
+
+private virtual function ClearRecursively(control:mx.core.UIComponent) : void
+{
+if(control is mx.core.Container){
+for each(var child:mx.core.UIComponent in mx.core.Container(control).getChildren()){
+ClearRecursively(child);
+}
+}else{
+control.errorString = "";
+}
+
+
+}
+
+public virtual function ShowErrors(info:mx.rpc.events.FaultEvent ):void
+{
+
+var obj:Object = mx.messaging.messages.ErrorMessage(info.message).extendedData;
+var InvalidStates:Array = obj[ "InvalidValues" ];
+
+if(InvalidStates == null) return;
+
+ClearRecursively(_container);
+
+for (var i:uint = 0; i <> 0){
+mx.core.UIComponent(_container[InvalidStates[i].PropertyName]).errorString += "n";
+}
+mx.core.UIComponent(_container[InvalidStates[i].PropertyName]).errorString += InvalidStates[i].Message;
+}
+}
+}
+}
+</pre>
+
+
+Ok, como se puede apreciar, esta clase contiene 2 funciones y un constructor que recibe el contenedor de controles sobre el cual opera el nhvDisplayer. La primer función limpia todos los errorString de todos los controles que estan en el contenedor recursivamente. La segunda función recibe un objeto del tipo FaultEvent, examina para ver si contiene una lista de valores invalidos, y si la contiene carga la propiedad errorString.
+
+Por ultimo en cada form deberíamos hacer algo así, en el fault event del guardar:
+
+<pre name="code" class="c-sharp">
+public virtual function Fallo(info:mx.rpc.events.FaultEvent ):void
+{
+
+var nhvdisp:nhvDisplayer = new nhvDisplayer(this);
+nhvdisp.ShowErrors(info);
+}
+</pre>
+
+Y eso es todo, este método me gusta mas que las validaciones en la capa de presentación <a href="http://livedocs.adobe.com/flex/3/html/help.html?content=validators_2.html#129011">ver</a> y que las validaciones en el modelo pero escritas en la presentación !!! <a href="http://livedocs.adobe.com/flex/3/html/datamodels_5.html#163204">ver</a>.
+Finalmente de esta forma, las validaciones estan ligadas al modelo y definidas en el modelo ya sea mediante atributos en las clases del modelo, clases externas o xml.
+
+Para mas información sobre Nhibernate Validator ver <a href="http://fabiomaulo.blogspot.com/2009/02/diving-in-nhibernatevalidator.html">aquí</a> y <a href="http://nhforge.org/wikis/validator10/nhibernate-validator-1-0-0-documentation.aspx">aquí</a>.
+
+Como no podía faltar, una screenshot:
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://joseoncode.com/wp-content/uploads/2011/06/Sin+t%C3%ADtulo1.png"><img style="margin: 0px auto 10px; display: block; text-align: center; cursor: pointer; width: 453px; height: 240px;" src="http://joseoncode.com/wp-content/uploads/2011/06/Sin+t%C3%ADtulo.png" alt="" id="BLOGGER_PHOTO_ID_5309701851746350082" border="0" /></a><div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-4328734220958941927?l=jfromaniello.blogspot.com' alt='' /></div>

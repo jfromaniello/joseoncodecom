@@ -1,0 +1,72 @@
+--- 
+layout: post
+title: Caliburn.ModelFramework with only one interceptor
+tags: 
+- Caliburn
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/caliburnmodelframework-with-only-one.html
+  dsq_thread_id: "319414917"
+---
+<p>I’ve started a project in <a href="http://www.google.com.ar/url?sa=t&amp;source=web&amp;ct=res&amp;cd=3&amp;url=http%3A%2F%2Fmsdn.microsoft.com%2Fes-es%2Flibrary%2Fms754130.aspx&amp;ei=ko9SSs-dKJ2G6APaqPTLBw&amp;usg=AFQjCNGtBt3IW7pWnwZ5TeNImzPwov_Emg&amp;sig2=LBtyEMv-c_RZsRqTx9fMbQ">WPF</a> and I’m learning <a href="http://caliburn.codeplex.com/">Caliburn</a>. I really like the way it handle the presentations patterns.     <br />In this post I will show you a way to implement a ModelFramework based model with castle DynamicProxy2.     <br />    <br />You can see a basic implementation <a href="http://caliburn.codeplex.com/sourcecontrol/changeset/view/25821?projectName=caliburn#615692">here</a> (extracted from the Lob Sample for WPF):</p>  <p>If you write your model in this way, you have:    <br />-Automatic INotifyPropertyChanged behaviour.     <br />-Automatic IEditableObject behaviour.     <br />-Automatic n - Undo/Redon behaviour.     <br />-Validations.     <br />-other things.     <br /><strong>     <br />Note:</strong> I've already implemented the first two features with a Castle IInterceptor’s and DynamicProxy.     <br />I will like to achieve the same result without implementing anything. </p>  <p>This is the model:    <br />    <br /><span style="color: blue">public interface </span><span style="color: #2b91af">ICustomer      <br /></span>{     <br />&#160;&#160;&#160; <span style="color: blue">string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }     <br />&#160;&#160;&#160; <span style="color: blue">string </span>Address { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }     <br />}     <br />    <br /><span style="color: blue">public interface </span><span style="color: #2b91af">IEditableCustomerModel </span>: <span style="color: #2b91af">ICustomer</span>, <span style="color: #2b91af">IModel      <br /></span>{}</p> <a href="http://11011.net/software/vspaste"></a>  <p><strong>Note:</strong> IModel is from Caliburn.ModelFramework.     <br />    <br />The picture:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/caliburn.modelframework%5B4%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="caliburn.modelframework" border="0" alt="caliburn.modelframework" src="" width="378" height="453" /></a> </p>  <p>The ModelInterceptor class will intercept the properties invocation and use the getvalue and setvalues of the ModelBase target.</p>  <p>The ModelHelper class generates the proxy as follows:</p>  <pre class="code"><span style="color: #2b91af">IEditableCustomerModel </span>customerModel = 
+    <span style="color: #2b91af">ModelHelper</span>.CreateModel&lt;<span style="color: #2b91af">IEditableCustomerModel</span>, <span style="color: #2b91af">ICustomer</span>&gt;();<br /><br /><br /><br /><br /><br /></pre>
+
+<pre class="code"><br /><br /></pre>
+
+<pre class="code">This test is working properly:</pre>
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>can_undo_simple_property_change()
+{
+    <span style="color: blue">var </span>undoRedoManager = <span style="color: blue">new </span><span style="color: #2b91af">UndoRedoManager</span>();
+    <span style="color: blue">var </span>customerModel = 
+        <span style="color: #2b91af">ModelHelper</span>.CreateModel&lt;<span style="color: #2b91af">IEditableCustomerModel</span>, <span style="color: #2b91af">ICustomer</span>&gt;();
+
+    undoRedoManager.Register(customerModel);
+
+    <span style="color: #2b91af">Assert</span>.IsNotNull(customerModel);
+
+    customerModel.Name = <span style="color: #a31515">&quot;Jose&quot;</span>;
+    
+    customerModel.BeginEdit();
+
+    <span style="color: green">//First I change the name to &quot;Bill&quot;
+    </span>customerModel.Name = <span style="color: #a31515">&quot;Bill&quot;</span>;
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Bill&quot;</span>));
+
+    <span style="color: green">//Ups, No I say &quot;Pedro&quot;.
+    </span>customerModel.Name = <span style="color: #a31515">&quot;Pedro&quot;</span>;
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Pedro&quot;</span>));
+
+    <span style="color: green">//No, his name is &quot;Andy&quot;.
+    </span>customerModel.Name = <span style="color: #a31515">&quot;Andy&quot;</span>;
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Andy&quot;</span>));
+
+
+    <span style="color: green">//No, his name is bill so I will click undo twice.
+    //One undo for pedro.
+    </span>undoRedoManager.Undo();
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Pedro&quot;</span>));
+    <span style="color: green">//Two undo for Bill
+    </span>undoRedoManager.Undo();
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Bill&quot;</span>));
+
+
+    <span style="color: green">//No... HIS NAME IS PEDRO!
+    </span>undoRedoManager.Redo();
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Pedro&quot;</span>));
+
+    customerModel.CancelEdit();
+
+    <span style="color: #2b91af">Assert</span>.That(customerModel.Name, <span style="color: #2b91af">Is</span>.EqualTo(<span style="color: #a31515">&quot;Jose&quot;</span>));
+}</pre>
+
+<p><strong>Importat Note:</strong> The implementation is working with the castle trunk R5846 thank you <a href="http://kozmic.pl/">Krzysztof Koźmic</a>!! 
+
+  <br />If you want the full code leave a comment with your email (or private) and I will send you.</p>
+<a href="http://www.dotnetkicks.com/kick/?url=http%3a%2f%2fjfromaniello.blogspot.com%2f2009%2f07%2fcaliburnmodelframework-with-only-one.html"><img border="0" alt="kick it on DotNetKicks.com" src="" /></a>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-5053848434094183671?l=jfromaniello.blogspot.com' alt='' /></div>

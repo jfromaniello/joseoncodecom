@@ -1,0 +1,217 @@
+--- 
+layout: post
+title: Introducing uNhAddIns.ComponentBehaviors
+tags: 
+- NHibernate
+- Nhibernate Validator
+- uNhAddIns
+- uNhAddIns.WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/10/introducing-unhaddinscomponentbehaviors.html
+  dsq_thread_id: "314364033"
+  blogger_images: "1"
+---
+<p>In this post I will introduce a project under <a href="http://code.google.com/p/unhaddins">Unofficial NHibernate Addins</a> named ComponentBehaviors. The goal of this project is to inject some goodness of System.ComponentModel through a dynamic proxy framework.</p>  <h1>The WHY</h1>  <p>Sometimes you need to implement certain interfaces of ComponentModel, for various reasons such as DataBinding, but the code need to accomplish this is tedious and repetitive. This code is called &quot;plumbing code&quot;, an the following snippet is an example:</p>  <pre class="brush: csharp;">public class Customer : BaseEntity
+{
+    private string _firstName;
+    public virtual string FirstName
+    {
+        get { return _firstName; }
+        set
+        {
+            if(!_firstName.Equals(value))
+            {
+                _firstName = value;
+                OnPropertyChanged(&quot;FirstName&quot;);
+            }
+        }
+    }
+
+    private string _lastName;
+    public virtual string LastName
+    {
+        get { return _lastName; }
+        set
+        {
+            if(!_lastName.Equals(value))
+            {
+                _lastName = value;    
+                OnPropertyChanged(&quot;LastName&quot;);
+            }
+        }
+    }
+}</pre>
+
+<p>In the above sample, a property declaration took me 12 lines of code. Why I can't use auto properties (1 line)?</p>
+
+<p>My goal was to have the same functionality like the above but with the following code:</p>
+
+<pre class="brush: csharp; ">public class Customer
+{
+    public virtual string FirstName {get; set;}
+    public virtual string LastName {get; set;}
+}
+
+//Somewhere
+
+configuration.For&lt;Customer&gt;()
+    .Add&lt;NotifiableBehavior&gt;()
+    .Add&lt;DataErrorInfoBehavior&gt;()
+    .Add&lt;EditableBehavior&gt;();</pre>
+
+<p>A side effect is that classes are not tied to those interfaces and can be used in another project.</p>
+
+<h1>The WHAT</h1>
+
+<p>By now there are three supported behaviors:</p>
+
+<ul>
+  <li>DataErrorInfoBehavior </li>
+
+  <li>EditableBehavior </li>
+
+  <li>NotifyPropertyChangedBehavior </li>
+</ul>
+
+<h3>DataErrorInfo Behavior</h3>
+
+<p>The DataErrorInfo behavior is based on the interface <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.idataerrorinfo.aspx">IDataErrorInfo</a>, and is described by me in this <a href="http://jfromaniello.blogspot.com/2009/09/howto-display-validations-errors-in.html">post</a>. The configuration is as follows:</p>
+
+<pre class="brush: csharp; ">configuration.For&lt;Customer&gt;()
+.Add&lt;DataErrorInfoBehavior&gt;();</pre>
+
+<p>You need to plug in your container an <a href="http://code.google.com/p/unhaddins/source/browse/trunk/uNhAddIns/uNhAddIns.Adapters/IEntityValidator.cs">IEntityValidator</a>, fortunately we have four implementations in uNhAddIns: </p>
+
+<ul>
+  <li>NHibernate Validator </li>
+
+  <li>DataAnnotations </li>
+
+  <li>Application Validation Block </li>
+
+  <li>Castle Validations </li>
+</ul>
+
+<p>You can read more in this <a href="http://fabiomaulo.blogspot.com/2009/10/oss-has-users-commercial-products-has.html">post</a> of Fabio Maulo.</p>
+
+<p>IDataErrorInfo is described in MSDN :</p>
+
+<blockquote>
+  <p>Provides the functionality to offer custom error information that a user interface can bind to.</p>
+</blockquote>
+
+<p>Almost any DataBinding infrastructures such as Asp.Net, Asp.Net MVC, Winforms and WPF supports binding to an IDataErrorInfo entity.</p>
+
+<h3>Editable Behavior</h3>
+
+<p>The Editable behavior is based on the interface <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.ieditableobject.aspx">IEditableObject</a>. The goal of this behavior is described in MSDN as follows:</p>
+
+<blockquote>
+  <p>Provides functionality to commit or rollback changes to an object that is used as a data source.</p>
+</blockquote>
+
+<p><em>Note: Commit or Rollback refers to in-memory operations. Not database. </em></p>
+
+<p>So a test like this, is self-explanatory:</p>
+
+<pre class="brush: csharp; ">[Test]
+public void session_shouldnot_be_dirty_after_cancelchanges()
+{
+    var id = CreateNewAlbum();
+    using (ISession session = sessions.OpenSession())
+    using (ITransaction tx = session.BeginTransaction())
+    {
+        var album = session.Get&lt;Album&gt;(id);
+        ((IEditableObject) album).BeginEdit();
+        album.Title = &quot;Dark side of the moon&quot;;
+        ((IEditableObject) album).CancelEdit();
+        session.IsDirty().Should().Be.False();
+
+        tx.Commit();
+    }
+}</pre>
+
+<h3>NotifyPropertyChanged behavior</h3>
+
+<p>NotifyPropertyChanged behavior is based on the interface <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged.aspx">INotifyPropertyChanged</a> and is very well described in the MSDN:</p>
+
+<blockquote>
+  <p>The INotifyPropertyChanged interface is used to notify clients, typically binding clients, that a property value has changed.</p>
+</blockquote>
+
+<h1>The WHERE</h1>
+
+<p>With uNhAddIns.ComponentBehaviors you define the behaviors of a class <strong><u>ONCE</u></strong> and you can get an entity with the behaviors in many ways. I will describe in this section how ComponentBehaviors works with NHibernate.</p>
+
+<h3>Transient Entities</h3>
+
+<p>We just need an IEntityFactory in our projects as follows:</p>
+
+<pre class="brush: csharp; ">public class EntityFactory : IEntityFactory
+{
+    private readonly IComponentProxyFactory _componentProxyFactory;
+
+    public EntityFactory(IComponentProxyFactory componentProxyFactory)
+    {
+        _componentProxyFactory = componentProxyFactory;
+    }
+
+    public T CreateInstance&lt;T&gt;()
+    {
+        return (T) _componentProxyFactory.GetEntity(typeof (T));
+    }
+}</pre>
+
+<p>Just plug that in your container and now you will be able to inject an IEntityFactory in your services.</p>
+
+<h3>Persisted entities</h3>
+
+<p>There are two ways to tell NHibernate that every time we return an object, this must come with the behaviors. The first way is with an interceptor as follows:</p>
+
+<pre class="brush: csharp; ">nhibernateConfig.Interceptor = 
+    container.Resolve&lt;ComponentBehaviorInterceptor&gt;();</pre>
+
+<p>The second is has a little overhead because it involves to inject your entities in the container and now I'm using vaguely. But you can read more in this <a href="http://fabiomaulo.blogspot.com/2008/11/entities-behavior-injection.html">thread</a>. </p>
+
+<h3>Proxy entities</h3>
+
+<p>With the steps described in the previous section, whenever nhibernate return an object, this object will come with the behaviors. But what happen when NHibernate itself need to generate a proxy for lazyloading stuff? Well, we can even specify that we want our behaviors in those proxies.</p>
+
+<p>And the configuration is very easy:</p>
+
+<pre class="brush: csharp; ">cfg.Properties[Environment.ProxyFactoryFactoryClass] = 
+    typeof (ComponentProxyFactoryFactory)
+        .AssemblyQualifiedName</pre>
+
+<p>&#160;</p>
+
+<h1>Final thoughts </h1>
+
+<p>If you want to see a working applications that use those concepts, have a look to this <a href="http://code.google.com/p/unhaddins/source/browse/#svn/trunk/Examples/uNHAddIns.Examples.WPF">example</a>. </p>
+
+<p>I’ve started this project because I need it for my job, this was my first serious experience developing open source and for me has been very positive:</p>
+
+<ul>
+  <li>I’ve talked with lot of people around the globe, open source developers or not. </li>
+
+  <li>Some of them are using the library and improving. </li>
+
+  <li>I’ve learned a lot of Castle DynamicProxy and NHibernate. </li>
+
+  <li>I’ve participated in the afore mentioned projects. </li>
+
+  <li>I’ve three new job offers. </li>
+</ul>
+
+<h3>A word about NHibernate</h3>
+
+<p>For me, one of the interesting things that I found in NHibernate is a lot of “extensions points”. You could plug whatever you want and radically change the behavior of the tool to fit your needs. </p>
+
+<p>Enjoy the NHibernate injection. :-)</p>
+
+<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello</div>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-1510568039249798968' alt='' /></div>

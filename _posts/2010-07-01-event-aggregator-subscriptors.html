@@ -1,0 +1,102 @@
+--- 
+layout: post
+title: Event Aggregator; subscriptors
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/07/event-aggregator-subscriptors.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  dsq_thread_id: "316280270"
+  blogger_images: "1"
+---
+<p>In a <a href="http://jfromaniello.blogspot.com/2010/04/event-aggregator-with-reactive.html">previous article</a> I talked about an event publisher based on Reactive Extensions, and I wrote some examples of subscriptors based on IObservable. </p>  <p>I will talk about two different kind of subscriptors or observers in this post.</p>  <p>I am using this pattern in my presenters (user interface), so I will start this post with a simple example of use case. </p>  <p>The first interface is the “Albums Browser”:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/myImage%5B3%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="myImage" border="0" alt="myImage" src="http://joseoncode.com/wp-content/uploads/images/myImage_thumb5B15D.png" width="514" height="293" /></a></p>  <p>And the second interface is the “Album Editor”:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/myImage%20%281%29%5B4%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="myImage (1)" border="0" alt="myImage (1)" src="http://joseoncode.com/wp-content/uploads/images/myImage2028129_thumb5B25D.png" width="470" height="520" /></a> </p>  <p>&#160;</p>  <p>So, I have two concerns in this scenario:</p>  <ul>   <li>I want to update the Browser when the user saves a change on an album. </li>    <li>I want to open the edit use case when the user press the button Edit. But I don’t want a hard reference to the Edit Album Presenter or window, in the browser. </li> </ul>  <p>So, I will declare two events:</p>  <pre class="brush: csharp;">public class AlbumUpdated
+{
+    public AlbumUpdated(int id)
+    {    
+        AlbumId = id;
+    }
+
+    //Poid of the album
+    private object AlbumId{get; private set;}
+}
+
+
+public class AlbumEditRequest
+{
+    public AlbumUpdated(int id)
+    {    
+        AlbumId = id;
+    }
+
+    //Poid of the album
+    private object AlbumId{get; private set;}
+}</pre>
+
+<p>The command to raise the event is the same in both cases:</p>
+
+<pre class="brush: csharp;">EventAggregator.Publish(new AlbumUpdated(id));
+
+EventAggregator.Publish(new AlbumEditRequest(SelectedAlbum.Id));</pre>
+
+<p>But we need two kind of subscription mechanism.</p>
+
+<h1></h1>
+
+<h1>Instance Subscription</h1>
+
+<p>The observers for AlbumUpdated are <strong><u>live</u></strong> object instances watching the event. So the browser for that matter look like this:</p>
+
+<pre class="brush: csharp;">public class AlbumBrowserPresenter
+{
+    public AlbumBrowserPresenter(
+        EventAggregator eventAggregator)
+    {
+        eventAggregator.GetEvent&lt;AlbumUpdated&gt;()
+                    .Subscribe(ReloadGrid);
+    }
+    
+    private void ReloadGrid()
+    {
+        //do the reload here.
+    }   
+}</pre>
+
+<p>And you can subscribe to this same event in other use cases, for instance when you have a selector for Albums.</p>
+
+<h1>Type Subscription</h1>
+
+<p>The observer of AlbumEditRequest is a type, this means that the handler of this event is not a live object. The event aggregator implementation “create” an instance of all types implementing the interface and then call an specific method. The edit presenter looks like this:</p>
+
+<pre class="brush: csharp;">public class AlbumEditPresenter
+  : IHandler&lt;AlbumEditRequest&gt;
+{
+    public void Handle(AlbumEditRequest @event)
+    {
+        InitWithId(@event.AlbumId);
+    }
+
+    //...
+}</pre>
+
+<p>The easy way to handle this scenario in the event aggregator is something like this:</p>
+
+<pre class="brush: csharp;">public void Publish&lt;TEvent&gt;(TEvent @event)
+{
+    object subject;
+
+    if (subjects.TryGetValue(typeof(TEvent), out subject))
+    {
+        ((ISubject&lt;TEvent&gt;)subject)
+            .OnNext(sampleEvent);
+    }
+
+    ServiceLocator.Current
+                .GetAllInstances&lt;IHandler&lt;TEvent&gt;&gt;()
+                .ForEach(h =&gt; h.Handle(@event));
+}</pre>
+
+<p>This same code is used in many places and examples for Domain Events, but we use it here with other purpose.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7498046290390694882' alt='' /></div>

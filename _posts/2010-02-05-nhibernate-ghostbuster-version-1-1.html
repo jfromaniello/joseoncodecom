@@ -1,0 +1,211 @@
+--- 
+layout: post
+title: NHibernate Ghostbuster version 1.1
+tags: 
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2010/02/nhibernate-ghostbuster-version-11.html
+  dsq_thread_id: "314526943"
+  blogger_images: "1"
+---
+<p>I’ve been using since long time ago the <a href="http://fabiomaulo.blogspot.com/2008/10/how-test-your-mappings-ghostbuster.html">Ghostbuster</a> that <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a> wrote.</p>  <p>I don’t remember how many problems in my mappings I have detected with this piece of code. Just to enumerate a few type of problems:</p>  <ul>   <li>A null column is mapped to a non nullable property. This produce a superfluous update. </li>    <li>A bad user type. </li>    <li>An enum mapped as an int. </li> </ul>  <p>Today I was searching for a problem and I had my “wajaaaa” moment when I remembered this <a href="http://nhforge.org/wikis/howtonh/finding-dirty-properties-in-nhibernate.aspx">old post in the nhforge wiki</a>.&#160; So, I changed the ghostbuster to show the name of the dirty properties, also it is showing the previous state and the current state of the property.</p>  <p>This is the new code:</p>  <pre class="brush: c-sharp; wrap-lines: false">/// &lt;summary&gt;
+/// ghostbuster
+/// &lt;/summary&gt;
+[TestFixture]
+public class GhostBuster
+{
+    private const string DefaultIdName = &quot;ID&quot;;
+    private Configuration cfg;
+    private ISessionFactory sessions;
+
+    [Test, Explicit]
+    public void UnexpectedUpdateDeleteOnFetch()
+    {
+        cfg = new Configuration().Configure();
+        sessions = cfg.BuildSessionFactory();
+        PersistingMappings(null);
+    }
+
+    private void PersistingMappings(ICollection&lt;string&gt; entitiesFilter)
+    {
+        var invalidUpdates = new List&lt;string&gt;();
+        var nop = new NoUpdateInterceptor(invalidUpdates);
+
+        IEnumerable&lt;string&gt; entitiesToCheck;
+        if (entitiesFilter == null)
+        {
+            entitiesToCheck = cfg.ClassMappings.Select(x =&gt; x.EntityName);
+        }
+        else
+        {
+            entitiesToCheck = from persistentClass in cfg.ClassMappings
+                              where entitiesFilter.Contains(persistentClass.EntityName)
+                              select persistentClass.EntityName;
+        }
+
+        foreach (string entityName in entitiesToCheck)
+        {
+            EntityPersistenceTest(invalidUpdates, entityName, nop);
+        }
+
+        if (invalidUpdates.Count &gt; 0)
+        {
+            //if (logError.IsDebugEnabled)
+            //{
+            Console.WriteLine(&quot;  &quot;);
+            Console.WriteLine(&quot;------ INVALID UPDATES -------&quot;);
+            invalidUpdates.ForEach(Console.WriteLine);
+            Console.WriteLine(&quot;------------------------------&quot;);
+            //}
+        }
+        Assert.AreEqual(0, invalidUpdates.Count, &quot;Has unexpected updates.&quot;);
+    }
+
+    private void EntityPersistenceTest(ICollection&lt;string&gt; invalidUpdates,
+                                       string entityName, IInterceptor nop)
+    {
+        const string queryTemplate = &quot;select e.{0} from {1} e&quot;;
+        string msg = &quot;s--------&quot; + entityName;
+        Console.WriteLine(msg);
+
+        using (ISession s = sessions.OpenSession(nop))
+        using (ITransaction tx = s.BeginTransaction())
+        {
+            IList entityIds = null;
+            try
+            {
+                string queryString = string.Format(queryTemplate, DefaultIdName, entityName);
+                entityIds = s.CreateQuery(queryString).SetMaxResults(1).List();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(&quot;Possible METEORITE:&quot; + e.Message);
+            }
+
+            if (entityIds != null)
+            {
+                if (entityIds.Count == 0 || entityIds[0] == null)
+                {
+                    Console.WriteLine(&quot;No instances&quot;);
+                }
+                else
+                {
+                    if (entityIds.Count &gt; 1)
+                    {
+                        msg = &quot;&gt;Has &quot; + entityIds.Count + &quot; subclasses&quot;;
+                        Console.WriteLine(msg);
+                    }
+                    object entityId = entityIds[0];
+                    try
+                    {
+                        s.Get(entityName, entityId);
+                        try
+                        {
+                            s.Flush();
+                        }
+                        catch (Exception ex)
+                        {
+                            string emsg = string.Format(&quot;EXCEPTION - Flushing entity [#{0}]: {1}&quot;, entityId, ex.Message);
+                            Console.WriteLine(emsg);
+                            invalidUpdates.Add(emsg);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        string emsg = string.Format(&quot;EXCEPTION - Getting [#{0}]: {1}&quot;, entityId, ex.Message);
+                        invalidUpdates.Add(emsg);
+                        Console.WriteLine(emsg);
+                    }
+                }
+                tx.Rollback();
+            }
+        }
+        msg = &quot;e--------&quot; + entityName;
+        Console.WriteLine(msg);
+    }
+
+    private class NoUpdateInterceptor : EmptyInterceptor
+    {
+        private readonly IList&lt;string&gt; invalidUpdates;
+        private ISession currentSession;
+
+        public NoUpdateInterceptor(IList&lt;string&gt; invalidUpdates)
+        {
+            this.invalidUpdates = invalidUpdates;
+        }
+
+        public override bool OnFlushDirty(object entity, object id, object[] currentState, object[] previousState,
+                                          string[] propertyNames, IType[] types)
+        {
+            string msg = &quot; FlushDirty :&quot; + entity.GetType().FullName;
+            Console.WriteLine(msg);
+            Console.WriteLine(&quot;Dirty properties: n-{0}&quot;, string.Join(&quot;n-&quot;, GetDirtyProperties(entity)));
+            invalidUpdates.Add(msg);
+            return false;
+        }
+
+        public override bool OnSave(object entity, object id, object[] state, string[] propertyNames, IType[] types)
+        {
+            string msg = &quot; Save       :&quot; + entity.GetType().FullName;
+            Console.WriteLine(msg);
+            invalidUpdates.Add(msg);
+            return false;
+        }
+
+        public override void OnDelete(object entity, object id, object[] state, string[] propertyNames, IType[] types)
+        {
+            string msg = &quot; Delete     :&quot; + entity.GetType().FullName;
+            Console.WriteLine(msg);
+            invalidUpdates.Add(msg);
+        }
+
+        public override void SetSession(ISession session)
+        {
+            this.currentSession = session;
+        }
+
+        private string[] GetDirtyProperties( Object entity)
+        {
+            String className = NHibernateProxyHelper.GuessClass(entity).FullName;
+            ISessionImplementor sessionImpl = currentSession.GetSessionImplementation();
+            IEntityPersister persister = sessionImpl.Factory.GetEntityPersister(className);
+            EntityEntry oldEntry = sessionImpl.PersistenceContext.GetEntry(entity);
+
+            if ((oldEntry == null) &amp;&amp; (entity is INHibernateProxy))
+            {
+                var proxy = entity as INHibernateProxy;
+                Object obj = sessionImpl.PersistenceContext.Unproxy(proxy);
+                oldEntry = sessionImpl.PersistenceContext.GetEntry(obj);
+            }
+
+            Object[] oldState = oldEntry.LoadedState;
+            Object[] currentState = persister.GetPropertyValues(entity, sessionImpl.EntityMode);
+            Int32[] dirtyProps = persister.FindDirty(currentState, oldState, entity, sessionImpl);
+
+            return dirtyProps.Select(d =&gt; string.Format(&quot;{0} =&gt; Old state: {1}. Current state: {2}. {3}&quot;, 
+                persister.PropertyNames[d], 
+                oldState[d] ?? &quot;null&quot;,
+                currentState[d] ?? &quot;null&quot;,
+                oldState[d] == null 
+                   &amp;&amp; currentState[d] != null ? &quot;Your property should be nullable or your data is corrupted&quot; : string.Empty)).ToArray();
+        }
+
+    }
+
+
+
+
+}</pre>
+
+<p>The trick is in the GetDirtyProperties method. </p>
+
+<p>As if this were not enough, it also show a descriptive message when the oldState is null and the currentState isn't null. This is a common problem when a nullable column, containing null values, is mapped to a non nullable property.</p>
+
+<p>This is an example output:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image%5B5%5D.png"><img style="border-bottom: 0px; border-left: 0px; display: inline; border-top: 0px; border-right: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb5B35D.png" width="667" height="62" /></a></p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2525670912532372700' alt='' /></div>

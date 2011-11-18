@@ -1,0 +1,140 @@
+--- 
+layout: post
+title: "Castle DynamicProxy: add behaviour to your entities"
+tags: 
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/castle-dynamicproxy-add-behaviour-to.html
+  dsq_thread_id: "316259766"
+  blogger_images: "1"
+---
+<p>Recently <a href="http://kozmic.pl/">Krzysztof Koźmic</a> has committed a <a href="http://groups.google.com/group/castle-project-users/browse_thread/thread/2e507f47dbb831f1?hl=en">patch</a> to the <a href="http://www.castleproject.org/dynamicproxy/index.html">DynamicProxy</a> trunk that allows me to do a new trick.&#160; <br />I will show you in this post a beautiful way to add behaviour to your entities.     <br />    <br />I start defining this simple domain:</p>  <pre class="code"><span style="color: blue">public interface </span><span style="color: #2b91af">IProduct
+</span>{
+    <span style="color: blue">int </span>Id { <span style="color: blue">get</span>; }
+    <span style="color: blue">string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">double </span>UnitPrice { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+}
+
+<span style="color: blue">public class </span><span style="color: #2b91af">Product </span>: <span style="color: #2b91af">IProduct
+</span>{
+    <span style="color: blue">public int </span>Id { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">public string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">public double </span>UnitPrice { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+}
+
+<span style="color: blue">public interface </span><span style="color: #2b91af">IEditableProduct </span>: <span style="color: #2b91af">IProduct, INotifyPropertyChanged</span>, <span style="color: #2b91af">IEditableObject
+</span>{}</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>Then I could generate a proxy as follows:</p>
+
+<pre class="code"><span style="color: blue">public </span><span style="color: #2b91af">IEditableProduct </span>GenerateEditableModelOfProduct(<span style="color: #2b91af">Product </span>product)
+{
+    <span style="color: blue">var </span>proxyGen = <span style="color: blue">new </span><span style="color: #2b91af">ProxyGenerator</span>();
+
+    <span style="color: blue">return </span>(<span style="color: #2b91af">IEditableProduct</span>)
+        proxyGen.CreateInterfaceProxyWithTargetInterface(<span style="color: blue">typeof </span>(<span style="color: #2b91af">IProduct</span>), 
+                             <span style="color: blue">new</span>[] {<span style="color: blue">typeof </span>(<span style="color: #2b91af">IEditableProduct</span>)},
+                             product, 
+                             <span style="color: blue">new </span><span style="color: #2b91af">ProxyGenerationOptions</span>(), 
+                             <span style="color: blue">new </span><span style="color: #2b91af">IInterceptor</span>[]
+                                 {
+                                     <span style="color: blue">new </span><span style="color: #2b91af">EditableObjectInterceptor</span>(), 
+                                     <span style="color: blue">new </span><span style="color: #2b91af">PropertyChangeInterceptor</span>()
+                                 }
+                             );
+
+}</pre>
+Let me improve it by adding generics: 
+
+<br />
+
+<pre class="code"><span style="color: blue">public </span>TEditableInterface 
+    GenerateEditableModel&lt;TEditableInterface, TDomainInterface&gt;(TDomainInterface entity)
+    <span style="color: blue">where </span>TEditableInterface : <span style="color: #2b91af">INotifyPropertyChanged</span>, <span style="color: #2b91af">IEditableObject</span>, TDomainInterface
+{
+    <span style="color: blue">var </span>proxyGen = <span style="color: blue">new </span><span style="color: #2b91af">ProxyGenerator</span>();
+
+    <span style="color: blue">return </span>(TEditableInterface)
+        proxyGen.CreateInterfaceProxyWithTargetInterface(<span style="color: blue">typeof</span>(TDomainInterface), 
+                             <span style="color: blue">new</span>[] {<span style="color: blue">typeof </span>(TEditableInterface)},
+                             entity, 
+                             <span style="color: blue">new </span><span style="color: #2b91af">ProxyGenerationOptions</span>(), 
+                             <span style="color: blue">new </span><span style="color: #2b91af">IInterceptor</span>[]
+                                 {
+                                     <span style="color: blue">new </span><span style="color: #2b91af">EditableObjectInterceptor</span>(), 
+                                     <span style="color: blue">new </span><span style="color: #2b91af">PropertyChangeInterceptor</span>()
+                                 }
+                             );
+}</pre>
+
+<p><a href="http://11011.net/software/vspaste"></a><strong>Note:</strong> you can take EditableObjectInterceptor and PropertyChangeInterceptor from unhaddins.examples. 
+
+  <br />And now the test:</p>
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>TestEditableBehaviour()
+{
+    <span style="color: blue">var </span>product = <span style="color: blue">new </span><span style="color: #2b91af">Product</span>()
+                      {
+                          Name = <span style="color: #a31515">&quot;Potatoes&quot;
+                      </span>};
+
+    <span style="color: blue">var </span>editableProductModel = GenerateEditableModel&lt;<span style="color: #2b91af">IEditableProduct</span>, <span style="color: #2b91af">IProduct</span>&gt;(product);
+    editableProductModel.Name.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+    
+    editableProductModel.BeginEdit();
+    editableProductModel.Name = <span style="color: #a31515">&quot;Apple&quot;</span>;
+    editableProductModel.Name.Should().Be.EqualTo(<span style="color: #a31515">&quot;Apple&quot;</span>);
+    editableProductModel.CancelEdit();
+
+    editableProductModel.Name.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+    editableProductModel.BeginEdit();
+    editableProductModel.Name = <span style="color: #a31515">&quot;Succory&quot;</span>;
+    editableProductModel.Name.Should().Be.EqualTo(<span style="color: #a31515">&quot;Succory&quot;</span>);
+    editableProductModel.EndEdit();
+
+    editableProductModel.Name.Should().Be.EqualTo(<span style="color: #a31515">&quot;Succory&quot;</span>);
+}</pre>
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>TestNotificableBehaviour()
+{
+    <span style="color: blue">var </span>product = <span style="color: blue">new </span><span style="color: #2b91af">Product</span>()
+    {
+        Name = <span style="color: #a31515">&quot;Potatoes&quot;
+    </span>};
+    <span style="color: blue">bool </span>eventWasCalled = <span style="color: blue">false</span>; 
+    
+    <span style="color: blue">var </span>editableProductModel = GenerateEditableModel&lt;<span style="color: #2b91af">IEditableProduct</span>, <span style="color: #2b91af">IProduct</span>&gt;(product);
+    editableProductModel.PropertyChanged += (sender, args) =&gt;
+                                                {
+                                                    <span style="color: blue">if </span>(args.PropertyName == <span style="color: #a31515">&quot;Name&quot;</span>)
+                                                        eventWasCalled = <span style="color: blue">true</span>;
+                                                };
+    editableProductModel.UnitPrice = 2.2;
+
+    eventWasCalled.Should().Be.False();
+    
+    editableProductModel.Name = <span style="color: #a31515">&quot;Succory&quot;</span>;
+
+    eventWasCalled.Should().Be.True();
+}</pre>
+
+<p><a href="http://11011.net/software/vspaste"></a>If you read my <a href="http://jfromaniello.blogspot.com/2009/07/inotifypropertychanged-as-aop.html">two</a>&#160;<a href="http://jfromaniello.blogspot.com/2009/07/ieditableobject-another-behaviour-for.html">previous</a> post you will find a way to work with NHibernate as follows: 
+
+  <br />
+
+  <br />Session.Get&lt;<span style="color: #2b91af">IProduct</span>&gt;(1); 
+
+  <br />//or: 
+
+  <br />Session.Get&lt;<span style="color: #2b91af">IEditableProduct</span>&gt;(1);</p>
+<a href="http://www.dotnetkicks.com/kick/?url=http%3a%2f%2fjfromaniello.blogspot.com%2f2009%2f07%2fcastle-dynamicproxy-add-behaviour-to.html"><img border="0" alt="kick it on DotNetKicks.com" src="" /></a>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-738961190461618283' alt='' /></div>

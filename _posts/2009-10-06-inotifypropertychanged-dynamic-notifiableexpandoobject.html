@@ -1,0 +1,62 @@
+--- 
+layout: post
+title: INotifyPropertyChanged + dynamic = NotifiableExpandoObject
+tags: 
+- Dynamic
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/10/inotifypropertychanged-dynamic.html
+  dsq_thread_id: "314363982"
+  blogger_images: "1"
+---
+<p><strong>IMPORTANT NOTE: this code won’t work with WPF. Send me a patch :)</strong></p>  <p>I just make a proof of concept with dynamics, and this is the result.</p>  <pre class="brush: csharp;">[TestMethod]
+public void should_work()
+{
+    dynamic obj = new MyNotifiableExpandoObject();
+    bool wasRaised = false;
+
+    ((INotifyPropertyChanged)obj).PropertyChanged 
+        += (sender, arg) =&gt; 
+        {
+            wasRaised = true;
+            arg.PropertyName.Should().Be.EqualTo(&quot;Name&quot;);
+        };
+
+    obj.Name = &quot;José&quot;;
+    wasRaised.Should().Be.True;
+}</pre>
+
+<pre class="brush: csharp;">&#160;</pre>
+
+<p>I'm using C# 4 and the new keyword dynamic, MyNotifiableExpandoObject is a class that inherits from <a href="http://amazedsaint.blogspot.com/2009_09_01_archive.html">this one</a>, first I tried to use ExpandoObject but.. is sealed.</p>
+
+<p>So, my notifiable expando object is as follows:</p>
+
+<pre class="brush: csharp;">public class MyNotifiableExpandoObject  : MyExpando, INotifyPropertyChanged
+{
+    protected void OnPropertyChanged(string propertyName)
+    {
+        PropertyChangedEventHandler eventHandler = PropertyChanged;
+        if (eventHandler != null) eventHandler(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    public override bool  TrySetMember(SetMemberBinder binder, object value)
+    {
+        var result = base.TrySetMember(binder, value);
+        OnPropertyChanged(binder.Name);
+        return result;
+    }
+
+    #region INotifyPropertyChanged Members
+
+    public event PropertyChangedEventHandler  PropertyChanged;
+
+    #endregion
+}</pre>
+
+<p>I hope you like it. Now ever property you set the propertychanged event will be raised properly.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-960020380383138018' alt='' /></div>

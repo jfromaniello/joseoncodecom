@@ -1,0 +1,256 @@
+--- 
+layout: post
+title: "RestBucks on .Net: Ordering Coffee"
+tags: 
+- rest
+- RestBucks
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "319579466"
+---
+<p><em>Previous posts</em></p>  <ul>   <li><em><a href="http://joseoncode.com/2011/05/31/introducing-restbucks-on-net/">Introducing RestBucks on .Net</a></em> </li> </ul>  <p>Welcome to the second part of the RestBucks on .Net series. Today, I am going to take the first use case of the example: “Ordering Coffee”.</p>  <h1>What we know?</h1>  <p>We know (is on the book) that the customer will POST (http verb) an xml payload as follows:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-01_0900.png"><img style="background-image: none; border-right-width: 0px; margin: 0px auto 18px; padding-left: 0px; padding-right: 0px; display: block; float: none; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-06-01_0900" border="0" alt="2011-06-01_0900" src="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-01_0900_thumb.png" width="481" height="312" /></a></p>  <p>This is what we call in REST a REPRESENTATION. It is not the resource itself but just a representation of it.</p>  <p>I have intentionally highlighted three different areas:</p>  <ul>   <li>(green) Location: this indicate whether the order will be consumed onsite or not. It only accept two different values; “takeAway” or “inShop”. </li>    <li>(yellow) Product name: this is the name of the product. </li>    <li>(red) Product preferences: each product accept different preferences. </li> </ul>  <p>I took this one step further from the book and we are going to suppose that at any moment of time, the coffee shop can change their menu and/or the possible preferences for a product. </p>  <p>Also notice that an order might have many items.</p>  <p>The order will be POSTed to an URI like “http://restbucks.com/order<u>s</u>”. </p>  <blockquote>   <p>In plural; in rest you create things on collections (plural). To GET/PUT/DELETE an order you generally do something like “http://restbucks.com/order/id” (singular)</p> </blockquote>  <h1>The domain</h1>  <p>From the little piece of information on the above section, we can trace some core concepts:</p>  <table border="0" cellspacing="0" cellpadding="2" width="400"><tbody>     <tr>       <td valign="top" width="95"><strong>Entity</strong></td>        <td valign="top" width="305"><strong>Attributes</strong></td>     </tr>      <tr>       <td valign="top" width="95">Product</td>        <td valign="top" width="305">Name, Possible preferences</td>     </tr>      <tr>       <td valign="top" width="95">Order</td>        <td valign="top" width="305">Location, Lines</td>     </tr>      <tr>       <td valign="top" width="95">Order line</td>        <td valign="top" width="305">Product, Preferences, Quantity</td>     </tr>   </tbody></table>  <p>And then we can build an object-oriented :) domain model:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/ClassDiagram1.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 18px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="ClassDiagram1" border="0" alt="ClassDiagram1" src="http://joseoncode.com/wp-content/uploads/2011/06/ClassDiagram1_thumb.png" width="640" height="463" /></a></p>  <p>This is a pretty <a href="http://martinfowler.com/bliki/AnemicDomainModel.html">anemic</a> domain model and it doesn’t have all the properties and methods that the current version on codeplex has. But it serve to us for the purpose of our specs so far. </p>  <h1>Persistence</h1>  <p>For this example I have chosen to use a relational database thru an <a href="http://en.wikipedia.org/wiki/Object-relational_mapping">ORM</a>. I have used the last version of the more mature ORM in .Net; <a href="http://nhforge.org">NHibernate</a>. For mapping the domain I have used only conventions with few particular exceptions. </p>  <p>The first thing I did is to write some persistence tests; like this one:</p>  <pre class="brush: csharp; wrap-line: false;">[Test]
+public void CanStoreACustomization()
+{
+    long customizationId;
+    using (var session = sessionFactory.OpenSession())
+    using(var tx = session.BeginTransaction())
+    {
+        var repository = new Repository&lt;Customization&gt;(session);
+        var customization = new Customization { Name = &quot;Milk&quot;, PossibleValues = { &quot;skim&quot;, &quot;semi&quot;, &quot;whole&quot; } };
+        repository.MakePersistent(customization);
+        customizationId = customization.Id;
+        tx.Commit();
+    }
+    using (var session = sessionFactory.OpenSession())
+    {
+        var repository = new Repository&lt;Customization&gt;(session);
+        var customization = repository.GetById(customizationId);
+        customization.Satisfy(c =&gt; c.Name == &quot;Milk&quot; &amp;&amp; c.PossibleValues.SetEquals(new[] { &quot;skim&quot;, &quot;semi&quot;, &quot;whole&quot; }));
+    }
+}</pre>
+
+<p>This kind of tests check that the properties are properly persisted, and for instance that inserting a customization automatically inserts the PossibleValues collection.</p>
+
+<p>Each test destroy and recreate the whole database schema (we use a separated database for testing purposes as explained <a href="http://restbucks.codeplex.com/wikipage?title=Preparing%20the%20environment">here</a>).</p>
+
+<p>It is not my plan to post all the tests I wrote, you can have a look to these two <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks.Tests%2fDataTests%2fDataTests.cs">class</a> <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks.Tests%2fDataTests%2fOrderTests.cs">here</a>. The result of these tests is the Customize method in this <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks%2fData%2fMapper.cs">tiny class</a>. The other method (Generate) define only few general purpose conventions.</p>
+
+<h1>The representation</h1>
+
+<p>Now, that we have our Order class you might wonder how and where to de-serialize the chunk of xml we see at the beginning. </p>
+
+<p>This broadly discussed but at some point there is some level of agreement; <a href="http://martinfowler.com/bliki/FirstLaw.html">Entities</a> <a href="http://ayende.com/blog/4011/the-stripper-pattern">are</a> <a href="http://elegantcode.com/2008/04/27/dtos-or-serialized-domain-entities/">not</a> <a href="http://www.southsearepublic.org/article/2157/read/data_transfer_objects_value_objects_and_domain_models_in_j2ee">DTO</a> (and representations are more or less like DTOs). </p>
+
+<p>We have different ways to de-serialize the representation. For this example I chose to write a typed class and use the standard <a href="http://msdn.microsoft.com/en-us/library/ms950721.aspx">.net xml serialization</a> (another way might be to de-serialize into a <a href="http://msdn.microsoft.com/en-us/library/system.dynamic.expandoobject.aspx">dynamic ExpandoObject</a>).</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-01_1145.png"><img style="background-image: none; border-right-width: 0px; margin: 0px auto 18px; padding-left: 0px; padding-right: 0px; display: block; float: none; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-06-01_1145" border="0" alt="2011-06-01_1145" src="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-01_1145_thumb.png" width="362" height="321" /></a></p>
+
+<p>As you can see, this is quite different to our domain entity and in the long run the difference will be bigger because Representations doesn’t have methods.</p>
+
+<p>After I wrote those classes with their properties; the tests that we have to fix is this one:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void CanDeserialize()
+{
+    var xml =
+        @&quot;&lt;?xml version=&quot;&quot;1.0&quot;&quot;?&gt;
+&lt;order xmlns:xsd=&quot;&quot;http://www.w3.org/2001/XMLSchema&quot;&quot; xmlns:xsi=&quot;&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&quot; xmlns=&quot;&quot;http://restbucks.com&quot;&quot;&gt;
+  &lt;location&gt;inShop&lt;/location&gt;
+  &lt;cost&gt;100.4&lt;/cost&gt;
+  &lt;items&gt;
+    &lt;item&gt;
+      &lt;name&gt;latte&lt;/name&gt;
+      &lt;quantity&gt;0&lt;/quantity&gt;
+      &lt;size&gt;large&lt;/size&gt;
+      &lt;milk&gt;skim&lt;/milk&gt;
+    &lt;/item&gt;
+  &lt;/items&gt;
+&lt;/order&gt;&quot;;
+    var representation = XmlUtil.FromXmlString&lt;OrderRepresentation&gt;(xml);
+    representation.Satisfy(r =&gt;
+                           r.Items.Any(i =&gt; i.Name == &quot;latte&quot;
+                                            &amp;&amp; i.Preferences.Any(p =&gt; p.Key == &quot;size&quot;)
+                                            &amp;&amp; i.Preferences.Any(p =&gt; p.Key == &quot;milk&quot;)));
+}</pre>
+
+<p>To pass this test we need a bunch of attributes and implementing the <a href="http://msdn.microsoft.com/en-us/library/system.xml.serialization.ixmlserializable.aspx">IXmlSerializable</a> interface for the preferences dictionary. 
+
+  <br />I am not going to paste here the full implementation of those two classes but you can explore <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks%2fResources%2fOrders%2fRepresentations%2fOrderItemRepresentation.cs">here</a> and <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks%2fResources%2fOrders%2fRepresentations%2fOrderRepresentation.cs">here</a>.</p>
+
+<h1>The resource handler</h1>
+
+<p>This is the way I like to call the class that has the [ServiceContract] attribute in the current bits of the <a href="http://wcf.codeplex.com">wcf WebApi</a>. It is not the resource it self, for me the resource is the Order class (the domain object) and I don’t like the name of “service” in REST.</p>
+
+<p>The main purpose of the resource handler is to expose an Http interface to our application. In order to do this the resource handler can take dependencies on different services that our internal API expose; e.g. a repository. </p>
+
+<p>To make things clear, there is specific logic that belongs to our domain model; e.g. customer can’t pay an order that he has previously canceled. On the other hand there is specific logic that belongs to the handler; e.g. returns a 404-Not found response when the customer does a request for an order that doesn’t exist in our repository.</p>
+
+<p>This test validate that if the customer does a POST of a product that doesn't exist, then the resource handler must return 400 and a meaningful ReasonPhrase:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void WhenAProductDoesNotExist_ThenReturn400AndTheProperREasonPhrase()
+{
+    var resourceHandler = CreateResourceHandler();
+    var orderRepresentation = new OrderRepresentation
+    {
+        Items = { new OrderItemRepresentation { Name = &quot;beer&quot; } }
+    };
+
+    var result = resourceHandler.Create(orderRepresentation);
+
+    result.Satisfy(rm =&gt; rm.StatusCode == HttpStatusCode.BadRequest
+                      &amp;&amp; rm.ReasonPhrase == &quot;We don't offer beer&quot;);
+}</pre>
+
+<p>This test does another validation:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void WhenItemHasQuantity0_ThenReturn400AndTheProperREasonPhrase()
+{
+    var resourceHandler = CreateResourceHandler();
+    var orderRepresentation = new OrderRepresentation
+    {
+        Items = { new OrderItemRepresentation { Name = &quot;latte&quot;, Quantity = 0 } }
+    };
+
+    var response = resourceHandler.Create(orderRepresentation);
+
+    //NOTE: I am not sure if the proper response is NotFound or BadRequest. It is not clear in the book.
+    response.Satisfy(rm =&gt; rm.StatusCode == HttpStatusCode.BadRequest
+                        &amp;&amp; rm.Content.ToStringContent() == &quot;Item 0: Quantity should be greater than 0.&quot;);
+}</pre>
+
+<p>and so forth. When the order is ok:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void WhenOrderIsOk_ThenInsertANewOrderWithTheProductsAndPrice()
+{
+    var orderRepository = new RepositoryStub&lt;Order&gt;();
+    var handler = CreateResourceHandler(orderRepository);
+    var orderRepresentation = new OrderRepresentation { Items = { new OrderItemRepresentation { Name = &quot;latte&quot;, Quantity = 1 } } };
+
+    //act
+    handler.Create(orderRepresentation);
+
+    var order = orderRepository.RetrieveAll().First();
+    order.Satisfy(o =&gt; o.Items.Any(i =&gt; i.Product == latte &amp;&amp; i.UnitPrice == 2.5m &amp;&amp; i.Quantity == 1));
+}
+
+[Test]
+public void WhenOrderIsOk_ThenInsertANewOrderWithTheDateTime()
+{
+    var orderRepository = new RepositoryStub&lt;Order&gt;();
+    var handler = CreateResourceHandler(orderRepository);
+    var orderRepresentation = new OrderRepresentation { Items = { new OrderItemRepresentation { Name = &quot;latte&quot;, Quantity = 1 } } };
+
+    //act
+    handler.Create(orderRepresentation);
+
+    var order = orderRepository.RetrieveAll().First();
+    order.Date.Should().Be.EqualTo(DateTime.Today);
+}
+
+[Test]
+public void WhenOrderIsOk_ThenInsertANewOrderWithTheLocationInfo()
+{
+    var orderRepository = new RepositoryStub&lt;Order&gt;();
+    var handler = CreateResourceHandler(orderRepository);
+    var orderRepresentation = new OrderRepresentation 
+                                    { 
+                                        Location = Location.InShop, 
+                                        Items = { new OrderItemRepresentation { Name = &quot;latte&quot;, Quantity = 1 } } 
+                                    };
+
+    //act
+    handler.Create(orderRepresentation);
+
+    var order = orderRepository.RetrieveAll().First();
+    order.Location.Should().Be.EqualTo(Location.InShop);
+}</pre>
+
+<p>The above tests specify that an order must be saved properly. As you can notice here our resource handler depends on a IRepository&lt;T&gt; and in those tests we are using <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/98e52bb914d5#RestBucks.Tests%2fUtil%2fRepositoryStub.cs">RepositoryStub&lt;T&gt;</a> which is an implementation of IRepository&lt;T&gt; with a simple in-memory collection.</p>
+
+<p>The last test for this use case is very interesting:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void WhenOrderIsOk_ThenResponseHasStatus201AndLocation()
+{
+    var orderRepository = new Mock&lt;IRepository&lt;Order&gt;&gt;();
+    orderRepository.Setup(or =&gt; or.MakePersistent(It.IsAny&lt;Order[]&gt;()))
+                   .Callback&lt;Order[]&gt;(o =&gt; o.First().Id = 123);
+
+    var handler = CreateResourceHandler(orderRepository.Object);
+
+    //act
+    var result = handler.Create(new OrderRepresentation { Items = { new OrderItemRepresentation { Name = &quot;latte&quot;, Quantity = 1 }}});
+
+    var expectedUriToTheNewOrder =
+        resourceLinker.GetUri&lt;OrderResourceHandler&gt;(or =&gt; or.Get(0, null), new { orderId = &quot;123&quot; });
+
+    result.Satisfy(r =&gt; r.StatusCode == HttpStatusCode.Created
+                                  &amp;&amp; r.Headers.Location.ToString() == expectedUriToTheNewOrder);
+}</pre>
+
+<p>It means that after creating the order, the response status must be Created (201), and there must be a Location header.</p>
+
+<p>The protocol is very clear on this (<a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.30">section 14.40</a>):</p>
+
+<blockquote>
+  <p>The Location response-header field is used to redirect the recipient to a location other than the Request-URI for completion of the request or identification of a new resource. <u><font style="background-color: #ffff00">For 201 (Created) responses, the Location is that of the new resource which was created by the request</font></u>. For 3xx responses, the location SHOULD indicate the server's preferred URI for automatic redirection to the resource. The field value consists of a single absolute URI.</p>
+</blockquote>
+
+<p>A client application can pull the representation from the header location and get more details of the resource it just created, but that is for my next post :).</p>
+
+<p>Finally; this is the implementation of the handler:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[ServiceContract, WithUriPrefix(&quot;orders&quot;)]
+public class OrdersResourceHandler
+{
+    private readonly IRepository&lt;Product&gt; productRepository;
+    private readonly IRepository&lt;Order&gt; orderRepository;
+    private readonly IResourceLinker resourceLinker;
+
+    public OrdersResourceHandler(
+            IRepository&lt;Product&gt; productRepository,
+            IRepository&lt;Order&gt; orderRepository,
+            IResourceLinker resourceLinker)
+    {
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+        this.resourceLinker = resourceLinker;
+    }
+
+    [WebInvoke(Method = &quot;POST&quot;, UriTemplate = &quot;&quot;)]
+    public HttpResponseMessage Create(OrderRepresentation orderRepresentation)
+    {
+        var order = new Order
+        {
+            Date = DateTime.Today,
+            Location = orderRepresentation.Location
+        };
+
+        foreach (var requestedItem in orderRepresentation.Items)
+        {
+            var product = productRepository.GetByName(requestedItem.Name);
+            if (product == null)
+            {
+                return Responses.BadRequest(string.Format(&quot;We don't offer {0}&quot;, requestedItem.Name));
+            }
+            var orderItem = new OrderItem(product,
+                                        requestedItem.Quantity,
+                                        product.Price,
+                                        requestedItem.Preferences);
+            order.AddItem(orderItem);
+        }
+
+        orderRepository.MakePersistent(order);
+        var uri = resourceLinker.GetUri&lt;OrderResourceHandler&gt;(
+                                                    orderResource =&gt; orderResource.Get(0, null),
+                                                    new { orderId = order.Id });
+        return Responses.Created(uri);
+    }
+}</pre>
+
+<p>I hope you find this useful, and stay tuned for the next article.</p>

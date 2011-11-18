@@ -1,0 +1,25 @@
+--- 
+layout: post
+title: Cliente de Ms Sync Framework para Sqlite
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2008/12/cliente-de-ms-sync-framework-para.html
+  dsq_thread_id: "314363172"
+---
+Hace poco tiempo desarrollé un cliente de sincronización basado en Microsoft <span class="blsp-spelling-error" id="SPELLING_ERROR_0">Sync</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_1">Framework</span>. En unas pocas líneas:
+<blockquote>
+Microsoft <span class="blsp-spelling-error" id="SPELLING_ERROR_2">Sync</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_3">Framework</span> es una completa plataforma de sincronización que  habilita la colaboración y el acceso sin conexión para las aplicaciones,  servicios y dispositivos. <span class="blsp-spelling-error" id="SPELLING_ERROR_4">Sync</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_5">Framework</span> ofrece las tecnologías y herramientas  que habilitan la movilidad y el uso compartido de los datos, además de permitir  poner los datos fuera de conexión. (<a href="http://msdn.microsoft.com/es-es/library/bb902854.aspx">...</a>)</blockquote>
+Actualmente, en lo que a bases de datos se refiere, el <span class="blsp-spelling-error" id="SPELLING_ERROR_6">framework</span> viene con una implementación para la parte del servidor basado en <span class="blsp-spelling-error" id="SPELLING_ERROR_7">Sql</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_8">Server</span> y una de cliente <a href="http://en.wikipedia.org/wiki/SQL_Server_Compact"><span class="blsp-spelling-error" id="SPELLING_ERROR_9">Sql</span> CE</a>, pero permite ser extendido en este sentido a casi cualquier motor de base de datos, tanto en la parte cliente como en la parte servidora.
+
+En el proyecto que estaba trabajando <span class="blsp-spelling-error" id="SPELLING_ERROR_10">Sql</span> CE no era una opción, por lo cual vi la necesidad de implementar un cliente para <a href="http://www.sqlite.org/"><span class="blsp-spelling-error" id="SPELLING_ERROR_11">Sqlite</span></a> utilizando el proveedor de <span class="blsp-spelling-error" id="SPELLING_ERROR_12">Ado</span>.<span class="blsp-spelling-error" id="SPELLING_ERROR_13">net</span> <a href="http://sqlite.phxsoftware.com/">System.Data.Sqlite</a>.
+El proyecto esta publicado de forma <span class="blsp-spelling-error" id="SPELLING_ERROR_14">open</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_15">source</span>. Puede ser descargado de la siguiente dirección: <a href="http://sourceforge.net/projects/sqliteclientsyn/">http://sourceforge.net/projects/sqliteclientsyn/</a>.
+
+Para desarrollar y probar la librería me he basado en los ejemplos de <a href="http://www.syncguru.com/Projects.aspx"><span class="blsp-spelling-error" id="SPELLING_ERROR_16">Sync</span> <span class="blsp-spelling-error" id="SPELLING_ERROR_17">Guru</span></a>.
+El cambio es bastante trivial:
+<ol><li>Quitar las referencias a System.Data.SqlServerCE y Microsoft.Synchronization.Data.SqlServerCe.</li><li>Agregar las referencias a System.Data.Sqlite y <span class="blsp-spelling-error" id="SPELLING_ERROR_18">SQLiteSync</span>.</li><li>Reemplazar todas las llamadas a clases como <span class="blsp-spelling-error" id="SPELLING_ERROR_19">SqlCeConnection</span>, <span class="blsp-spelling-error" id="SPELLING_ERROR_20">SqlCECommand</span>, etc por su respectiva <span class="blsp-spelling-error" id="SPELLING_ERROR_21">SQLiteConnection</span>, <span class="blsp-spelling-error" id="SPELLING_ERROR_22">SQLiteCommand</span>, etc.</li><li>Reemplazar <span class="blsp-spelling-error" id="SPELLING_ERROR_23">SqlCeClientSyncProvider</span> por <span class="blsp-spelling-error" id="SPELLING_ERROR_24">SqliteClientSyncProvider</span>.</li><li>No es muy importante, pero es aconsejable, modificar la extensión del archivo de la base de datos en la cadena de conexión.</li></ol>Con estos simples pasos cualquier ejemplo debería funcionar correctamente.<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-5363307118669473199?l=jfromaniello.blogspot.com' alt='' /></div>

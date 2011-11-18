@@ -1,0 +1,370 @@
+--- 
+layout: post
+title: REST and the Http Cache; with WCF Web API
+tags: 
+- rest
+- WCF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/04/http-cache-and-rest-services.html
+  dsq_thread_id: "313755214"
+  blogger_images: "1"
+---
+<p>In this post I will show how to enhance your REST services by providing cache headers in the responses. I am going to show a simple but scalable implementation in the new Wcf Web API; however the intention of this article is purely theoretically.</p>  <h1>Introduction</h1>  <p>As I am not good explaining things in English and most of the things are already explained, I will simply copy and paste the w3.org explanation for Http Cache:</p>  <blockquote>   <p>HTTP is typically used for distributed information systems, where performance can be improved by the use of response caches. The HTTP/1.1 protocol includes a number of elements intended to make caching work as well as possible…</p>    <p>Caching would be useless if it did not significantly improve performance. The goal of caching in HTTP/1.1 is to eliminate the need to send requests in many cases, and to eliminate the need to send full responses in many other cases. The former reduces the number of network round-trips required for many operations; we use an &quot;expiration&quot; mechanism for this purpose (see section <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.2">13.2</a>). The latter reduces network bandwidth requirements; we use a &quot;validation&quot; mechanism for this purpose </p> </blockquote>  <p>As the last quote say; the two more important things from HTTP cache is “expiration” and “validation”.    <br />Remember; Http is everywhere and we can take tremendous advantage of the HTTP infrastructure.</p>  <h1>Implementation</h1>  <p>Lets say that I have a resource like this:</p>  <pre class="brush: csharp; wrap-line: false;">[ServiceContract, WithUriPrefix(&quot;order&quot;)]
+public class OrderResourceHandler
+{
+    private readonly IRepository&lt;Order&gt; orderRepository;
+    
+    public OrderResourceHandler(
+        IRepository&lt;Order&gt; orderRepository)
+    {
+        this.orderRepository = orderRepository
+    }
+
+    [WebGet(UriTemplate = &quot;{orderId}&quot;)]
+    public HttpResponseMessage Get(int orderId)
+    {
+        var order = orderRepository.GetById(orderId);
+        if(order == null) return Response.NotFound();
+        return Response.WithContent(new OrderRepresentation(order));
+    }
+}</pre>
+
+<p>In this example, every request will hit the handler, the repository, the database and so on. We can take advantage of the Web infrastructure by adding cache instructions to our response</p>
+
+<p>A better implementation with cache headers will be something like this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[ServiceContract, WithUriPrefix(&quot;order&quot;)]
+public class OrderResourceHandler
+{
+    private readonly IRepository&lt;Order&gt; orderRepository;
+    private readonly ETagCache etagCache;
+
+    public OrderResourceHandler(
+        IRepository&lt;Order&gt; orderRepository,
+        ETagCache etagCache)
+    {
+        this.orderRepository = orderRepository
+        this.etagCache = etagCache;
+    }
+
+    [WebGet(UriTemplate = &quot;{orderId}&quot;)]
+    public HttpResponseMessage Get(int orderId)
+    {
+        var order = orderRepository.GetById(orderId);
+        if(order == null) return Response.NotFound();
+
+        var response = Response.WithContent(new OrderRepresentation(order));
+        AddCacheHeaders(response, order.Id, order.Version);
+        return response;
+    }
+
+    private void AddCacheHeaders(HttpResponseMessage responseMessage, long orderId, int version)
+    {
+        //Get the link for the resource: http://mysuperapp.com/order/123
+        var link = linker.GetUri&lt;OrderResourceHandler&gt;(orh =&gt; orh.Get(0), new { orderId });
+
+        //Get or Add the Etag to the cache.
+        var etag = etagCache.GetOrAdd(link, version);
+
+        //Set the 'expiration' and 'validation' (maxage and etag)
+        responseMessage.WithCacheControlHeader(c =&gt;
+                                {
+                                    c.Public = true;
+                                    c.MaxAge = TimeSpan.FromSeconds(10);
+                                })
+                       .WithETagHeader(etag);
+    }
+
+}</pre>
+
+<p>I choose using “Max-Age” for “expiration” and “ETag” for “validation”. But you can use other mechanism as “Expires” (for expiration) and “Last-Modified” (for validation) or any combination in the middle. </p>
+
+<p>A quick overview to the method:</p>
+
+<ul>
+  <li>I introduced an ETagCache, this is a cache for the ETags.. The thing is that during conditional get (or validations get) I would like to respond as fast as possible. Even without going to the database. The cache consist of an uri as key and a version number (the actual etag value). </li>
+
+  <li>I am using as ETag a Version property. This version property is managed by my ORM for concurrency. Each update we do in the entity version increases by one. </li>
+
+  <li>As max-age I am using 10 seconds. This is only for experimental purposes. </li>
+</ul>
+
+<p>This code add the cache headers to the response. </p>
+
+<h2 align="left">How we can handle conditional-gets (get for validations)? </h2>
+
+<p>Suppose that as an http client we receive a response as follows:</p>
+<a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-04-27_1559%5B11%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-04-27_1559" border="0" alt="2011-04-27_1559" src="http://joseoncode.com/wp-content/uploads/images/2011-04-27_1559_thumb5B95D.png" width="445" height="151" /></a> 
+
+<p>We, as an intelligent http client now that we can use this representation of the resource for 10 seconds. After those ten seconds, if we need again the representation we might send a conditional request, as follows:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-04-27_1605%5B7%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-04-27_1605" border="0" alt="2011-04-27_1605" src="http://joseoncode.com/wp-content/uploads/images/2011-04-27_1605_thumb5B55D.png" width="639" height="149" /></a></p>
+
+<p>And when we do such thing we know that two things might happen:</p>
+
+<ul>
+  <li>The resource has changed in those 10 seconds. So we will probably get a 200-OK response with the new representation of the resource. </li>
+
+  <li>The resource hasn’t changed, so we get a 302-Not Modified without any content. This means that we can keep using the previous representation that we hold. </li>
+</ul>
+
+<p>I used an specific extension point from the last release of the WCF Web API to handle this, a DelegatingChannel:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class EntityTagCheckerDelegateChannel : DelegatingChannel
+{
+    private readonly ETagCache etagCache;
+
+    public EntityTagCheckerDelegateChannel(HttpMessageChannel innerChannel, ETagCache etagCache)
+        : base(innerChannel)
+    {
+        this.etagCache = etagCache;
+    }
+    
+    protected override Task&lt;HttpResponseMessage&gt; SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        
+        if(request.Method == HttpMethod.Get &amp;&amp; request.Headers.IfNoneMatch.Any())
+        {
+            var etag = request.Headers.IfNoneMatch.First().ToString();
+            var cached = etagCache.Get(request.RequestUri.ToString());
+            return etag == cached ? Task.Factory.StartNew(() =&gt; CreateANotModifiedResponse(), 
+                                                                cancellationToken)
+                                : base.SendAsync(request, cancellationToken);
+        }
+        return base.SendAsync(request, cancellationToken);
+    }
+
+    private static HttpResponseMessage CreateANotModifiedResponse()
+    {
+        return new HttpResponseMessage(HttpStatusCode.NotModified, &quot;NotModified&quot;)
+                   {
+                       Headers = {CacheControl = new CacheControlHeaderValue
+                                                     {
+                                                         MaxAge = TimeSpan.FromSeconds(10),
+                                                         Public = true
+                                                     }}
+                   };
+    }
+}</pre>
+
+<p>If the request is a GET, and it contains an IfNoneMatch tag, we compare this with the one in our etagCache. If the tags match, we return a task that returns a NotModified with the same cache headers. If not, we proceed with the invocation to our handler.</p>
+
+<h2>When resources change</h2>
+
+<p>When the resource change we need to tell to our EtagCache the new value of the ETag. I did this within an extension point of my ORM (because my resource is something stored in a database):</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class OnOrderUpdateInsert : IPostInsertEventListener, IPostUpdateEventListener
+{
+    private readonly ETagCache etagCache;
+    private readonly string baseAddress;
+    
+    public OnOrderUpdateInsert(EntityTagManager entityTagManager)
+        : this(entityTagManager, ConfigurationManager.AppSettings[&quot;BaseUri&quot;])
+    {
+    }
+
+    public OnOrderUpdateInsert(ETagCache etagCache, string baseAddress)
+    {
+        this.etagCache = etagCache;
+        this.baseAddress = baseAddress;
+    }
+
+    public void OnPostInsert(PostInsertEvent @event)
+    {
+        Handle(@event);
+    }
+
+    public void OnPostUpdate(PostUpdateEvent @event)
+    {
+        Handle(@event);
+    }
+
+    private void Handle(IPostDatabaseOperationEventArgs @event)
+    {
+        var entity = @event.Entity as Order;
+        if (entity == null) return;
+        var link = string.Format(&quot;{0}order/{1}&quot;, 
+                            baseAddress, entity.Id);
+        etagCache.Add(link, entity.Version);
+    }
+}</pre>
+
+<h2>The ETagCache</h2>
+
+<p>The ETagCache is:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class ETagCache
+{
+    private readonly ConcurrentDictionary&lt;string, string&gt; cache =
+        new ConcurrentDictionary&lt;string, string&gt;();
+    
+    public void Add(string link, int version)
+    {
+        cache.AddOrUpdate(link, 
+                ToETag(version), 
+                (l, prev) =&gt; ToETag(version));
+    }
+    
+    public string GetOrAdd(string link, int version)
+    {
+        return cache.GetOrAdd(link, ToETag(version));
+    }
+
+    private static string ToETag(int version)
+    {
+        return string.Format(&quot;&quot;{0}&quot;&quot;, version);
+    }
+
+    public string Get(string link)
+    {
+        string etag;
+        return cache.TryGetValue(link, out etag) ? 
+                etag : string.Empty;
+    }
+}</pre>
+
+<p>For now, it is implemented with only a ConcurrentDictionary. 
+  <br />This means that I am assuming that the database is not changed by anyone else than the rest service. Which is quite good for this example, but as soon as you need to change the orders outside this application you will be better of with other kind of ETag cache, with other expiration policy or so.</p>
+
+<h1>See the system working</h1>
+
+<p>I am using fiddler to test my service. A simple GET request:</p>
+
+<pre class="brush: plain; wrap-line: false;">#REQUEST
+
+GET http://localhost:13509/order/294912 HTTP/1.1
+User-Agent: Fiddler
+Accept: text/xml
+Host: localhost:13509
+
+
+#RESPONSE
+
+HTTP/1.1 200 OK
+Server: ASP.NET Development Server/10.0.0.0
+Date: Wed, 27 Apr 2011 22:36:42 GMT
+X-AspNet-Version: 4.0.30319
+Content-Length: 844
+Cache-Control: public, max-age=10
+ETag: &quot;1&quot;
+Content-Type: text/xml; charset=utf-8
+Connection: Close
+
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&lt;order xmlns=&quot;....</pre>
+
+<p>now that we now the ETag, we can try a conditional get as follows:</p>
+
+<pre class="brush: plain; wrap-line: false; highlight: [7];">#REQUEST
+
+GET http://localhost:13509/order/294912 HTTP/1.1
+User-Agent: Fiddler
+Accept: text/xml
+Host: localhost:13509
+If-None-Match: &quot;1&quot;
+
+#RESPONSE
+
+HTTP/1.1 304 Not Modified
+Server: ASP.NET Development Server/10.0.0.0
+Date: Wed, 27 Apr 2011 22:39:40 GMT
+X-AspNet-Version: 4.0.30319
+Cache-Control: public, max-age=36000
+Connection: Close</pre>
+
+<p>Urray! conditional gets work like a charm!</p>
+
+<p>So, now we know that our http clients can validate caches with conditional requests.</p>
+
+<h2>Simulating a real world scenario</h2>
+
+<p>You can simulate a real world scenario (and potentially scale your application) by using a reverse-proxy (or application proxy), from wikipedia:</p>
+
+<p align="center"><img src="http://joseoncode.com/wp-content/uploads/2011/06/400px-Reverse_proxy_h2g2bob.svg_.png" width="403" height="151" /></p>
+
+<blockquote>
+  <p align="left">In <a href="http://en.wikipedia.org/wiki/Computer_network">computer networks</a>, a <b>reverse proxy</b> is a type of <a href="http://en.wikipedia.org/wiki/Proxy_server">proxy server</a> that retrieves resources on behalf of a <a href="http://en.wikipedia.org/wiki/Client_%28computing%29">client</a> from one or more <a href="http://en.wikipedia.org/wiki/Server_%28computing%29">servers</a>. These resources are then returned to the client as though it originated from the reverse proxy itself.<sup><a href="http://en.wikipedia.org/wiki/Reverse_proxy#cite_note-apache-forward-reverse-0">[1]</a></sup> While a <a href="http://en.wikipedia.org/wiki/Proxy_server#Forward_proxies">forward proxy</a> is usually situated between the client application (such as a <a href="http://en.wikipedia.org/wiki/Web_browser">web browser</a>) and the server(s) hosting the desired resources, a reverse proxy is usually situated closer to the server(s) and will only return a configured set of resources.</p>
+</blockquote>
+
+<p>To simulate a simple scenario, I am using the powerfull <a href="http://www.squid-cache.org/">squid-cache</a>. If you want to run in your own follow these steps:</p>
+
+<ul>
+  <li>download the windows version from one of the links.. </li>
+
+  <li>copy etcmime.conf.default to etcmime.conf </li>
+
+  <li>copy squid.conf.default to squid.conf </li>
+
+  <li>delete all the content of squid.conf.default and add the following: </li>
+</ul>
+
+<pre class="brush: plain; wrap-line: false; highlight: [3];">access_log C:squidvarlogsaccess_log.txt
+http_port 3128 accel defaultsite=mysite.com
+cache_peer localhost parent 13509 0 no-query originserver name=myAccel
+
+#Recommended minimum configuration:
+acl all src all
+acl manager proto cache_object
+acl localhost src 127.0.0.1/32
+acl to_localhost dst 127.0.0.0/8 0.0.0.0/32
+
+
+acl our_sites dstdomain mysite.com
+http_access allow our_sites
+cache_peer_access myAccel allow our_sites
+cache_peer_access myAccel deny all</pre>
+
+<ul>
+  <li>change the second line with your ip (or leave localhost) and the port you are using to test. This is the address of your application. </li>
+
+  <li>You can optionally change the 3128 port. </li>
+
+  <li>run from command line sbinsquid –z . This will create the cache structure on disk. </li>
+
+  <li>run squid. </li>
+</ul>
+
+<h1>Testing against Squid</h1>
+
+<p>Now, if you invoke a request on the same uri (but using the squid port), several times from Fiddler as follows:</p>
+
+<pre class="brush: plain; wrap-line: false;">#REQUEST
+
+GET http://localhost:3128/order/294912 HTTP/1.1
+User-Agent: Fiddler
+Accept: text/xml
+Host: localhost:3128</pre>
+
+<p>The application server is not touched for all request to the reverse proxy. Only after 10 seconds we receive a conditional get and most of the time we will answer that request very quickly, i.e. without going to the database. You can put a breakpoint in the delegate channel and you will see no activity.</p>
+
+<p>Then if you go to the access_log.txt of squid, you will see this:</p>
+
+<pre class="brush: plain; wrap-line: false; highlight: [1, 10];">1303947187.453    720 127.0.0.1 TCP_REFRESH_MISS/200 1197 GET http://mysite.com:3128/order/294912 - FIRST_UP_PARENT/myAccel text/xml
+1303947189.907      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947190.501      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947191.031      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947191.251      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947191.451      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947191.641      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947191.977      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947192.037      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947216.296   1901 127.0.0.1 TCP_REFRESH_MISS/200 1197 GET http://mysite.com:3128/order/294912 - FIRST_UP_PARENT/myAccel text/xml
+1303947219.461      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml
+1303947220.997      0 127.0.0.1 TCP_MEM_HIT/200 1204 GET http://mysite.com:3128/order/294912 - NONE/- text/xml</pre>
+
+<p>where TCP_MEM_HIT means &quot;A valid copy of the object was in the memory cache&quot;, while &quot;TCP_REFRESH_MISS&quot; means the requested object wasn't in the cache.</p>
+
+<h1>Final notes</h1>
+
+<p>This is the way the web scale. Now a client can be polling and our application without bother our application. </p>
+
+<p>If you want to learn more about caches, http and rest; I strongly recommend you the book <a href="http://restinpractice.com/default.aspx">Rest In Practice</a>.
+
+  <br />This is part of a major example application I am doing in <a href="http://tellago.com/">Tellago</a>. The sample application will be Open Source and released soon.</p>
+
+<p>I hope you find this useful, or at least… informative.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-8318142409089357050' alt='' /></div>

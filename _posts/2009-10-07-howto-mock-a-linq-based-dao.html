@@ -1,0 +1,82 @@
+--- 
+layout: post
+title: "HowTo: Mock a Linq-based Dao"
+tags: 
+- Moq
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/10/howto-mock-linq-based-dao.html
+  dsq_thread_id: "317011348"
+  blogger_images: "1"
+---
+<p>I will try to explain a way to mock a <strong>linq based Dao</strong>, as the one introduced by Fabio Maulo <a href="http://fabiomaulo.blogspot.com/2009/09/repository-or-dao-dao.html">here</a>. The interface of the dao is something like this:</p>  <pre class="brush: csharp;">public interface IDao&lt;TEntity{
+//....
+IEnumerable&lt;TEntity&gt; Retrieve(Expression&lt;Func&lt;TEntity, bool&gt;&gt; predicate);
+
+int Count(Expression&lt;Func&lt;TEntity, bool&gt;&gt; predicate);
+}</pre>
+
+<p>Suppose you have a controller or service, and you want to test a method is using a proper predicate for load the invoices of a given month and year. I’m using <a href="http://code.google.com/p/moq/">Moq</a> for this example:</p>
+
+<pre class="brush: csharp;">daoInvoices
+    .Setup(dao =&gt; dao.Retrieve(Par.IsAnyPredicateOf&lt;Invoice&gt;()))
+    .Returns(new List&lt;Invoices&gt; {newInvoice})
+    .Callback&lt;Expression&lt;Func&lt;Invoice, bool&gt;&gt;&gt;(
+predicate =&gt;
+    {
+        predicate.Evaluate(invoiceIn)
+                .Should().Be.True();
+
+        predicate.Evaluate(invoiceOut)
+                .Should().Be.False();
+    }
+);</pre>
+
+<p>Why I’m doing this?, Why validate the predicate in the callback? Because you can't match Expressions . You can read more info <a href="http://stackoverflow.com/questions/673205/c-checking-if-two-expressionfunct-bool-are-the-same">here</a>, Moq isn’t exempt of this fact. So, my mock ignores the parameter, but the parameter is checked in the callback. </p>
+
+<p>Evaluate(..) is an extension method for Expressions:</p>
+
+<pre class="brush: csharp;">public static class ExpressionsExtensions
+{
+    public static bool Evaluate&lt;T&gt;(this Expression&lt;Func&lt;T,bool&gt;&gt; expression, T value)
+    {
+        return expression.Compile()(value);
+    }
+}</pre>
+
+<p><em>the expression is compiled twice, so?.. 
+    <br /></em>Par.IsAnyPredicateOf is another helper:</p>
+
+<pre class="brush: csharp;">public static class Par
+{
+    public static Expression&lt;Func&lt;T, bool&gt;&gt; IsAnyPredicateOf&lt;T&gt;()
+    {
+        return It.IsAny&lt;Expression&lt;Func&lt;T, bool&gt;&gt;&gt;();
+    }
+}</pre>
+
+<p>&quot;It&quot; comes from Moq.</p>
+
+<p>And maybe this is out of topic but I’m not testing the query itself!!!!!!!!. The query should be tested against the database, and if is possible, the real one. I tend to define my queries in a separated place, so queries are declared as follows:</p>
+
+<pre class="brush: csharp;">namespace MyXYZSuperProject.Domain.Predicates
+{
+    public static class Invoice
+    {
+        public static Expression&lt;Func&lt;Invoice, bool&gt;&gt; 
+                        ByPeriod(int month, int year)
+        {
+            return invoice =&gt; 
+                            invoice.Month == month 
+                            &amp;&amp; recupero.Year == year;
+        }
+    }
+}</pre>
+
+<p>Month and year are stored properties in this case, be careful. 
+  <br />AND I didn’t say NHibernate in the whole post!</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-6581094503868033398' alt='' /></div>

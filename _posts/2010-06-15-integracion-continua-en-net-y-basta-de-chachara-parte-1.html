@@ -1,0 +1,155 @@
+--- 
+layout: post
+title: "Integraci\xC3\xB3n continua en .Net y basta de ch\xC3\xA1chara: Parte 1"
+tags: 
+- Continuos Integration
+- "Integraci\xC3\xB3n Continua"
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/06/integracion-continua-en-net-y-basta-de.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314364664"
+---
+<p>En esta serie de posts voy a explicar como empezar a trabajar con integración continua. Como el título lo dice, la razón por la que una persona o un equipo de desarrollo debería usar integración continua, trasciende el alcance de estos artículos. Deberías usarlo y ya!    <br />El primer post va a estar dedicado a explicar como crear un “build script” para una solución de .Net. </p>  <blockquote>   <p>Nota: Quiero agradecerle a <a href="http://blog.schuager.com/">Germán Schuager</a> por enseñarme varias de las cosas que voy a explicar.</p> </blockquote>  <p>El script realizará los siguientes 4 pasos:</p>  <ol>   <li><u>Actualizar el número de versión</u> en los archivos AssemblyInfo.cs, esto hará que nuestros resultados; (dlls, exes, etc) tengan un número de versión cuyo Build (recordar esquema Major.Minor.Build) coincida con la revisión de subversion. </li>    <li><u>Compilar la solución</u>, esto incluye todos sus proyectos. </li>    <li><u>Ejecutar los tests</u> de todos los proyectos de tests. </li>    <li>Y finalmente <u>copiar a una carpeta especifica el resultado</u> de nuestro build. </li> </ol>  <p>Para ello utilizaremos la herramienta <a href="http://msdn.microsoft.com/es-es/library/0k6kkbsd(VS.80).aspx">MsBuild</a>.</p>  <h2>Estructura de directorios</h2>  <p>A continuación se muestra una estructura de directorios típica que se suele utilizar:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image%5B10%5D.png"><img style="border-right-width: 0px; margin: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb5B85D.png" width="584" height="412" /></a> </p>  <p>&#160;</p>  <ol>   <li>Es un ejemplo de estructura de directorios que suelo utilizar. </li>    <li>El contenido de la carpeta “Tools”. Se puede ver adentro dos carpetas      <ul>       <li>“msbuildtasks”: En esta carpeta colocaremos los binarios del proyecto <a href="http://msbuildtasks.tigris.org/">MsBuild Community Tools</a>. Este proyecto tiene Tasks adicionales para MsBuild.&#160; Ya que el mismo, no conoce como interactuar con subversion, nunit u otras herramientas out-of-the-box. Un ejemplo de los archivos que van en este directorio se puede ver en ( 3 ) </li>        <li>“nunit”: En esta carpeta colocaremos los binarios de nunit. Un ejemplo de los archivos que van en este directorio se puede ver en ( 4 ). </li>     </ul>   </li> </ol>  <h2>Common.targets</h2>  <p>Al igual que todo el contenido de la carpeta “Tools”, se puede copiar prácticamente sin modificación alguna, de proyecto en proyecto. En el archivo common.targets resolveremos algunos asuntos, que ha continuación se pueden ver como comentarios de xml:</p>    <pre class="brush: xml; wrap-lines: false;">
+&lt;Project xmlns=&quot;http://schemas.microsoft.com/developer/msbuild/2003&quot; ToolsVersion=&quot;3.5&quot;&gt;
+
+    &lt;!-- Definicion  de Paths y algunas variables en general. --&gt;
+    &lt;PropertyGroup&gt;
+        &lt;MSBuildCommunityTasksPath&gt;.&lt;/MSBuildCommunityTasksPath&gt;
+        &lt;ToolsPath&gt;Tools&lt;/ToolsPath&gt;
+        &lt;NUnitPath&gt;$(ToolsPath)nunit&lt;/NUnitPath&gt;
+        &lt;OutputPath&gt;output&lt;/OutputPath&gt;
+        &lt;ReportsPath&gt;$(OutputPath)Reports&lt;/ReportsPath&gt;
+        &lt;ResultPath&gt;$(OutputPath)Build&lt;/ResultPath&gt;
+    &lt;/PropertyGroup&gt;
+    
+    &lt;!-- Importamos MsBuild Community Tasks. --&gt;
+    &lt;Import Project=&quot;msbuildtasksMSBuild.Community.Tasks.Targets&quot; /&gt;
+    
+    &lt;PropertyGroup&gt;
+        &lt;Configuration Condition=&quot;'$(Configuration)' == ''&quot;&gt;Debug&lt;/Configuration&gt;
+        &lt;FullVersion&gt;$(BUILD_NUMBER)&lt;/FullVersion&gt;
+    &lt;/PropertyGroup&gt;
+
+    &lt;!-- Tarea para actualizar mis AssemblyInfo.cs --&gt;
+    &lt;Target Name=&quot;UpdateAssemblyInfos&quot;&gt;
+        &lt;Message Text=&quot;Updating version numbers to $(FullVersion)...&quot; /&gt;
+
+        &lt;CreateItem Include=&quot;.**AssemblyInfo.cs&quot;&gt;
+            &lt;Output TaskParameter=&quot;Include&quot; ItemName=&quot;AssemblyInfos&quot;/&gt;
+        &lt;/CreateItem&gt;
+        
+        &lt;FileUpdate Condition=&quot;'$(FullVersion)' != ''&quot;
+            Files=&quot;@(AssemblyInfos)&quot;
+            Regex=&quot;[s*assemblys*:s*AssemblyVersions*(s*&amp;quot;[d.*]+&amp;quot;s*)s*]&quot;
+            ReplacementText=&quot;[assembly: AssemblyVersion(&amp;quot;$(FullVersion)&amp;quot;)]&quot; /&gt;
+        &lt;FileUpdate Condition=&quot;'$(FullVersion)' != ''&quot;
+            Files=&quot;@(AssemblyInfos)&quot;
+            Regex=&quot;[s*assemblys*:s*AssemblyFileVersions*(s*&amp;quot;[d.*]+&amp;quot;s*)s*]&quot;
+            ReplacementText=&quot;[assembly: AssemblyFileVersion(&amp;quot;$(FullVersion)&amp;quot;)]&quot; /&gt;
+        &lt;FileUpdate Condition=&quot;'$(FullVersion)' != ''&quot;
+            Files=&quot;@(AssemblyInfos)&quot;
+            Regex=&quot;[s*assemblys*:s*AssemblyInformationalVersions*(s*&amp;quot;.*&amp;quot;s*)s*]&quot;
+            ReplacementText=&quot;[assembly: AssemblyInformationalVersion(&amp;quot;$(FullVersion)&amp;quot;)]&quot; /&gt;
+    &lt;/Target&gt;
+    
+    &lt;!-- Tarea para compilar mi solucion en la configuracion seleccionada (debug o release)  --&gt;
+    &lt;Target Name=&quot;DefaultBuild&quot;&gt;
+        &lt;Message Text=&quot;Building $(SolutionFile)...&quot; /&gt;
+        &lt;MSBuild Projects=&quot;$(SolutionFile)&quot;
+           Properties=&quot;Configuration=$(Configuration)&quot; 
+           ContinueOnError=&quot;false&quot;   /&gt;
+    &lt;/Target&gt;
+    
+    &lt;!-- Tarea para correr todos mis tests en el grupo de items definido para tal caso TestAssemblies --&gt;
+    &lt;!-- Esta tarea genera reportes de nunit en format xml. En el directorio $ReportsPath. --&gt;
+    &lt;Target Name=&quot;RunTests&quot;&gt;
+        &lt;Message Text=&quot;Cleaning test reports folder...&quot; /&gt;
+        &lt;RemoveDir Directories=&quot;$(ReportsPath)&quot; /&gt;
+        &lt;MakeDir Directories=&quot;$(ReportsPath)&quot; /&gt;
+        &lt;Exec Command=&quot;$(NUnitPath)nunit-console-x86.exe @(TestAssemblies) /xml=$(ReportsPath)%(TestAssemblies.Filename).xml&quot; 
+            IgnoreExitCode=&quot;true&quot; /&gt;
+    &lt;/Target&gt;
+    
+    &lt;!-- Tarea para copiar el resultado de mi proyecto al directorio $ResultPath --&gt;
+    &lt;Target Name=&quot;CopyBuildResult&quot;&gt;
+        &lt;Message Text=&quot;Cleaning build output folder...&quot; /&gt;
+        &lt;RemoveDir Directories=&quot;$(ResultPath)&quot; /&gt;
+        &lt;MakeDir Directories=&quot;$(ResultPath)&quot; /&gt;
+        &lt;Message Text=&quot;xxx @(BuildResult)&quot; /&gt;
+        &lt;Copy SourceFiles=&quot;@(BuildResult)&quot; DestinationFolder=&quot;$(ResultPath)&quot; /&gt;
+    &lt;/Target&gt;
+    
+&lt;/Project&gt;
+</pre>
+
+<h2>Default.build</h2>
+
+<p>Este archivo sí es propio de cada solución, y un ejemplo para este proyecto sería el siguiente:</p>
+
+<pre class="brush: xml; wrap-lines: false;">
+&lt;Project DefaultTargets=&quot;All&quot; xmlns=&quot;http://schemas.microsoft.com/developer/msbuild/2003&quot; ToolsVersion=&quot;3.5&quot;&gt;
+
+    &lt;!--Importar common.targets--&gt;
+    &lt;Import Project=&quot;Toolscommon.targets&quot; /&gt;
+
+    &lt;!--declaro el path relativo al archivo de soluci&#243;n a compilar--&gt;
+    &lt;PropertyGroup&gt;
+        &lt;SolutionFile&gt;MiProyecto.sln&lt;/SolutionFile&gt;
+    &lt;/PropertyGroup&gt;
+    
+    &lt;!--declaro los proyectos de tests que se deber&#237;an incluir--&gt;
+    &lt;ItemGroup&gt;
+        &lt;TestAssemblies Include=&quot;*Testsbin$(Configuration)*Tests.dll&quot; /&gt;
+    &lt;/ItemGroup&gt;
+    
+    &lt;!--declaro la ubicaci&#243;n de los proyectos a incluir--&gt;
+    &lt;ItemGroup&gt;
+        &lt;BuildResult Include=&quot;MiProyecto.GUIbin$(Configuration)*.*&quot; /&gt;
+    &lt;/ItemGroup&gt;        
+    
+    &lt;!--declaro el target All--&gt;    
+    &lt;Target Name=&quot;All&quot; DependsOnTargets=&quot;UpdateAssemblyInfos; DefaultBuild; RunTests; CopyBuildResult&quot;&gt;
+    &lt;/Target&gt;
+    
+&lt;/Project&gt;
+</pre>
+
+
+<p>$(Configuration) es una variable que dice si estamos en Debug o Release. 
+  <br />La especificación de proyectos de Tests&#160; puede parecer un poco rara; podríamos haberla declarado de la siguiente manera
+
+<pre class="brush: xml; gutter: false; toolbar: false; wrap-lines: false;">&lt;ItemGroup&gt;
+    &lt;TestAssemblies Include=&quot;MiProyecto.Domain.Testsbin$(Configuration)MiProyecto.Domain.Tests.dll&quot; /&gt;
+    &lt;TestAssemblies Include=&quot;MiProyecto.Data.Testsbin$(Configuration)MiProyecto.Data.Tests.dll&quot; /&gt;
+&lt;/ItemGroup&gt;</pre>
+
+<p>El problema que yo tuve con esto, era que cada vez que agregaba un proyecto de tests (cosa que suelo hacer a menudo) tenía que acordarme de modificar este script. Lo cual es poco práctico, por lo tanto aprovechando mi convención [Proyecto a Testear].Tests utilizaremos los wildcards (comodines) de MsBuild, de esta forma podremos agregar proyectos de tests a la solución sin necesidad de modiricar este archivo. Una cosa que deberemos tener especial cuidado, es cuando desde un proyecto de tests referenciamos otro proyecto de tests, cosa que en general trato de evitar. </p>
+
+<h2>Build.bat</h2>
+
+<p>El archivo build.bat lo utilizaremos para correr el script localmente, ya sea para probar el script, hacer deployment, etc. Este archivo tiene lo siguiente:</p>
+
+<pre class="brush: xml; gutter: false; toolbar: false;">@echo off
+call &quot;%VS90COMNTOOLS%....VCvcvarsall.bat&quot;
+msbuild %~dp0default.build /t:All /nologo</pre>
+
+<p>La primer línea registra las variables de MsBuild así como el path donde se encuentra la herramienta, y la segunda ejecuta MsBuild. Si se usa Visual Studio 2008, se coloca %VS90COMNTOOLS%… mientras que si se usa 2010, se coloca %VS100COMNTOOLS%. Esto presupone que la maquina donde ejecutaremos el batch tiene instalado Visual Studio. De más esta decir que este no será el caso de nuestro servidor de integración continua.</p>
+
+<p>Cabe destacar que MsBuild, no solamente viene con Visual Studio, sino que también viene con .Net Framework SDK.</p>
+
+<h2></h2>
+
+<h2>Hay más…</h2>
+
+<p><u>Scripts:</u> Lo que hice aquí con MsBuild, puede hacerse con muuuchas otras herramientas diferentes; entre ellas <a href="http://nant.sourceforge.net/">nant</a>, <a href="http://rake.rubyforge.org/">rake</a>, <a href="http://code.google.com/p/psake/">psake</a>, etc. Cada una de ellas tiene sus ventajas y desventajas. Actualmente elijo MsBuild por que hace exactamente lo que quiero, dispone de muchos ejemplos, es sencillo crear nuestras propias tasks directamente en C#, y la mejor de todas… no hace falta instalar prácticamente nada.</p>
+
+<p><u>Control de versiones:</u> Si están usando un DCVS como Mercurial o GIT se hace un poco mas complicado el tema de asignar un número de versión a los ensamblados ya que estos sistemas no utilizan números para en sus checkins, pero he visto que hay tareas para tal propósito como por ejemplo <a href="http://msbuildhg.codeplex.com/">MSBuild Mercurial Tasks</a>.</p>
+
+<p><u>Frameworks de Testing:</u> Todos los frameworks de tests unitarios disponen de una herramienta para correr los tests en modo consola, así que debería ser trivial en caso que usen algo como xUnit o MbUnit. En el caso particular de MsTests es mas sencillo ya que esta soportado nativamente por msbuild.</p>
+
+<p>En el próximo post voy a mostrar como dar de alta esto en nuestro servidor de integración continua.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7447272214359070422' alt='' /></div>

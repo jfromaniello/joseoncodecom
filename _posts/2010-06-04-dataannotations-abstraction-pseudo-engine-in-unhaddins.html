@@ -1,0 +1,54 @@
+--- 
+layout: post
+title: DataAnnotations abstraction + pseudo-engine in uNhAddIns
+tags: 
+- uNhAddIns
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/06/dataannotations-abstraction-pseudo.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  dsq_thread_id: "317414245"
+  blogger_images: "1"
+---
+<p>At uNhAddIns we have something called IEntityValidator and it is implemented for Castle Validations, NHibernate Validator, Validation Application Block and DataAnnotations. You can read Fabio Maulo’s post <a href="http://fabiomaulo.blogspot.com/2009/11/validation-abstraction-custom.html">here</a>.</p>  <p>Another interesting point of the DataAnnotations implementation is that I wrote a cache for the attributes and properties (there is not concept of engine in data annotations). You can see the whole pseudo-engine <a href="http://code.google.com/p/unhaddins/source/browse/#svn/trunk/uNhAddIns/uNhAddIns.DataAnnotations/Engine">here</a>.</p>  <h2>Usage</h2>  <p>Step 1, register your IEntityValidator in your container;</p>  <pre class="brush: csharp;">container.Register(Component.For&lt;IEntityValidator&gt;()
+    .ImplementedBy&lt;uNhAddIns.DataAnnotations.EntityValidator&gt;()
+    .Named(&quot;da-entity-validator&quot;));</pre>
+
+<p>Step 2, inject your IEntityValidator any where, an example usage is in a base viewmodel (wpf), for implementing IDataErrorInfo </p>
+
+<pre class="brush: csharp;">public class ViewModelBase
+    : IDataErrorInfo
+{
+    string IDataErrorInfo.this[string columnName]
+    {
+        get
+        {
+            var errors = ServiceLocator.Current
+                .GetInstance&lt;IEntityValidator&gt;(&quot;da-entity-validator&quot;)
+                .Validate(this, columnName)
+                .Select(iv =&gt; iv.Message)
+                .ToArray();
+
+            return string.Join(Environment.NewLine, errors);
+        }
+    }
+
+    string IDataErrorInfo.Error
+    {
+        get
+        {
+            var errors = ServiceLocator.Current
+                .GetInstance&lt;IEntityValidator&gt;(&quot;da-entity-validator&quot;)
+                .Validate(this)
+                .Select(iv =&gt; iv.Message)
+                .ToArray();
+
+            return string.Join(Environment.NewLine, errors);
+        }
+    }
+}</pre>
+
+<p>I have registered the service with a key because, I've two services for IEntityValidator in my application. One for NHV used to validate entities, and another one for Data Annotations used to validate ViewModels.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-8228248402628629066' alt='' /></div>

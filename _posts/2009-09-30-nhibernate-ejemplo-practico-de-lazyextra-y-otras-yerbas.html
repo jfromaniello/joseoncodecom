@@ -1,0 +1,116 @@
+--- 
+layout: post
+title: "NHibernate ejemplo pr\xC3\xA1ctico de Lazy=Extra y otras yerbas"
+tags: 
+- MundoReal
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/09/nhibernate-ejemplo-practico-de.html
+  dsq_thread_id: "314363927"
+  blogger_images: "1"
+---
+<h6>Disclaimer: En este post puedo estar muy equivocado en algunas cosas (al igual que en todo lo que escribo), por lo tanto déjame un comentario, no seas amarrete.</h6>  <p>Voy a plantear este ejemplo, con un dominio que esta relacionado a mi trabajo:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/ClassDiagram1%5B4%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="ClassDiagram1" border="0" alt="ClassDiagram1" src="http://joseoncode.com/wp-content/uploads/images/ClassDiagram1_thumb5B25D.png" width="536" height="394" /></a> </p>  <p>La empresa que paga mi alimento, realiza muchas operaciones al exterior por lo tanto se hace necesario disponer en la base de datos de su sistema, una estructura que permita almacenar cotizaciones de las diferentes monedas. La entidad Cotización es relativamente sencilla, tiene dos propiedades fundamentales que son el tipo de cambio para la Compra y el tipo de cambio para la Venta, Fecha es fundamental también, puesto que la cotización que se registra es válida para una determinada fecha (y para todas las fechas existe una cotización).</p>  <p>Ahora bien la entidad Moneda en principio tenía solamente la propiedad Nombre, y fue ayer que se me ocurrió bueno agregar la propiedad <em>Cotizaciones</em> y del tipo IDictionary cuya clave del diccionario es un DateTime (que equivale a la fecha de cotización). </p>  <p>Típicamente esto sería muy dañino puesto que cotizaciones puede haber al rededor de:    <br />10 años x 365 días aprox. = 3650 cotizaciones para una determinada moneda. Y ya sea que estés usando Eager o Lazy loading, traer 3650 registros desde la base es dañino. Por lo tanto la solución típica sería no trasladar esto al modelo de objetos, a pesar de que a mi parecer sería un buen diseño orientado a objetos.</p>  <p>Afortunadamente estoy utilizando NHibernate como ORM, y esta herramienta tiene una opción Lazy=”Extra” (a mi criterio Extra no me dice nada, pero no se cual sería un mejor nombre). Lo que hace esta opción es solo hacer fetch del elemento que se necesita siempre tratando de evitar obtener toda la collection. Desde ya si nosotros enumeramos toda la collection, lo va a hacer.</p>  <p>Basta de palabras y a ver el código:</p>  <pre class="brush: xml;">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+&lt;hibernate-mapping xmlns=&quot;urn:nhibernate-mapping-2.2&quot;
+                   assembly=&quot;EjemploLazyExtra&quot;
+                   namespace=&quot;EjemploLazyExtra&quot;&gt;
+
+    &lt;class name=&quot;Moneda&quot;&gt;
+        &lt;id name=&quot;Id&quot;&gt;
+            &lt;generator class=&quot;hilo&quot;/&gt;
+        &lt;/id&gt;
+        &lt;map name=&quot;Cotizaciones&quot; cascade=&quot;none&quot; lazy=&quot;extra&quot;&gt;
+            &lt;key column=&quot;Moneda&quot; /&gt;
+            &lt;index column=&quot;Fecha&quot; type=&quot;DateTime&quot; /&gt;
+            &lt;one-to-many class=&quot;Cotizacion&quot; /&gt;
+        &lt;/map&gt;
+        &lt;property name=&quot;Nombre&quot;/&gt;
+    &lt;/class&gt;
+    
+  &lt;class name=&quot;Cotizacion&quot;&gt;
+        &lt;id name=&quot;Id&quot;&gt;
+            &lt;generator class=&quot;hilo&quot; /&gt;
+        &lt;/id&gt;
+      
+    &lt;many-to-one name=&quot;Moneda&quot; class=&quot;Moneda&quot;  column=&quot;Moneda&quot;/&gt;
+    &lt;property name=&quot;Fecha&quot; /&gt;
+    &lt;property name=&quot;Compra&quot; /&gt;
+    &lt;property name=&quot;Venta&quot; /&gt;
+  &lt;/class&gt;
+&lt;/hibernate-mapping&gt;</pre>
+
+<p>Notar como se mapea el “map” de cotizaciones y el uso de la opción lazy=”extra”.</p>
+
+<h3>Prueba de concepto</h3>
+
+<p>Cómo pruebo yo este concepto?, puede aparecer alguna gente que diga que es fácil con NHProf. En serio? Yo no lo usaría para muchas de las cosas que la gente lo esta usando ahora y creo que si uno escribe buenos tests en muchos casos no lo necesitaría, este es mi test unitario:</p>
+
+<pre class="brush: csharp;">[Test]
+public void al_obtener_cotizacion_de_moneda_solo_debe_cargar_dos_entidades()
+{
+    var idMoneda = crear_datos_de_ejemplo();
+    sessions.Statistics.Clear();
+
+    using(var s = sessions.OpenSession())
+    using(var tx = s.BeginTransaction())
+    {
+        var moneda = s.Get&lt;Moneda&gt;(idMoneda);
+        moneda.Cotizaciones[new DateTime(2009, 4, 5)].Compra.Should().Be.EqualTo(4.04m);
+
+        
+        s.Statistics.EntityCount.Should().Be.EqualTo(2);
+
+        tx.Commit();
+    }
+    
+}</pre>
+
+<p>“Crear datos de ejemplo” es un método bastante trivial que genera 1 moneda y 100 cotizaciones sobre esa moneda, la fecha es incrementada 1 día para cada cotización, y el tipo de cambio y compra son incrementados 1 centésimo. Luego, lo que estoy haciendo es obtener una moneda, y de esa moneda obtener la cotización correspondiente a la fecha 05/04/2009, verifico que la cotización sea igual a 4.04 (m de decimal).</p>
+
+<p>Lo importante de esta prueba de concepto es verificar que solamente se hayan cargado dos entidades y no 101. Para eso he utilizado las estadísticas de la session de NHibernate, existe una que se llama EntityCount que me dice “cuantas entidades hay relacionadas a esta session?”.</p>
+
+<p>Como también he habilitado a NHibernate para que muestre el sql que esta ejecutando, podemos comprobar el correcto funcionamiento en la consola de nuestro test runner:</p>
+
+<pre class="brush: sql;">--primer consulta:
+
+SELECT moneda0_.Id     AS Id0_0_,
+       moneda0_.Nombre AS Nombre0_0_
+FROM   Moneda moneda0_
+WHERE  moneda0_.Id=@p0;
+
+@p0 = 98304
+
+--segunda consulta:
+SELECT cotizacion0_.Id     AS Id1_0_    ,
+       cotizacion0_.Moneda AS Moneda1_0_,
+       cotizacion0_.Fecha  AS Fecha1_0_ ,
+       cotizacion0_.Compra AS Compra1_0_,
+       cotizacion0_.Venta  AS Venta1_0_
+FROM   Cotizacion cotizacion0_
+WHERE  cotizacion0_.Moneda=@p0
+AND    cotizacion0_.Fecha =@p1;
+
+@p0 = 98304, @p1 = 05/04/2009 0:00:00</pre>
+
+<h4>Último tip:</h4>
+
+<p>En mi camino al aprendizaje de NHibernate me he encontrado en la situación de descargar muchos ejemplos. Y en algunos casos como este, dichos ejemplos no tenían base de datos adjunta, suelo adjuntar en mis ejemplos un test case como este:</p>
+
+<pre class="brush: csharp;">[Test, Ignore]
+public void createschema()
+{
+    var config = new NHibernate.Cfg.Configuration();
+    config.Configure();
+    var schema = new SchemaExport(config);
+    schema.Execute(true, true, false);
+}</pre>
+
+<p>Este test es ignorado completamente por el test-runner a menos que lo ejecutemos explícitamente. Al ejecutarlo, simplemente creara el schema en la base de datos que hayas configurado en el archivo hibernate.cfg.xml. Cuidado; no creará la base por si solo, solo creara el schema.</p>
+
+<p>El ejemplo se puede descargar en este <a href="http://dl.getdropbox.com/u/1525624/EjemploLaxyExtra.rar">enlace</a> y pueden jugar a poner lazy en true y false y ver los errores que arroja, así como también las sentencias ejecutadas contra el motor.</p>
+
+<p>Saludos y como siempre digo, espero que les sea útil.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-1762269176025985918' alt='' /></div>

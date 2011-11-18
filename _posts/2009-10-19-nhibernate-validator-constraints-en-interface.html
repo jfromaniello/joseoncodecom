@@ -1,0 +1,76 @@
+--- 
+layout: post
+title: "NHibernate.Validator: Constraints en Interface"
+tags: 
+- MundoReal
+- Nhibernate Validator
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/10/nhibernatevalidator-constraints-en.html
+  dsq_thread_id: "317844942"
+  blogger_images: "1"
+---
+<p>Una de las cosas que aprendí de NHibernate.Validator hoy es que puedo definir una constraint en una interface. Y como no encontré mucha información quería comentar lo que hice con un ejemplo típico de mi negocio. (Por cierto al no haber nada en google puedo estar totalmente equivocado)</p>  <p>En el dominio de aplicaciones contables, a menudo nos encontramos con un tipo de estructura que yo llamo “Balanceable”. Balanceable significa que el movimiento debe cerrar, equilibrar, balancear.</p>  <p>Por ejemplo, un asiento contable, tiene que sumar igual importe en su Haber que en su Debe. En un flujo de caja, debe entrar a una o varias cajas el mismo monto que sale de otra/s. Extendiendo este concepto más allá, un movimiento de mercaderías debe descontar la misma cantidad de un depósito que lo que suma en otros. A este punto creo que ya se entiende el dominio.</p>  <p>La interface IBalanceable tiene esta pinta:</p>  <pre class="code"><span style="color: blue">public interface </span><span style="color: #2b91af">IBalanceable
+</span>{
+    <span style="color: blue">bool </span>EstaBalanceado { <span style="color: blue">get</span>; }
+}</pre>
+
+<p>La definición de la constraint, usando fluent, es como sigue:</p>
+
+<pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">BalanceableValidationDef </span>: <span style="color: #2b91af">ValidationDef</span>&lt;<span style="color: #2b91af">IBalanceable</span>&gt;
+{
+    <span style="color: blue">public </span>BalanceableValidationDef()
+    {
+        Define(b =&gt; b.EstaBalanceado)
+            .IsTrue()
+            .WithMessage(<span style="color: #a31515">&quot;La entidad no balancea.&quot;</span>);
+    }
+}</pre>
+
+<p>Una clase que implementa balanceable es la siguiente:</p>
+
+<pre class="brush: csharp;">public class AsientoContable 
+        : BaseEntity, IBalanceable
+{
+    //...un monton de código.
+    
+    public virtual IList&lt;AsientoContableLinea&gt; 
+                Lineas { get; private set; }
+
+    public bool EstaBalanceado
+    {
+        get
+        {
+            return Lineas
+                .Sum(x =&gt; x.Importe * x.Signo.ToValue()) 
+                    == 0;
+        }
+    }
+}</pre>
+
+<p>Y el test es algo así:</p>
+
+<pre class="brush: csharp;">[Test]
+public void CuandoAsientoNoBalancea_ViolacionDeConstraint()
+{
+    var asiento = new AsientoContable();
+    asiento.AgregarLinea(new AsientoContableLinea
+                             {
+                                 Importe = 1000, 
+                                Signo = Signo.Debe
+                             });
+    asiento.GetErrors()
+        .Satisfy(c =&gt; 
+    c.Any(e =&gt; e.Message.Equals(&quot;La entidad no balancea.&quot;)));
+    
+}</pre>
+
+<p>Para los que no estan acostumbrados al estilo de Satisfier (es decir <a href="http://sharptestex.codeplex.com/">SharpTestEx</a>), el test se lee así: “de este asiento dame los errores, esa colección de errores debe SATISFACER la condición de tener ALGÚN mensaje de error cuya descripción sea igual a “La entidad no balancea”. GetErrors es un extension method que usa IEntityValidator, en algún momento posteare acerca de eso.</p>
+
+<p>La conclusión de este ejemplo, es que a partir de ahora, todo lo que sea IBalanceable tendrá esa constraint que yo definí una sola vez. </p>
+
+<p>Por otro lado, recordar que este es el segundo ejemplo que posteo en español, con el tag MundoReal, esto quiere decir que son ejemplos donde el dominio no es un invento de mi imaginación :D. <a href="http://jfromaniello.blogspot.com/2009/09/nhibernate-ejemplo-practico-de.html">El primero fue un caso de monedas</a>.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-6741719334818406669' alt='' /></div>

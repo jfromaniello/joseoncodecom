@@ -1,0 +1,56 @@
+--- 
+layout: post
+title: Mi experiencia en PowerShell
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2010/01/mi-experiencia-en-powershell.html
+  blogger_images: "1"
+  dsq_thread_id: "314364387"
+---
+<p>Como dijo <a href="http://blog.salias.com.ar/">Martín Salías</a> en la VAN de AltNet Hispano acerca de automatización (mas información y video <a href="http://altnet-hispano.pbworks.com/van-2009-12-18-automatizacion">aquí</a>): </p>  <blockquote>   <p>“Antes de hacer algo por cuarta vez, automatízalo”</p> </blockquote>  <p>Fue ayer que me encontraba en uno de estos momentos:</p>  <ul>   <li>actualizando la carpeta “SharedLibs” de uno de mis proyectos mediante.. </li>    <li>WinMerge comparaba cuales de esas dlls necesitaba actualizar.. </li>    <li>y ese juego de DLLS las había descomprimido de .. </li>    <li>un zip que había bajado del teamcity de un proyecto </li> </ul>  <p>Era la 4 vez que hacía todo este proceso manualmente, así que me pareció simpático, práctico y cómodo tener un proceso batch dentro de esa misma carpeta, y tome el consejo de Martín.</p>  <p>En este post no voy a hablar tanto del proceso en si, mas bien de PowerShell que es la tecnología que use para crear el script. Quiero destacar que es la primera vez que la uso y se que no la estoy usando adecuadamente, así que sepan disculparme, y si es posible envíenme la mejora.</p>  <h1>Qué es PowerShell</h1>  <p>Según <a href="http://es.wikipedia.org/wiki/Windows_PowerShell">Wikipedia</a>:</p>  <blockquote>   <p><b>Windows PowerShell</b> es una interfaz de consola (CLI) con posibilidad de escritura y conjunción de comandos por medio de guiones (<i>scripts</i> en inglés). Es mucho más rica e interactiva que sus predecesores, desde <a href="http://es.wikipedia.org/wiki/DOS">DOS</a> hasta <a href="http://es.wikipedia.org/wiki/Windows_XP">Windows XP</a>. Esta interfaz de consola está diseñada para su uso por parte de administradores de sistemas, con el propósito de automatizar tareas o realizarlas de forma más controlada. </p> </blockquote>  <p>Las características que destaco yo sobre sus antecesores, son:</p>  <ul>   <li>Sintaxis mucho más rica y evolucionada que sus predecesores, las estructuras como condicionales y bucles se asemejan mucho a un lenguaje orientado a objetos moderno. </li>    <li>Poder acceder directamente a las clases del framework de .Net. </li>    <li>Poder interactuar con componentes del sistema operativo, y con programas tales como Active Directory, WMI, Sql Server, etc. </li> </ul>  <p></p>  <h1>Tooling</h1>  <p>En la primer búsqueda que hice en google sobre algún editor de scripts, me di con <a href="http://www.powergui.org/index.jspa">PowerGUI</a> que es muy bueno y free, permite hacer cosas como depurar los scripts, poner puntos de interrupción, inspeccionar variables etc. Además de eso tiene un muy buen <a href="http://en.wikipedia.org/wiki/IntelliSense">intellisence</a>, cabe mencionar también que en la consola de PowerShell hay una especie de <a href="http://en.wikipedia.org/wiki/IntelliSense">intellisence</a> pero el de PowerGUI es mejor.</p>  <h1>PowerShell para programadores en C#</h1>  <p>Si sos programador de C#, este es el ABC:</p>  <ul>   <li>Las líneas no terminan con “;” </li>    <li>Las variables siempre empiezan con el símbolo pesos “$” y no hace falta declararlas. Esto último es casi obligatorio en todos los lenguajes interpretados, pero lo digo por las dudas. </li>    <li>Para crear una instancia de un objeto se utiliza new-object en lugar de “new”. </li>    <li>Para llamar a una método estático se utiliza la siguiente forma: [System.IO.File]::ReadAllText(…) . Este es el único momento en que el nombre de clase y namespace se escriben de esa forma. </li>    <li>Los condicionales (IF-Else) se escriben de igual forma, o muy similar, lo mismo sucede con las estructuras de bucles. </li>    <li>Siendo programador de C# se puede caer en el vicio de querer usar para todo las clases del BCL. PERO parece que a la gente que sabe de PowerShell no le gusta mucho eso, ya que powershell tiene buenos comandos para muchos tipos de tareas. Ósea que el consejo es primero trata de hacerlo “a la powershell” si no te alcanzan los comandos, busca la forma con cosas de la BCL. </li> </ul>  <h1>Mi script</h1>  <p>Bueno acá les dejo mi script por si a alguien le sirve:</p>  <pre class="brush: c-sharp; wrap-lines: false;">$assembliesFolder = $PWD.Path + &quot;&quot;
+$tempFolder = &quot;c:tempmitemp&quot;
+$zipFile = $tempFolder + &quot;lastVersionOfXYZ.zip&quot;
+[System.IO.Directory]::CreateDirectory($tempFolder)
+
+#Descargar el zip
+$networkCredentials = new-object System.Net.NetworkCredential(&quot;my-user&quot;, &quot;my-pass&quot;)
+$webClient = new-object System.Net.WebClient
+$webClient.Credentials = $networkCredentials
+$url = &quot;http://my-domain/httpAuth/downloadArtifacts.html?buildTypeId=bt8&amp;buildId=lastFinished&quot;
+$webClient.DownloadFile($url, $zipFile)
+
+#Descomprimir
+$sh = new-object -com shell.application
+$zipfolder = $sh.NameSpace($zipFile)
+$unzipIn = $sh.NameSpace($tempFolder)
+$unzipIn.Copyhere($zipfolder.items())
+
+#Copiar solo los archivos que ya existen en el destino
+foreach($file in [System.IO.Directory]::GetFiles($tempFolder))
+{
+    if ([System.IO.File]::Exists($assembliesFolder + [System.IO.Path]::GetFileName($file)))
+    {
+        Copy-Item $file $assembliesFolder
+    }
+}
+#Eliminar los archivos temporales
+$allFilesToRemove = $tempFolder + &quot;*&quot;
+del $allFilesToRemove</pre>
+
+<p>Algunos comentarios:</p>
+
+<ul>
+  <li>Si el lugar desde donde descargas el zip, no requiere autenticación, hay que eliminar la parte de credentials. </li>
+
+  <li>La url que muestro es un pattern standard de TeamCity para descargar un zip con todos los artefactos de la última compilación exitosa. La única parte que debes cambiar es el valor del buildTypeId. Este código lo podes obtener navegando por la página del proyecto en TC. </li>
+
+  <li>En el proceso para descomprimir, estoy usando algo raro lo cual con mi poca experiencia ni si quiera sabría definir que es. Tiene algo feo que hace que se muestre una ventana de windows mientras descomprime. Se que existen librerías alternativas pero requieren tener que instalarlas en cada powershell de cada maquina. Desconozco si existe alguna forma de hacer que no aparezca dicha ventana. También desconozco si existe otra cosa nativa de powershell para hacerlo. </li>
+
+  <li>Estoy 100% seguro de que el bloque de código en “Copiar solo los archivos que existen en el destino” se puede hacer con comandos nativos de PowerShell, pero después de estar un rato renegando, me di por vencido. Debería ser algo como el viejo xcopy … –u </li>
+</ul>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3391983758450556005' alt='' /></div>

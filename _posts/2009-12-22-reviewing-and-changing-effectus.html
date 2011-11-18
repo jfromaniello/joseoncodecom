@@ -1,0 +1,865 @@
+--- 
+layout: post
+title: Reviewing [and Changing] Effectus
+tags: 
+- CpBT
+- Effectus
+- NHibernate
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/12/reviewing-and-changing-effectus.html
+  blogger_images: "1"
+  dsq_thread_id: "314364350"
+---
+<p>I started to write a review about <a href="http://ayende.com/blog">Ayende Rahien</a>’s sample application <a href="http://msdn.microsoft.com/en-us/magazine/ee819139.aspx">Effectus</a>, but I soon realized that what&#160; I do better is to write code. So, this is an unconventional review, because I will focus on some parts of the code, and then show you the alternative.</p>  <p>You can read more about Effectus in Ayende Rahien’s <a href="http://ayende.com/Blog">blog</a>. </p>  <h1>Straight to the point</h1>  <p>In this post I will focus only in the presenters of Effectus. Because this is the first thing that I don’t like. </p>  <pre class="code"><span style="color: blue">private void </span>LoadPage(<span style="color: blue">int </span>page)
+{
+    <span style="color: blue">using </span>(<span style="color: blue">var </span>tx = StatelessSession.BeginTransaction())
+    {
+        <span style="color: blue">var </span>actions = StatelessSession.CreateCriteria&lt;<span style="color: #2b91af">ToDoAction</span>&gt;()
+            .SetFirstResult(page * PageSize)
+            .SetMaxResults(PageSize)
+            .List&lt;<span style="color: #2b91af">ToDoAction</span>&gt;();
+
+        <span style="color: blue">var </span>total = StatelessSession.CreateCriteria&lt;<span style="color: #2b91af">ToDoAction</span>&gt;()
+            .SetProjection(<span style="color: #2b91af">Projections</span>.RowCount())
+            .UniqueResult&lt;<span style="color: blue">int</span>&gt;();
+
+        <span style="color: blue">this</span>.NumberOfPages.Value = total / PageSize + (total % PageSize == 0 ? 0 : 1);
+        <span style="color: blue">this</span>.Model = <span style="color: blue">new </span><span style="color: #2b91af">Model
+        </span>{
+            Actions = <span style="color: blue">new </span><span style="color: #2b91af">ObservableCollection</span>&lt;<span style="color: #2b91af">ToDoAction</span>&gt;(actions),
+            NumberOfPages = NumberOfPages,
+            CurrentPage = CurrentPage + 1
+        };
+        <span style="color: blue">this</span>.CurrentPage.Value = page;
+
+        tx.Commit();
+    }
+}</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>Ah? StatelessSession?, BeginTransaction?, CreateCriteria?. This presenter is <strong><u>GLUED</u></strong> to NHibernate. And this means for instance that you can’t test it without NHibernate, and this means that you can’t change your persistence layer.</p>
+
+<p>So, pay attention to <a href="http://fabiomaulo.blogspot.com/2009/01/aspect-conversation-per.html">Conversation per Business Transaction</a>. <a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a> did a great job with this and I really like it.</p>
+
+<h1>MainPresenter </h1>
+
+<h2>Ayende’s code</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">namespace Effectus.Features.Main
+{
+    using System.Collections.ObjectModel;
+    using System.ComponentModel;
+    using Effectus.Model;
+    using Events;
+    using Infrastructure;
+    using NHibernate.Criterion;
+ 
+    public class Presenter : AbstractPresenter&lt;Model, View&gt;
+    {
+        const int PageSize = 3;
+ 
+        public Observable&lt;int&gt; NumberOfPages { get; set; }
+ 
+        public Observable&lt;int&gt; CurrentPage { get; set; }
+ 
+        public Presenter()
+        {
+            NumberOfPages = new Observable&lt;int&gt;();
+            CurrentPage = new Observable&lt;int&gt;();
+ 
+            EventPublisher.Register&lt;ActionUpdated&gt;(RefreshCurrentPage);
+        }
+ 
+        private void RefreshCurrentPage(ActionUpdated _)
+        {
+            LoadPage(CurrentPage);
+        }
+ 
+        public Fact CanMovePrev
+        {
+            get { return new Fact(CurrentPage, 
+                        () =&gt; CurrentPage &gt; 0); }
+        }
+ 
+        public Fact CanMoveNext
+        {
+            get { return new Fact(CurrentPage, 
+                        () =&gt; CurrentPage + 1 &lt; NumberOfPages); }
+        }
+ 
+        public void OnCreateNew()
+        {
+            Presenters.Show(&quot;CreateNew&quot;);
+        }
+ 
+        public void OnActionsChoosen(ToDoAction action)
+        {
+            Presenters.Show(&quot;Edit&quot;, action.Id);
+        }
+ 
+        public void OnLoaded()
+        {
+            LoadPage(0);
+        }
+ 
+        public void OnMoveNext()
+        {
+            LoadPage(CurrentPage + 1);
+        }
+ 
+        public void OnMovePrev()
+        {
+            LoadPage(CurrentPage - 1);
+        }
+ 
+        private void LoadPage(int page)
+        {
+            using (var tx = StatelessSession.BeginTransaction())
+            {
+                var actions = StatelessSession
+                    .CreateCriteria&lt;ToDoAction&gt;()
+                    .SetFirstResult(page * PageSize)
+                    .SetMaxResults(PageSize)
+                    .List&lt;ToDoAction&gt;();
+ 
+                var total = StatelessSession
+                       .CreateCriteria&lt;ToDoAction&gt;()
+                    .SetProjection(Projections.RowCount())
+                    .UniqueResult&lt;int&gt;();
+ 
+                this.NumberOfPages.Value = 
+                        total / PageSize + (total % PageSize == 0 ? 0 : 1);
+                this.Model = new Model
+                {
+                    Actions = new ObservableCollection&lt;ToDoAction&gt;(actions),
+                    NumberOfPages = NumberOfPages,
+                    CurrentPage = CurrentPage + 1
+                };
+                this.CurrentPage.Value = page;
+ 
+                tx.Commit();
+            }
+        }
+    }
+}</pre>
+
+<h2>My code</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">using System.Linq;
+using Effectus.DataAccess;
+using uNhAddIns.Adapters;
+
+namespace Effectus.Features.Main
+{
+    using System.Collections.ObjectModel;
+    using Effectus.Model;
+    using Events;
+    using Infrastructure;
+
+    [PersistenceConversational(
+        DefaultEndMode = EndMode.End, 
+        MethodsIncludeMode = MethodsIncludeMode.Explicit)]
+    public class Presenter : AbstractPresenter&lt;Model, View&gt;
+    {
+        private readonly IReadOnlyDao&lt;ToDoAction&gt; _toDoActionsDao;
+        const int PageSize = 3;
+
+        public Observable&lt;int&gt; NumberOfPages { get; set; }
+
+        public Observable&lt;int&gt; CurrentPage { get; set; }
+
+        public Presenter(IReadOnlyDao&lt;ToDoAction&gt; toDoActionsDao)
+        {
+            _toDoActionsDao = toDoActionsDao;
+            NumberOfPages = new Observable&lt;int&gt;();
+            CurrentPage = new Observable&lt;int&gt;();
+
+            EventPublisher.Register&lt;ActionUpdated&gt;(RefreshCurrentPage);
+        }
+
+        [PersistenceConversation]
+        public virtual void RefreshCurrentPage(ActionUpdated _)
+        {
+            LoadPage(CurrentPage);
+        }
+
+        public Fact CanMovePrev
+        {
+            get { return new Fact(CurrentPage, 
+                            () =&gt; CurrentPage &gt; 0); }
+        }
+
+        public Fact CanMoveNext
+        {
+            get { return new Fact(CurrentPage, 
+                            () =&gt; CurrentPage + 1 &lt; NumberOfPages); }
+        }
+
+        public void OnCreateNew()
+        {
+            Presenters.Show(&quot;CreateNew&quot;);
+        }
+
+        public void OnActionsChoosen(ToDoAction action)
+        {
+            Presenters.Show(&quot;Edit&quot;, action.Id);
+        }
+
+        [PersistenceConversation]
+        public virtual void OnLoaded()
+        {
+            LoadPage(0);
+        }
+        
+        [PersistenceConversation]
+        public virtual void OnMoveNext()
+        {
+            LoadPage(CurrentPage + 1);
+        }
+
+        [PersistenceConversation]
+        public virtual void OnMovePrev()
+        {
+            LoadPage(CurrentPage - 1);
+        }
+
+        private void LoadPage(int page)
+        {
+            var actions = _toDoActionsDao.RetrieveAll()
+                                         .Skip(page * PageSize)
+                                         .Take(PageSize).ToList();
+
+            var total = _toDoActionsDao.RetrieveAll().Count();
+            
+            NumberOfPages.Value = total / PageSize 
+                                + (total % PageSize == 0 ? 0 : 1);
+            
+            Model = new Model
+            {
+                Actions = new ObservableCollection&lt;ToDoAction&gt;(actions),
+                NumberOfPages = NumberOfPages,
+                CurrentPage = CurrentPage + 1
+            };
+            
+            CurrentPage.Value = page;
+        }
+    }
+}</pre>
+
+<p>There are two things that you will notice:</p>
+
+<ul>
+  <li>A dependency with IReadonlyDao&lt;ToDoAction&gt;. I will show you later the code for daos. </li>
+
+  <li>Conversation per business transactions attributes. These attributes are from a separated assembly unrelated to nhibernate. This means that we could implement this for EntityFramework or other ORM and the presenter is not coupled to the persistence framework. This will pass the “acid” test, thanks <a href="http://www.ajlopez.com/">Angel “Java” Lopez</a>. </li>
+</ul>
+
+<p>Ah, there is a last thing about that code. There is a bug with the current page number.</p>
+
+<h1>AbstractPresenter</h1>
+
+<h2>Ayende’s Code</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">namespace Effectus.Infrastructure
+{
+    using System;
+    using System.Windows;
+    using NHibernate;
+
+    public abstract class AbstractPresenter&lt;TModel, TView&gt; : IDisposable, IPresenter
+        where TView : Window, new()
+    {
+        private TModel model;
+        private ISessionFactory sessionFactory;
+        private ISession session;
+        private IStatelessSession statelessSession;
+
+        protected AbstractPresenter()
+        {
+            View = new TView();
+            View.Closed += (sender, args) =&gt; Dispose();
+        }
+
+        DependencyObject IPresenter.View { get { return View; } }
+
+        public object Result { get; protected set; }
+
+        protected TView View { get; set; }
+
+        protected ISessionFactory SessionFactory
+        {
+            get { return sessionFactory; }
+        }
+
+        protected ISession Session
+        {
+            get
+            {
+                if (session == null)
+                    session = sessionFactory.OpenSession();
+                return session;
+            }
+        }
+
+        protected IStatelessSession StatelessSession
+        {
+            get
+            {
+                if (statelessSession == null)
+                    statelessSession = sessionFactory.OpenStatelessSession();
+                return statelessSession;
+            }
+        }
+
+        protected TModel Model
+        {
+            get { return model; }
+            set
+            {
+                model = value;
+                View.DataContext = model;
+            }
+        }
+
+        protected void ReplaceSessionAfterError()
+        {
+            if(session!=null)
+            {
+                session.Dispose();
+                session = sessionFactory.OpenSession();
+                ReplaceEntitiesLoadedByFaultedSession();
+            }
+            if(statelessSession!=null)
+            {
+                statelessSession.Dispose();
+                statelessSession = sessionFactory.OpenStatelessSession();
+            }
+        }
+
+        protected virtual void ReplaceEntitiesLoadedByFaultedSession()
+        {
+            throw new InvalidOperationException(
+                @&quot;ReplaceSessionAfterError was called, but the presenter does not override ReplaceEntitiesLoadedByFaultedSession!
+You must override ReplaceEntitiesLoadedByFaultedSession to call ReplaceSessionAfterError.&quot;);
+        }
+
+
+        public void SetSessionFactory(ISessionFactory theSessionFactory)
+        {
+            sessionFactory = theSessionFactory;
+        }
+
+        public void Show()
+        {
+            View.Show();
+        }
+
+        public void ShowDialog()
+        {
+            View.ShowDialog();
+        }
+
+        public event Action Disposed = delegate { };
+
+        public virtual void Dispose()
+        {
+            if(session!=null)
+                session.Dispose();
+            if (statelessSession != null)
+                statelessSession.Dispose();
+            View.Close();
+            Disposed();
+        }
+    }
+}</pre>
+
+<h2>My code</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">namespace Effectus.Infrastructure
+{
+    using System;
+    using System.Windows;
+    using NHibernate;
+
+    public abstract class AbstractPresenter&lt;TModel, TView&gt; : IDisposable, IPresenter
+        where TView : Window, new()
+    {
+        private TModel model;
+
+        protected AbstractPresenter()
+        {
+            View = new TView();
+            View.Closed += (sender, args) =&gt; Dispose();
+        }
+
+        DependencyObject IPresenter.View { get { return View; } }
+
+        public object Result { get; protected set; }
+
+        protected TView View { get; set; }
+
+        protected TModel Model
+        {
+            get { return model; }
+            set
+            {
+                model = value;
+                View.DataContext = model;
+            }
+        }
+
+        public void Show()
+        {
+            View.Show();
+        }
+
+        public void ShowDialog()
+        {
+            View.ShowDialog();
+        }
+
+        public event Action Disposed = delegate { };
+
+        public virtual void Dispose()
+        {
+            View.Close();
+            Disposed();
+        }
+
+        public virtual void OnException(Exception exception)
+        {
+            //TODO You should improve this.
+            MessageBox.Show(exception.Message);
+        }
+    }
+}</pre>
+
+<p>Again, I’ve deleted all NHibernate code.</p>
+
+<h1>EditPresenter</h1>
+
+<h2>Ayende’s code</h2>
+
+<pre class="brush: csharp; collapse: true;  wrap-lines: false;">namespace Effectus.Features.Edit
+{
+    using System;
+    using System.Windows;
+    using Effectus.Model;
+    using Events;
+    using Infrastructure;
+    using Merge;
+    using NHibernate;
+
+    public class Presenter : AbstractPresenter&lt;Model, View&gt;
+    {
+        public Presenter()
+        {
+            EventPublisher.Register&lt;ActionUpdated&gt;(RefreshAction);
+        }
+
+        private void RefreshAction(ActionUpdated actionUpdated)
+        {
+            if (actionUpdated.Id != Model.Action.Id)
+                return;
+            Session.Refresh(Model.Action);
+        }
+
+        public void Initialize(long id)
+        {
+            ToDoAction action;
+            using (var tx = Session.BeginTransaction())
+            {
+                action = Session.Get&lt;ToDoAction&gt;(id);
+                tx.Commit();
+            }
+
+            if (action == null)
+                throw new InvalidOperationException(&quot;Action &quot; + id + &quot; does not exists&quot;);
+
+            this.Model = new Model
+            {
+                Action = action
+            };
+        }
+        [PersistenceConversation(ConversationEndMode = EndMode.Abort)]
+        public void OnCancel()
+        {
+            View.Close();
+        }
+
+        public void OnCreateConcurrencyConflict()
+        {
+            using (var session = SessionFactory.OpenSession())
+            using (var tx = session.BeginTransaction())
+            {
+                var anotherActionInstance = session.Get&lt;ToDoAction&gt;(Model.Action.Id);
+                anotherActionInstance.Title = anotherActionInstance.Title + &quot; - &quot;;
+                tx.Commit();
+            }
+            MessageBox.Show(&quot;Concurrency conflict created&quot;);
+        }
+
+        public void OnSave()
+        {
+            bool successfulSave;
+            try
+            {
+                using (var tx = Session.BeginTransaction())
+                {
+                    // this isn't strictly necessary, NHibernate will 
+                    // automatically do it for us, but it make things
+                    // more explicit
+                    Session.Update(Model.Action);
+
+                    tx.Commit();
+                }
+                successfulSave = true;
+            }
+            catch (StaleObjectStateException)
+            {
+                var mergeResult = Presenters.ShowDialog&lt;MergeResult?&gt;(&quot;Merge&quot;, Model.Action);
+                successfulSave = mergeResult != null;
+
+                ReplaceSessionAfterError();
+            }
+
+            // we call ActionUpdated anyway, either we updated the value ourselves
+            // or we encountered a concurrency conflict, in which case we _still_
+            // want other parts of the application to update themselves with the values
+            // from the db
+            EventPublisher.Publish(new ActionUpdated
+            {
+                Id = Model.Action.Id
+            }, this);
+
+            if (successfulSave)
+                View.Close();
+        }
+
+        protected override void ReplaceEntitiesLoadedByFaultedSession()
+        {
+            Initialize(Model.Action.Id);
+        }
+    }
+}</pre>
+
+<p></p>
+
+<p></p>
+
+<p>There are several things with the OnSave method that I don’t like:</p>
+
+<ul>
+  <li>ReplaceSessionAfterError, to much responsibility for a presenter. </li>
+
+  <li>Session/Transaction again. </li>
+
+  <li>There is a BUG, the publish mechanism work in sync with the rest of the code. This means… that this windows is not going to close until others have finished handling the event. For the given example, the Edit windows is not going to close until the main window finish to refresh the current page. </li>
+
+  <li>Too much logic for this method = hard to test. </li>
+</ul>
+
+<h2>My code</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">using Effectus.DataAccess;
+using Effectus.Features.Merge;
+using Effectus.Infrastructure.Bootstrapping;
+using Effectus.Infrastructure.ConversationsArtifacts;
+using uNhAddIns.Adapters;
+using uNhAddIns.SessionEasier.Conversations;
+
+namespace Effectus.Features.Edit
+{
+    using System;
+    using System.Windows;
+    using Effectus.Model;
+    using Events;
+    using Infrastructure;
+    using NHibernate;
+
+    [PersistenceConversational(
+            DefaultEndMode = EndMode.Continue, 
+            UseConversationCreationInterceptorConvention = true)]
+    public class Presenter : AbstractPresenter&lt;Model, View&gt;
+    {
+        private readonly IDao&lt;ToDoAction&gt; _toDoActionsDao;
+
+        public Presenter(IDao&lt;ToDoAction&gt; toDoActionsDao)
+        {
+            _toDoActionsDao = toDoActionsDao;
+            EventPublisher.Register&lt;ActionUpdated&gt;(RefreshAction);
+        }
+        
+        [PersistenceConversation]
+        public virtual void RefreshAction(ActionUpdated actionUpdated)
+        {
+            if (actionUpdated.Id != Model.Action.Id)
+                return;
+
+            _toDoActionsDao.Refresh(Model.Action);
+        }
+
+        [PersistenceConversation]
+        public virtual void Initialize(long id)
+        {
+            var action = _toDoActionsDao.GetById(id);
+
+            if (action == null)
+                throw new InvalidOperationException(&quot;Action &quot; + id + &quot; does not exists&quot;);
+
+            Model = new Model
+            {
+                Action = action
+            };
+        }
+
+        public void OnCancel()
+        {
+            View.Close();
+        }
+
+        public void OnCreateConcurrencyConflict()
+        {
+            //NOTE: this portion of code is for generating a conflict.
+            //don't use sessionfactory in presenters.
+
+            var sessionFactory = BootStrapper.Container.Resolve&lt;ISessionFactory&gt;();
+
+            using (var session = sessionFactory.OpenSession())
+            using (var tx = session.BeginTransaction())
+            {
+                var anotherActionInstance = session.Get&lt;ToDoAction&gt;(Model.Action.Id);
+                anotherActionInstance.Title = anotherActionInstance.Title + &quot; - &quot;;
+                tx.Commit();
+            }
+            MessageBox.Show(&quot;Concurrency conflict created&quot;);
+        }
+
+        [PersistenceConversation(ConversationEndMode = EndMode.End)]
+        public virtual void OnSave()
+        {
+            _toDoActionsDao.Update(Model.Action);
+
+            EventPublisher.Enlist(new ActionUpdated
+            {
+                Id = Model.Action.Id
+            }, this);
+
+            View.Close();
+        }
+
+        public override void OnException(Exception exception)
+        {
+            if(exception is StaleEntityException)
+            {
+                Presenters.ShowDialog&lt;MergeResult?&gt;(&quot;Merge&quot;, Model.Action);
+
+                EventPublisher.Enlist(new ActionUpdated
+                {
+                    Id = Model.Action.Id
+                }, this);
+
+            }
+        }
+    }
+
+}</pre>
+
+<p>Pay atention:</p>
+
+<ul>
+  <li>I’ve defined a new convention, if a public method in the presenter throw an exception, the OnException method will be called. This is done by a castle interceptor, and this is the last line of defense for unhandled exceptions. </li>
+
+  <li>I’m using “StaleEntityException” rather than “StaleObjectStateException”, this is MY exception. This is easily done by a CpBT artifact. </li>
+
+  <li>I’m not calling “EventPublisher.Publish” anymore, this code use EventPublisher.Enlist. Here, I’ve split the “Publish” code in two different methods one for Enlist and other for Raise. The enlisted events will be raised right after the OnSave method is called and thus after the windows is closed. </li>
+
+  <li>Also, notice that here is the conversation per business transaction pattern with all its splendor. The two former methods are conversation participants, with EndMode equals to continue. This means that the NH Session will remain opened. The OnSave method has EndMode equals to End, this means that right after the method finished, CpBT internally will flush the Unit of Work and close it. </li>
+</ul>
+
+<p>&#160;</p>
+
+<p>The code needed for exception interception:</p>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">public class RecoverableExceptionIntercepter : IInterceptor
+{
+    public void Intercept(IInvocation invocation)
+    {
+        if(!typeof(ISupportExceptionRecovery).IsAssignableFrom(invocation.TargetType))
+        {
+            throw new NotSupportedException(string.Format(&quot;{0} should implement {1}&quot;, 
+                invocation.TargetType.Name, 
+                typeof(ISupportExceptionRecovery).Name));
+        }
+
+        try
+        {
+            invocation.Proceed();
+        }catch(Exception ex)
+        {
+            var recoverablePresenter = (ISupportExceptionRecovery) invocation.InvocationTarget;
+            recoverablePresenter.OnException(ex);
+        }
+
+    }
+}</pre>
+
+<p>The code needed for auto-flushing published events:</p>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">public class AutoFlushEventPublisherEvents : IInterceptor
+{
+    public void Intercept(IInvocation invocation)
+    {
+        invocation.Proceed();
+        EventPublisher.FlushEvents((IPresenter) invocation.InvocationTarget);
+    }
+}</pre>
+
+<h1>The code for daos</h1>
+
+<h2>Interfaces:</h2>
+
+<pre class="brush: csharp; collapse: true;">public interface IReadOnlyDao&lt;T&gt;
+    where T : EntityBase 
+{
+    T GetById(object id);
+    T GetProxy(object id);
+    IEnumerable&lt;T&gt; Retrieve(Expression&lt;Func&lt;T, bool&gt;&gt; predicate);
+
+    int Count(Expression&lt;Func&lt;T, bool&gt;&gt; predicate);
+
+    /// &lt;summary&gt;
+    /// Retrieve all entities.
+    /// &lt;/summary&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    IEnumerable&lt;T&gt; RetrieveAll();
+}
+
+public interface IDao&lt;T&gt; : IReadOnlyDao&lt;T&gt;
+    where T : EntityBase 
+{
+    void Save(T entity);
+    void Update(T entity);
+    void Delete(T entity);
+    
+    /// &lt;summary&gt;
+    /// Re-read the state of the given instance from the underlying database.
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;entity&quot;&gt;&lt;/param&gt;
+    void Refresh(T entity);
+
+    /// &lt;summary&gt;
+    /// Merge the instance in to the persisted instance of the current unit of work.
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;entity&quot;&gt;&lt;/param&gt;
+    void Merge(T entity);
+
+}</pre>
+
+<p>These interfaces were taken from Fabio Maulo’s post <a href="http://fabiomaulo.blogspot.com/2009/09/repository-or-dao-dao.html">“Repository or DAO”?: Dao</a>.</p>
+
+<h2>Implementation:</h2>
+
+<pre class="brush: csharp; collapse: true; wrap-lines: false;">using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using Effectus.Model;
+using NHibernate;
+using NHibernate.Criterion;
+using NHibernate.Linq;
+
+namespace Effectus.DataAccess
+{
+    public class Dao&lt;T&gt; : IDao&lt;T&gt;
+        where T : EntityBase
+    {
+        private readonly ISessionFactory _sessionFactory;
+
+        public Dao(ISessionFactory sessionFactory)
+        {
+            _sessionFactory = sessionFactory;
+        }
+
+        private IQueryable&lt;T&gt; CurrentLinq
+        {
+            get { return ContextSession.Linq&lt;T&gt;(); }
+        }
+
+        private ISession ContextSession
+        {
+            get { return _sessionFactory.GetCurrentSession(); }
+        }
+
+        #region IDao&lt;T&gt; Members
+
+        public void Save(T entity)
+        {
+            ContextSession.Save(entity);
+        }
+
+        public void Update(T entity)
+        {
+            ContextSession.Update(entity);
+        }
+
+        public void Delete(T entity)
+        {
+            ContextSession.Delete(entity);
+        }
+
+        public void Refresh(T entity)
+        {
+            ContextSession.Refresh(entity);
+        }
+
+        public void Merge(T entity)
+        {
+            ContextSession.Merge(entity);
+        }
+
+        public T GetById(object id)
+        {
+            return ContextSession.Get&lt;T&gt;(id);
+        }
+
+        public T GetProxy(object id)
+        {
+            return ContextSession.Load&lt;T&gt;(id);
+        }
+
+        public IEnumerable&lt;T&gt; Retrieve(
+                    Expression&lt;Func&lt;T, bool&gt;&gt; predicate)
+        {
+            return CurrentLinq.Where(predicate);
+        }
+
+        public IEnumerable&lt;T&gt; RetrieveAll()
+        {
+            return CurrentLinq;
+        }
+
+        public int Count(Expression&lt;Func&lt;T, bool&gt;&gt; predicate)
+        {
+            return CurrentLinq.Count(predicate);
+        }
+
+        #endregion
+    }
+
+    
+}</pre>
+
+<h2>Download</h2>
+
+<p><a href="http://dl.dropbox.com/u/1525624/MyBlog/Effectus.zip">Here is the full code</a>. Maybe someone help me to “fork” github version, this will be very nice to make code diff. </p>
+
+<h2>The end</h2>
+
+<p>There is nothing more, I like very much the result of this review and I will be waiting your comments (please let me a comment). I hope you like it!</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3404069562462065455' alt='' /></div>

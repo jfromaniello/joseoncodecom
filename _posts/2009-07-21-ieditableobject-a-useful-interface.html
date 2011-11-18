@@ -1,0 +1,122 @@
+--- 
+layout: post
+title: "IEditableObject: a useful interface"
+tags: 
+- NHibernate
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/ieditableobject-useful-interface.html
+  dsq_thread_id: "314491837"
+  blogger_images: "1"
+---
+<p>I really like this <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.ieditableobject.aspx">interface</a>, so I decided to dedicate a post to this beauty. As you can read in my <a href="http://jfromaniello.blogspot.com/2009/07/ieditableobject-another-behaviour-for.html">previous</a> post I am using <a href="http://www.castleproject.org/dynamicproxy/index.html">dynamic proxy</a> to apply this behavior dynamically.</p>  <p>Let me show you my love with some tests: </p>  <pre class="brush: csharp;">private const string title = &quot;The dark side of the moon&quot;;
+private const string newTitle = &quot;Dark side of the moon&quot;;
+
+[Test]
+public void transient_entity_should_commitchanges_after_endedit()
+{
+    var album = container.Resolve&lt;Album&gt;();
+    
+    album.Title = title;
+
+    ((IEditableObject)album).BeginEdit();
+    album.Title = newTitle;
+    ((IEditableObject)album).EndEdit();
+
+    album.Title.Should().Be.EqualTo(newTitle);
+}
+
+[Test]
+public void transient_entity_should_rollback_after_canceledit()
+{
+    var album = container.Resolve&lt;Album&gt;();
+
+    album.Title = title;
+
+    ((IEditableObject)album).BeginEdit();
+    album.Title = newTitle;
+    ((IEditableObject)album).CancelEdit();
+
+    album.Title.Should().Be.EqualTo(title);
+}</pre>
+
+<p>Could we add this behavior to nhibernate entities? Yes, I’m working on uNhAddIns.WPF for that matter. But let me show you two simple test:</p>
+
+<pre class="brush: csharp;">[Test]
+public void session_should_be_dirty_after_commitchanges()
+{
+    var id = CreateNewAlbum();
+    using (ISession session = sessions.OpenSession())
+    using (ITransaction tx = session.BeginTransaction())
+    {
+        var album = session.Get&lt;Album&gt;(id);
+        ((IEditableObject)album).BeginEdit();
+        album.Title = &quot;Dark side of the moon&quot;;
+        ((IEditableObject)album).EndEdit();
+
+        session.IsDirty().Should().Be.True();
+
+        tx.Commit();
+    }
+}
+
+[Test]
+public void session_shouldnot_be_dirty_after_cancelchanges()
+{
+    var id = CreateNewAlbum();
+    using (ISession session = sessions.OpenSession())
+    using (ITransaction tx = session.BeginTransaction())
+    {
+        var album = session.Get&lt;Album&gt;(id);
+        ((IEditableObject)album).BeginEdit();
+        album.Title = &quot;Dark side of the moon&quot;;
+        ((IEditableObject)album).CancelEdit();
+
+        session.IsDirty().Should().Be.False();
+
+        tx.Commit();
+    }
+}</pre>
+
+<p>As you can see when we cancel the edition the entity restore his values and the current session should not be dirty. 
+  <br />
+
+  <br />What do you think about this one? </p>
+
+<pre class="brush: csharp;">    var id = CreateNewAlbum();
+    using (ISession session = sessions.OpenSession())
+    using (ITransaction tx = session.BeginTransaction())
+    {
+        var album = session.Get&lt;Album&gt;(id);
+        ((IEditableObject)album).BeginEdit();
+        album.AddTrack(new Track(&quot;On the Run&quot;));
+        ((IEditableObject)album).CancelEdit();
+
+        album.Tracks.Any(t =&gt; t.Name == &quot;On the Run&quot;)
+                    .Should().Be.False();
+
+        session.IsDirty().Should().Be.False();
+
+        tx.Commit();
+    }</pre>
+
+<p>Well this is not yet implemented, but CancelEdit will raise cancel’s within the full object graph. In this case Tracks use a collection type that implements IEditableObject. 
+  <br />
+
+  <br />I mix this concept whit CpBT (from uNhAddIns) and I did manage to resolve an interface like this with a few&#160; databindings. 
+
+  <br />
+
+  <br />&#160;<a href="http://joseoncode.com/wp-content/uploads/2011/06/window%5B9%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="window" border="0" alt="window" src="http://joseoncode.com/wp-content/uploads/images/window_thumb5B55D.png" width="529" height="429" /></a> </p>
+
+<p></p>
+
+<p>Thoughts?</p>
+
+<div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: none; padding-top: 0px" id="scid:0767317B-992E-4b12-91E0-4F059A8CECA8:c24d24b6-80f0-4c63-986c-450d65f7b3cf" class="wlWriterEditableSmartContent">Etiquetas : <a href="http://jfromaniello.blogspot.com/search/label/IEditableObject" rel="tag">IEditableObject</a>, <a href="http://jfromaniello.blogspot.com/search/label/WPF" rel="tag">WPF</a>, <a href="http://jfromaniello.blogspot.com/search/label/uNHAddIns" rel="tag">uNHAddIns</a></div>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3395643526301252893' alt='' /></div>

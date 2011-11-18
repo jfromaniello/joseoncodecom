@@ -1,0 +1,171 @@
+--- 
+layout: post
+title: "IEditableObject: another behaviour for your NHibernate entities"
+tags: 
+- NHibernate
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/ieditableobject-another-behaviour-for.html
+  dsq_thread_id: "314363423"
+---
+<p>First of all you need to read <a href="http://jfromaniello.blogspot.com/2009/07/inotifypropertychanged-as-aop.html">my previous post</a> and <a href="http://fabiomaulo.blogspot.com/2008/10/less-than-gof-is-hbm.html">this</a> from <a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a> (a Italian guy who knows how to play <a href="http://en.wikipedia.org/wiki/Truco">truco</a> better than me).     <br />This time the behaviour is related to the <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.ieditableobject.aspx">IEditableObject</a>. This interface has three methods BeginEdit, CancelEdit and EndEdit. Microsoft says:</p>  <blockquote>   <p>Provides functionality to commit or rollback changes to an object that is used as a data source.</p> </blockquote>  <p><strong>Note:</strong> it says “commit or rollback changes to an object”, not to a database.</p>  <p>Can we do it with a castle IInterceptor? <strong>YES</strong>.</p>  <p>The interceptor is defined as follows:</p>  <pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">EditableObjectInterceptor </span>: <span style="color: #2b91af">IInterceptor
+   </span>{
+       <span style="color: blue">private bool </span>_isEditing;
+       <span style="color: blue">private readonly </span><span style="color: #2b91af">Dictionary</span>&lt;<span style="color: blue">string</span>, <span style="color: blue">object</span>&gt; _propertyTempValues 
+                                   = <span style="color: blue">new </span><span style="color: #2b91af">Dictionary</span>&lt;<span style="color: blue">string</span>, <span style="color: blue">object</span>&gt;();
+
+       <span style="color: blue">public void </span>Intercept(<span style="color: #2b91af">IInvocation </span>invocation)
+       {
+           <span style="color: blue">switch </span>(invocation.Method.Name)
+           {
+               <span style="color: blue">case </span><span style="color: #a31515">&quot;BeginEdit&quot;</span>:
+                   _isEditing = <span style="color: blue">true</span>;
+                   <span style="color: blue">return</span>;
+               <span style="color: blue">case </span><span style="color: #a31515">&quot;CancelEdit&quot;</span>:
+                   _isEditing = <span style="color: blue">false</span>;
+                   <span style="color: blue">return</span>;
+               <span style="color: blue">case </span><span style="color: #a31515">&quot;EndEdit&quot;</span>:
+                   _isEditing = <span style="color: blue">false</span>;
+                   AssignValues(invocation.InvocationTarget);
+                   <span style="color: blue">return</span>;
+           }
+           <span style="color: blue">if </span>(!_isEditing)
+           {
+               invocation.Proceed();
+               <span style="color: blue">return</span>;
+           }
+           <span style="color: blue">if</span>(!invocation.Method.Name.StartsWith(<span style="color: #a31515">&quot;set_&quot;</span>) 
+               &amp;&amp; !invocation.Method.Name.StartsWith(<span style="color: #a31515">&quot;get_&quot;</span>))
+               <span style="color: blue">return</span>;
+
+           <span style="color: blue">var </span>isSet = invocation.Method.Name.StartsWith(<span style="color: #a31515">&quot;set_&quot;</span>);
+           <span style="color: blue">var </span>propertyName = invocation.Method.Name.Substring(4);
+
+           <span style="color: blue">if</span>(isSet)
+           {
+               _propertyTempValues[propertyName] = invocation.Arguments[0];
+           }
+           <span style="color: blue">else
+           </span>{
+               <span style="color: blue">if </span>(_propertyTempValues.ContainsKey(propertyName))
+                   invocation.ReturnValue = _propertyTempValues[propertyName];
+               <span style="color: blue">else
+                   </span>invocation.Proceed();
+           }
+       }
+
+       <span style="color: blue">private void </span>AssignValues(<span style="color: blue">object </span>target)
+       {
+           <span style="color: blue">foreach </span>(<span style="color: blue">var </span>propertyTempValue <span style="color: blue">in </span>_propertyTempValues)
+           {
+               <span style="color: blue">var </span>property = target.GetType().GetProperty(propertyTempValue.Key);
+               property.SetValue(target, propertyTempValue.Value, <span style="color: blue">null</span>);
+           }
+       }
+   }</pre>
+
+<p>If you use CommonDatastore (explained in my <a href="http://jfromaniello.blogspot.com/2009/07/inotifypropertychanged-as-aop.html">previous post</a>) you add this behavior as follows:</p>
+
+<pre class="code">container.Register(<span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IProduct</span>&gt;()
+                            .AddEditableObjectBehavior()
+                            .TargetIsCommonDatastore());</pre>
+
+<p>If you don’t use CommonDatastore:</p>
+
+<pre class="code">container.Register(<span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">Customer</span>&gt;()
+                            .AddEditableObjectBehavior()
+                            .EnableNhibernateEntityCompatibility());</pre>
+
+<p>Let the test speak for me:</p>
+
+<pre class="code">        [<span style="color: #2b91af">Test</span>]
+        <span style="color: blue">public void </span>property_setters_should_work()
+        {
+            <span style="color: blue">var </span>product = container.Resolve&lt;<span style="color: #2b91af">IProduct</span>&gt;();
+            product.Description = <span style="color: #a31515">&quot;Potatoes&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+            product.BeginEdit();
+            product.Description = <span style="color: #a31515">&quot;Banana&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+            product.Description = <span style="color: #a31515">&quot;Apple&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Apple&quot;</span>);
+            product.CancelEdit();
+        }
+
+        [<span style="color: #2b91af">Test</span>]
+        <span style="color: blue">public void </span>cancel_should_discard_changes_in_trascientobject()
+        {
+            <span style="color: blue">var </span>product = container.Resolve&lt;<span style="color: #2b91af">IProduct</span>&gt;();
+            product.Description = <span style="color: #a31515">&quot;Potatoes&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+            product.BeginEdit();
+            product.Description = <span style="color: #a31515">&quot;Banana&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+            product.CancelEdit();
+
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+        }
+
+        [<span style="color: #2b91af">Test</span>]
+        <span style="color: blue">public void </span>endedit_should_push_changes_in_trascientobject()
+        {
+            <span style="color: blue">var </span>product = container.Resolve&lt;<span style="color: #2b91af">IProduct</span>&gt;();
+            product.Description = <span style="color: #a31515">&quot;Potatoes&quot;</span>;
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+            product.BeginEdit();
+            product.Description = <span style="color: #a31515">&quot;Banana&quot;</span>;
+            product.EndEdit();
+
+            product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+
+        }
+
+        [<span style="color: #2b91af">Test</span>]
+        <span style="color: blue">public void </span>cancel_should_discard_changes()
+        {
+            <span style="color: blue">var </span>id = CreatePotatoesProduct();
+            <span style="color: blue">using</span>(<span style="color: blue">var </span>session = sessions.OpenSession())
+            <span style="color: blue">using</span>(<span style="color: blue">var </span>tx = session.BeginTransaction())
+            {
+                <span style="color: blue">var </span>product = session.Get&lt;<span style="color: #2b91af">IProduct</span>&gt;(id);
+
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+                product.BeginEdit();
+                product.Description = <span style="color: #a31515">&quot;Banana&quot;</span>;
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+                product.CancelEdit();
+
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+            }
+        }
+
+        [<span style="color: #2b91af">Test</span>]
+        <span style="color: blue">public void </span>endedit_should_push_changes()
+        {
+            <span style="color: blue">var </span>id = CreatePotatoesProduct();
+            <span style="color: blue">using </span>(<span style="color: blue">var </span>session = sessions.OpenSession())
+            <span style="color: blue">using </span>(<span style="color: blue">var </span>tx = session.BeginTransaction())
+            {
+                <span style="color: blue">var </span>product = session.Get&lt;<span style="color: #2b91af">IProduct</span>&gt;(id);
+
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Potatoes&quot;</span>);
+
+                product.BeginEdit();
+                product.Description = <span style="color: #a31515">&quot;Banana&quot;</span>;
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+                product.EndEdit();
+                product.Description.Should().Be.EqualTo(<span style="color: #a31515">&quot;Banana&quot;</span>);
+            }
+        }</pre>
+<a href="http://11011.net/software/vspaste"></a><a href="http://www.dotnetkicks.com/kick/?url=http%3a%2f%2fjfromaniello.blogspot.com%2f2009%2f07%2fieditableobject-another-behaviour-for.html"><img border="0" alt="kick it on DotNetKicks.com" src="" /></a>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-343248144124987704?l=jfromaniello.blogspot.com' alt='' /></div>

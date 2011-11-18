@@ -1,0 +1,81 @@
+--- 
+layout: post
+title: Content Negotiation with Nancy
+tags: 
+- Nancy
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/04/content-negotiation-with-nancy.html
+  blogger_images: "1"
+  dsq_thread_id: "317508415"
+---
+<p>I am doing some experiments with the <a href="https://github.com/thecodejunkie/Nancy">Nancy</a> and let me say that it looks pretty neat so far. This is an experiment about content negotiation.</p>  <p>Content negotiation is defined in wikipedia as:</p>  <blockquote>   <p><i>Content negotiation is a mechanism defined in the HTTP specification that makes it possible to serve different versions of a document (or more generally, a resource) at the same URI, so that user agents can specify which version fit their capabilities the best.</i></p> </blockquote>  <p>This is something that will be supported in Nancy in future versions automatically. And even you will be able to override the behavior.</p>  <p>So far you can do something like:</p>  <pre class="brush: csharp; wrap-line: false;">public class SampleModule : NancyModule
+{
+    public SampleModule()
+    {
+        Get[&quot;example&quot;, c =&gt; c.Request.Accept(&quot;application/xml&quot;)] =
+            a =&gt; Response.AsXml(&quot;hello xml&quot;);
+
+        Get[&quot;example&quot;, c =&gt; c.Request.Accept(&quot;application/json&quot;)] =
+            a =&gt; Response.AsJson(&quot;hello json&quot;);
+    }
+}</pre>
+
+<p>The Accept method is an extension method as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class RequestHelper
+{
+    public static bool Accept(this Request request, string contentType)
+    {
+        return request.Headers.ContainsKey(&quot;Accept&quot;) 
+            &amp;&amp; request.Headers[&quot;Accept&quot;]
+                        .Any(c =&gt; c.Contains(contentType));
+    }
+}</pre>
+
+<p>This might seem an overhead for simple cases like Xml/Json but it opens the door for cases like rest versioning. <a href="http://weblogs.asp.net/cibrax/archive/2010/11/19/versioning-rest-services-with-wcf-http-processors.aspx">I took this example from my friend (and now coworker) Pablo Cibraro</a>.</p>
+
+<p>For this example we have two different media types:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class MediaTypes
+{
+  public const string Version1 
+        = &quot;application/vnd.mycompany.myapp+xml&quot;;
+
+  public const string Version2 
+        = &quot;application/vnd.mycompany.myapp-v2+xml&quot;;
+}</pre>
+
+<p>And then we need to respond with two different representations of our Customer resource for each media type. One of them has address and the other one doesnt:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class SampleModule : NancyModule
+{
+    public SampleModule()
+    {
+        Get[&quot;customer/{id}&quot;, c =&gt; c.Request.Accept(MediaTypes.Version1)] =
+            a =&gt; Response.AsXml(new Customer{ Name = &quot;Sideshow Bob&quot; });
+
+        Get[&quot;customer/{id}&quot;, c =&gt; c.Request.Accept(MediaTypes.Version2)] =
+            a =&gt; Response.AsJson(new CustomerV2
+                                      { 
+                                        Name = &quot;Sideshow Bob&quot; 
+                                        Addresses = { {&quot;State Prison&quot;} }
+                                      });
+    }
+}</pre>
+
+<p>This show some of the power of Nancy:</p>
+
+<ul>
+  <li>The delegate to select the handler is separated from the handler itself. </li>
+
+  <li>Two handler for the same routes. </li>
+</ul>
+
+<p>You can refactor this in two separated methods. </p>
+
+<p>In contrasts the new WCF Web Apis (current version of Jan-2011) has a very useful processors pipelines but you have to handle the Route + VERB in the same method.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5906959921009337684' alt='' /></div>

@@ -1,0 +1,228 @@
+--- 
+layout: post
+title: Create an ASP.NET MVC application with Windsor and NHibernate at the speed of nuget
+tags: 
+- Asp.Net MVC
+- Castle
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/03/create-aspnet-mvc-application-with.html
+  blogger_images: "1"
+  dsq_thread_id: "314485135"
+---
+<p>First of all, I just pushed to Nuget two code-only packages in addition to <a href="http://jfromaniello.blogspot.com/2011/03/josemvcwindsor-on-nuget.html">Jose.MVC.Windsor</a>:</p>  <ul>   <li>Jose.SessionPerRequest.NHibernate: the code of my previous post <a href="http://jfromaniello.blogspot.com/2011/03/effective-nhibernate-session-management.html">Effective NHibernate Session management for web apps</a>. </li>    <li>Jose.DataAccessObjects.NHibernate: some simple DataAccessObject that I use most of the time. </li> </ul>  <p>For this example I’d use the <a href="http://chinookdatabase.codeplex.com/">Chinook sample database</a>.</p>  <p>Start a new project:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-03-07_13384.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-03-07_1338" border="0" alt="2011-03-07_1338" src="http://joseoncode.com/wp-content/uploads/images/2011-03-07_1338_thumb2.png" width="615" height="323" /></a></p>  <p>Then, I’d use the following nuget packages:</p>  <ul>   <li>Jose.MVC.Windsor; this install the basic artifacts to working with <a href="http://docs.castleproject.org/Windsor.MainPage.ashx">Castle.Windsor</a> in Asp.Net MVC. </li>    <li>Jose.SessionPerRequest.NHibernate; base classes to work with the <a href="http://nhforge.org/blogs/nhibernate/archive/2011/03/03/effective-nhibernate-session-management-for-web-apps.aspx">Session Per Request</a> pattern. </li>    <li>Jose.DataAccessObject.NHibernate; interface and implementation of a simple <a href="http://es.wikipedia.org/wiki/Data_Access_Object">data access object</a>. </li> </ul>  <p>Within Visual Studio you can use the Add Library Package Reference or the Package Manager Console, the output will be like this:</p>  <pre class="brush: plain; wrap-line: false;">PM&gt; install-package Jose.MVC.Windsor
+'Castle.Windsor (≥ 2.5.2)' not installed. Attempting to retrieve dependency from source...
+Done
+'Castle.Core (≥ 2.5.2)' not installed. Attempting to retrieve dependency from source...
+Done
+'WebActivator (≥ 1.4)' not installed. Attempting to retrieve dependency from source...
+Done
+Successfully installed 'Castle.Core 2.5.2'
+Successfully installed 'Castle.Windsor 2.5.2'
+Successfully installed 'WebActivator 1.4'
+Successfully installed 'Jose.MVC.Windsor 1.0.0'
+Successfully added 'Castle.Core 2.5.2' to ChinookWithNugets
+Successfully added 'Castle.Windsor 2.5.2' to ChinookWithNugets
+Successfully added 'WebActivator 1.4' to ChinookWithNugets
+Successfully added 'Jose.MVC.Windsor 1.0.0' to ChinookWithNugets
+
+PM&gt; install-package Jose.SessionPerRequest.NHibernate
+'NHibernate (≥ 3.0.0)' not installed. Attempting to retrieve dependency from source...
+Done
+'Iesi.Collections (≥ 1.0.1)' not installed. Attempting to retrieve dependency from source...
+Done
+'Antlr (≥ 3.1.3.42154)' not installed. Attempting to retrieve dependency from source...
+Done
+Successfully installed 'Iesi.Collections 1.0.1'
+Successfully installed 'Antlr 3.1.3.42154'
+'Castle.Core 2.5.2' already installed
+Successfully installed 'NHibernate 3.0.0.2001'
+Successfully installed 'Jose.SessionPerRequest.NHibernate 1.0.0'
+Successfully added 'Iesi.Collections 1.0.1' to ChinookWithNugets
+Successfully added 'Antlr 3.1.3.42154' to ChinookWithNugets
+ChinookWithNugets already has a reference to 'Castle.Core 2.5.2'
+Successfully added 'NHibernate 3.0.0.2001' to ChinookWithNugets
+Successfully added 'Jose.SessionPerRequest.NHibernate 1.0.0' to ChinookWithNugets
+
+PM&gt; install-package Jose.DataAccessObjects.NHibernate
+'Iesi.Collections 1.0.1' already installed
+'Antlr 3.1.3.42154' already installed
+'Castle.Core 2.5.2' already installed
+'NHibernate 3.0.0.2001' already installed
+Successfully installed 'Jose.DataAccessObjects.NHibernate 1.0.0'
+ChinookWithNugets already has a reference to 'Iesi.Collections 1.0.1'
+ChinookWithNugets already has a reference to 'Antlr 3.1.3.42154'
+ChinookWithNugets already has a reference to 'Castle.Core 2.5.2'
+ChinookWithNugets already has a reference to 'NHibernate 3.0.0.2001'
+Successfully added 'Jose.DataAccessObjects.NHibernate 1.0.0' to ChinookWithNugets</pre>
+
+<p>Now you need to do some manual steps:</p>
+
+<p>1-Fix the registration of the HttpModules in the web.config to something like this:</p>
+
+<p align="left">&lt;add name=&quot;SessionPerRequest&quot; type=&quot;ChinookWithNugets.Infrastructure.SessionManagement.NHibernateSessionModule, ChinookWithNugets&quot; /&gt;</p>
+
+<p>2-Add a new connection string in the web.config:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;configuration&gt;
+  &lt;appSettings&gt;
+        .....
+  &lt;/appSettings&gt;
+  &lt;connectionStrings&gt;
+    &lt;add name=&quot;Chinook&quot; connectionString=&quot;Server=.sqlexpress; User=test; Password=test; Database=Chinook&quot; /&gt;
+  &lt;/connectionStrings&gt;
+  ....</pre>
+
+<p>3-Create an installer for Daos, in InfrastructureInstallers , the code as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using Castle.MicroKernel.Registration;
+using Castle.MicroKernel.SubSystems.Configuration;
+using Castle.Windsor;
+using ChinookWithNugets.Data;
+
+namespace ChinookWithNugets.Infrastructure.Installers
+{
+    public class DaoInstaller : IWindsorInstaller
+    {
+        public void Install(IWindsorContainer container, IConfigurationStore store)
+        {
+            container.Register(Component.For(typeof (IDao&lt;&gt;))
+                                        .Forward(typeof (IDaoReadOnly&lt;&gt;))
+                                        .ImplementedBy(typeof (Dao&lt;&gt;)));
+        }
+    }
+}</pre>
+
+<p>4-Create an installer for NHibernate:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using System.Collections.Generic;
+using System.Web;
+using Castle.Facilities.TypedFactory;
+using Castle.MicroKernel.Registration;
+using Castle.MicroKernel.SubSystems.Configuration;
+using Castle.Windsor;
+using ChinookWithNugets.Infrastructure.SessionManagement;
+using NHibernate;
+using NHibernate.ByteCode.Castle;
+using NHibernate.Cfg;
+using NHibernate.Cfg.Loquacious;
+using NHibernate.Dialect;
+
+namespace ChinookWithNugets.Infrastructure.Installers
+{
+    public class NHibernateInstaller : IWindsorInstaller
+    {
+        public void Install(IWindsorContainer container, IConfigurationStore store)
+        {
+            container.Register(Component.For&lt;ISessionFactory&gt;()
+                    .UsingFactoryMethod(k =&gt; BuildSessionFactory()));
+
+            container.Register(Component.For&lt;ISessionFactoryProvider&gt;().AsFactory());
+
+            container.Register(Component.For&lt;IEnumerable&lt;ISessionFactory&gt;&gt;()
+                                        .UsingFactoryMethod(k =&gt; k.ResolveAll&lt;ISessionFactory&gt;()));
+
+            HttpContext.Current.Application[SessionFactoryProvider.Key]
+                            = container.Resolve&lt;ISessionFactoryProvider&gt;();
+        }
+
+        private ISessionFactory BuildSessionFactory()
+        {
+            var configuration = new Configuration();
+            configuration.DataBaseIntegration(db =&gt;
+            {
+                db.Dialect&lt;MsSql2008Dialect&gt;();
+                db.ConnectionStringName = &quot;Chinook&quot;;
+            });
+            configuration.Properties[Environment.CurrentSessionContextClass]
+                            = typeof (LazySessionContext).AssemblyQualifiedName;
+
+            configuration.Proxy(p =&gt; p.ProxyFactoryFactory&lt;ProxyFactoryFactory&gt;());
+
+            configuration.AddAssembly(GetType().Assembly);
+
+            return configuration.BuildSessionFactory();
+        }
+    }
+}</pre>
+
+<p>5-Create the Album class in </p>
+
+<pre class="brush: xml; wrap-line: false;">namespace ChinookWithNugets.Domain
+{
+    public class Album
+    {
+        public string Title { get; set; } 
+    }
+}</pre>
+
+<p>6-Create a mapping for albums Album.hbm.xml in &quot;DataMappings&quot;: </p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+&lt;hibernate-mapping xmlns=&quot;urn:nhibernate-mapping-2.2&quot;
+                   namespace=&quot;ChinookWithNugets.Domain&quot;
+                   assembly=&quot;ChinookWithNugets&quot;&gt;
+  &lt;class name=&quot;Album&quot;&gt;
+    &lt;id column=&quot;AlbumId&quot;&gt;
+      &lt;generator class=&quot;identity&quot; /&gt;
+    &lt;/id&gt;
+    &lt;property name=&quot;Title&quot; /&gt;
+  &lt;/class&gt;
+&lt;/hibernate-mapping&gt;</pre>
+
+<p>7-Create a HomeController in the Controllers folder:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using System.Linq;
+using System.Web.Mvc;
+using ChinookWithNugets.Data;
+using ChinookWithNugets.Domain;
+
+namespace ChinookWithNugets.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly IDao&lt;Album&gt; daoAlbums;
+
+        public HomeController(IDao&lt;Album&gt; daoAlbums)
+        {
+            this.daoAlbums = daoAlbums;
+        }
+
+        public ActionResult Index()
+        {
+            var albums = daoAlbums.RetriveAll().ToList();
+            return View(albums);
+        }
+   }
+}</pre>
+
+<p>8-Create a Index view in ViewsHome:</p>
+
+<pre class="brush: csharp; wrap-line: false;">&lt;%@ Page Language=&quot;C#&quot; Inherits=&quot;System.Web.Mvc.ViewPage&lt;List&lt;ChinookWithNugets.Domain.Album&gt;&gt;&quot; %&gt;
+
+&lt;html xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;
+&lt;head runat=&quot;server&quot;&gt;
+    &lt;title&gt;&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;ul&gt;
+    &lt;% foreach(var a in Model) { %&gt;
+        &lt;li&gt;&lt;%= a.Title %&gt;&lt;/li&gt;
+    &lt;% } %&gt;
+    &lt;/ul&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>9-Run! you have now a sample ASp.Net MVC application with NHibernate and Castle.Windsor fully integrated.</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-03-07_1853%5B5%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-03-07_1853" border="0" alt="2011-03-07_1853" src="http://joseoncode.com/wp-content/uploads/images/2011-03-07_1853_thumb5B75D.png" width="468" height="539" /></a></p>
+
+<p>If you want to see the full code; it is <a href="https://bitbucket.org/jfromaniello/nugetspeed">here</a>.</p>
+
+<blockquote>
+  <p>IMPORTANT NOTE: unfortunately now you have to do an extra step, regarding internals stuff of the NHibernate project. Install the NHibernate.Castle package…</p></blockquote>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-6511711424851855399' alt='' /></div>

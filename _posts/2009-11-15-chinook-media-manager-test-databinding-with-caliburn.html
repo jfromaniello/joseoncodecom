@@ -1,0 +1,104 @@
+--- 
+layout: post
+title: "Chinook Media Manager: Test Databinding with Caliburn"
+tags: 
+- Caliburn
+- ChinookMM
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/11/chinook-media-manager-tests-databinding.html
+  dsq_thread_id: "314364213"
+  blogger_images: "1"
+---
+<p>As I said before, for the Chinook Media Manager I’m not using neither <a href="http://www.codeplex.com/caliburn">Caliburn</a> nor <a href="www.codeplex.com/CompositeWPF">Prism</a>.     <br />But, whenever I found a limitation on the current tools, I start looking a solution elsewhere. This is how I meet Caliburn.Testability, a great tool.</p>  <h1>The problem</h1>  <p>We don’t know what would be the ViewModel for the View at design time. This is the reason why we don’t have intelliscence in XAML, and in general our databinding are not strongly typed in XAML. So, we can write “naem” instead of “Name”.</p>  <h1>The solution</h1>  <p>Caliburn has a great tool named “Caliburn Testability”, you can read the full <a href="http://devlicio.us/blogs/rob_eisenberg/archive/2009/10/30/nhprof-and-caliburn-testability.aspx">post here</a>. As <a href="http://devlicio.us/blogs/rob_eisenberg/">Rob Eisenberg</a> said, I take this one step farther to build an automatic test.</p>  <p>This is the code:</p>  <pre class="brush: csharp; wrap-lines: false;">public class DataBindingValidator
+{
+        private static BindingValidator ValidatorFor(
+                Type guiElement, Type presenterType)
+        {
+            var boundType = new BoundType(presenterType);
+            var instance = (DependencyObject)Activator.CreateInstance(guiElement);
+            IElement element = Bound.DependencyObject(instance, boundType);
+            return new BindingValidator(element);
+        }
+
+    /// &lt;summary&gt;
+    /// Validate the bindings of a keyvalue pair 
+    /// where the key is the View type and the 
+    /// value is the ViewModel type.
+    /// &lt;/summary&gt;
+    public IEnumerable&lt;ValidationResult&gt; 
+            Validate(IDictionary&lt;Type,Type&gt; viewViewModelDictionary)
+    {
+        foreach (var viewViewModel in viewViewModelDictionary)
+        {
+            BindingValidator validator 
+                = ValidatorFor(viewViewModel.Key, viewViewModel.Value);
+            ValidationResult validatorResult = validator.Validate();
+            yield return validatorResult;
+        }
+    }
+}</pre>
+
+<p>This class validate a IDictionary&lt;Type, Type&gt;, the key is the “View” type, and the value is the ViewModel type. The View must have a public constructor without args, this test will create an instance of the View. The ViewModel type could be a class, could be abstract and even an interface!</p>
+
+<p>The test is really easy, if you are using Caliburn, you already have a IViewStrategy. The Chinook Media Manager use a convention based approach and I don’t have an special artifact for this purpose. So my test looks as follows:</p>
+
+<p>&#160;</p>
+
+<pre class="brush: csharp; wrap-lines: false;">[TestFixture]
+public class TestDataBindings
+{
+    private static Type GetViewForViewModel(Type viewModelType)
+    {
+        string viewName = viewModelType.Name.Replace(&quot;ViewModel&quot;, &quot;View&quot;);
+        string viewFullName = 
+            string.Format(&quot;ChinookMediaManager.GUI.Views.{0}, ChinookMediaManager.GUI&quot;, 
+            viewName);
+        Type viewType = Type.GetType(viewFullName, true);
+        return viewType;
+    }
+
+    [Test]
+    public void AllDatabindingsAreOkay()
+    {
+        bool fail = false;
+        var databindingValidator = new DataBindingValidator();
+
+        Type examplePresenterType = typeof(AlbumManagerViewModel);
+
+        var dictionary = examplePresenterType
+                .Assembly.GetTypes()
+                .Where(type =&gt; type.Namespace.EndsWith(&quot;ViewModels&quot;))
+                .ToDictionary(vmType =&gt; GetViewForViewModel(vmType), 
+                              vmType =&gt; vmType);
+
+        
+
+        foreach (var validationResult in databindingValidator.Validate(dictionary))
+        {
+            if(validationResult.HasErrors)
+            {
+                Console.WriteLine(validationResult.ErrorSummary);
+                fail = true;
+            }
+        }
+
+        fail.Should().Be.False();
+    }
+}</pre>
+
+<p>If you have any error in your databinding this test will fail. This test also show you a list of the DataBinding errors in the console, and for each error the full path inside the View:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image%5B3%5D2.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb5B15D.png" width="609" height="80" /></a> </p>
+
+<p>You can see here the “nesting level”, Album is a property of the EditAlbumViewModel, Title is a property in the Album type. Titl<u>o</u> doesn’t exist. EditAlbumView.Grid.TextBox is the full xaml path to the control holding the databinding. It show Grid and TextBox because these elements doesn’t have a name in xaml.</p>
+
+<p>This is why I use Caliburn.Testability in Chinook Media Manager. </p>
+
+<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello</div>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2450768356938144521' alt='' /></div>

@@ -1,0 +1,224 @@
+--- 
+layout: post
+title: "INotifyCollectionChanged: \xC2\xA1the new behaviour!"
+tags: 
+- NHibernate
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/inotifycollectionchanged-new-behaviour.html
+  blogger_images: "1"
+  dsq_thread_id: "320716862"
+---
+I have been working over the last three weeks on a project with WPF. You can see my last four post about the subject:   <ul>   <ul>     <li><a href="http://jfromaniello.blogspot.com/2009/07/castle-dynamicproxy-add-behaviour-to.html">Castle DynamicProxy: Add behaviour to your entities</a> </li>      <li><a href="http://jfromaniello.blogspot.com/2009/07/caliburnmodelframework-with-only-one.html">Caliburn.ModelFramework with only one interceptor</a> </li>      <li><a href="http://jfromaniello.blogspot.com/2009/07/ieditableobject-another-behaviour-for.html">IEditableObject: another behaviour for your NHibernate entities</a> </li>      <li><a href="http://jfromaniello.blogspot.com/2009/07/inotifypropertychanged-as-aop.html">INotifyPropertyChanged as AOP</a> </li>   </ul> </ul>  <p>This time I will go with the <a href="http://msdn.microsoft.com/en-us/library/system.collections.specialized.inotifycollectionchanged.aspx">INotifyCollectionChanged</a> interface.&#160; <br />Given the following domain:</p>  <pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">Store : IStore<br /></span>{
+    <span style="color: blue">public virtual string </span>Name { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+
+    [<span style="color: #2b91af">NotifyOnChange</span>]
+    <span style="color: blue">public virtual </span><span style="color: #2b91af">IList</span>&lt;<span style="color: #2b91af">IProduct</span>&gt; Products { <span style="color: blue">get</span>; <span style="color: blue">private set</span>; }
+
+    <span style="color: blue">public </span>Store()
+    {
+        Products = <span style="color: blue">new </span><span style="color: #2b91af">List</span>&lt;<span style="color: #2b91af">IProduct</span>&gt;();
+    }
+
+    <span style="color: blue">public virtual void </span>AddProduct(<span style="color: #2b91af">IProduct </span>product)
+    {
+        product.Store = <span style="color: blue">this</span>;
+        Products.Add(product);
+    }
+
+    <span style="color: blue">public virtual void </span>RemoveProduct(<span style="color: #2b91af">IProduct </span>product)
+    {
+        product.Store = <span style="color: blue">null</span>;
+        Products.Remove(product);
+    }
+}</pre>
+
+<p><strong>Note: NotifyOnChangeAttribute is mine.</strong>&#160; <br />The mapping:</p>
+
+<pre class="code"><span style="color: blue">&lt;</span><span style="color: #a31515">hibernate-mapping </span><span style="color: red">xmlns</span><span style="color: blue">=</span>&quot;<span style="color: blue">urn:nhibernate-mapping-2.2</span>&quot;
+                   <span style="color: red">assembly</span><span style="color: blue">=</span>&quot;<span style="color: blue">uNHAddIns.Examples.CustomInterceptor</span>&quot;
+                   <span style="color: red">namespace</span><span style="color: blue">=</span>&quot;<span style="color: blue">uNHAddIns.Examples.CustomInterceptor.Domain</span>&quot;<span style="color: blue">&gt;
+  &lt;</span><span style="color: #a31515">class </span><span style="color: red">name</span><span style="color: blue">=</span>&quot;<span style="color: blue">Store</span>&quot; <span style="color: blue">&gt;
+
+    &lt;</span><span style="color: #a31515">id </span><span style="color: red">type</span><span style="color: blue">=</span>&quot;<span style="color: blue">guid</span>&quot;<span style="color: blue">&gt;
+            &lt;</span><span style="color: #a31515">generator </span><span style="color: red">class</span><span style="color: blue">=</span>&quot;<span style="color: blue">guid</span>&quot;<span style="color: blue">/&gt;
+        &lt;/</span><span style="color: #a31515">id</span><span style="color: blue">&gt;
+    
+        &lt;</span><span style="color: #a31515">property </span><span style="color: red">name</span><span style="color: blue">=</span>&quot;<span style="color: blue">Name</span>&quot;<span style="color: blue">/&gt;
+    
+    &lt;</span><span style="color: #a31515">bag </span><span style="color: red">name</span><span style="color: blue">=</span>&quot;<span style="color: blue">Products</span>&quot; <span style="color: red">cascade</span><span style="color: blue">=</span>&quot;<span style="color: blue">all</span>&quot; <span style="color: red">inverse</span><span style="color: blue">=</span>&quot;<span style="color: blue">true</span>&quot;<span style="color: blue">&gt;
+      &lt;</span><span style="color: #a31515">key </span><span style="color: red">column</span><span style="color: blue">=</span>&quot;<span style="color: blue">StoreId</span>&quot; <span style="color: blue">/&gt;
+      &lt;</span><span style="color: #a31515">one-to-many </span><span style="color: red">class</span><span style="color: blue">=</span>&quot;<span style="color: blue">IProduct</span>&quot; <span style="color: blue">/&gt;
+    &lt;/</span><span style="color: #a31515">bag</span><span style="color: blue">&gt;
+    
+    &lt;/</span><span style="color: #a31515">class</span><span style="color: blue">&gt;
+&lt;/</span><span style="color: #a31515">hibernate-mapping</span><span style="color: blue">&gt;</span></pre>
+We need to meet the following test: 
+
+<br />
+
+<br />
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>NotifyOnChangeProperty_Should_Implement_INotifyCollectionChanged()
+{
+    <span style="color: blue">var </span>store = container.Resolve&lt;<span style="color: #2b91af">IStore</span>&gt;();
+    <span style="color: blue">typeof</span>(<span style="color: #2b91af">INotifyCollectionChanged</span>).IsAssignableFrom(store.Products.GetType());
+    <span style="color: blue">typeof</span>(<span style="color: #2b91af">INotifyPropertyChanged</span>).IsAssignableFrom(store.Products.GetType());
+}</pre>
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>add_should_raise_collectionchanged()
+{
+    <span style="color: blue">var </span>store = container.Resolve&lt;<span style="color: #2b91af">IStore</span>&gt;();
+    <span style="color: #2b91af">IProduct </span>newProduct = CreateNewProduct();
+    <span style="color: blue">bool </span>eventWasRaised = <span style="color: blue">false</span>;
+
+    ((<span style="color: #2b91af">INotifyCollectionChanged</span>) store.Products)
+        .CollectionChanged += (sender, args) =&gt;
+        {
+            eventWasRaised = <span style="color: blue">true</span>;
+            args.Action.Should().Be.EqualTo(<span style="color: #2b91af">NotifyCollectionChangedAction</span>.Add);
+            args.NewItems.Count.Should().Be.EqualTo(1);
+            args.NewItems[0].Should().Be.EqualTo(newProduct);
+        };
+
+
+    store.AddProduct(newProduct);
+
+    eventWasRaised.Should().Be.True();
+}</pre>
+
+<p><a href="http://11011.net/software/vspaste"></a><a href="http://11011.net/software/vspaste"></a>I won't show you the full set of test for now. 
+
+  <br />
+
+  <br />Implementing the dynamicProxy interceptor:</p>
+
+<pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">CollectionPropertyInterceptor </span>: <span style="color: #2b91af">IInterceptor
+</span>{
+
+    <span style="color: blue">private readonly </span><span style="color: #2b91af">IDictionary</span>&lt;<span style="color: blue">string</span>, <span style="color: blue">object</span>&gt; _interceptedCollections
+        = <span style="color: blue">new </span><span style="color: #2b91af">Dictionary</span>&lt;<span style="color: blue">string</span>, <span style="color: blue">object</span>&gt;();
+
+    <span style="color: blue">private object</span>[] AttributeLookup(<span style="color: #2b91af">Type </span>type, <span style="color: #2b91af">Type </span>attribType, <span style="color: blue">string </span>propertyName) 
+    {}
+
+    <span style="color: blue">#region </span>IInterceptor Members
+
+    <span style="color: blue">public void </span>Intercept(<span style="color: #2b91af">IInvocation </span>invocation)
+    {
+        <span style="color: blue">if </span>(!invocation.MethodInvocationTarget.Name.StartsWith(<span style="color: #a31515">&quot;get_&quot;</span>))
+        {
+            invocation.Proceed();
+            <span style="color: blue">return</span>;
+        }
+
+        <span style="color: blue">string </span>propName = invocation.MethodInvocationTarget.Name.Substring(4);
+
+        <span style="color: blue">if </span>(AttributeLookup(invocation.InvocationTarget.GetType(),
+                            <span style="color: blue">typeof </span>(<span style="color: #2b91af">NotifyOnChangeAttribute</span>),
+                            propName).Length != 1)
+        {
+            invocation.Proceed();
+            <span style="color: blue">return</span>;
+        }
+
+
+        <span style="color: blue">object </span>interceptedCollection;
+        _interceptedCollections.TryGetValue(propName, <span style="color: blue">out </span>interceptedCollection);
+
+        <span style="color: blue">if </span>(interceptedCollection != <span style="color: blue">null</span>)
+        {
+            invocation.ReturnValue = interceptedCollection;
+        }
+        <span style="color: blue">else
+        </span>{
+            invocation.Proceed();
+
+            <span style="color: blue">var </span>itemType = invocation.ReturnValue.GetType()
+                                     .GetGenericArguments()[0];
+
+            <span style="color: blue">var </span>observableType = <span style="color: blue">typeof </span>(<span style="color: #2b91af">ObservableCollection</span>&lt;&gt;)
+                                        .MakeGenericType(itemType);
+
+            <span style="color: blue">object </span>newInterceptedCollection = 
+                <span style="color: #2b91af">Activator</span>.CreateInstance(observableType, invocation.ReturnValue);
+
+            invocation.ReturnValue = newInterceptedCollection;
+
+            _interceptedCollections.Add(propName, newInterceptedCollection);
+        }
+    }
+
+    <span style="color: blue">#endregion
+</span>}</pre>
+<a href="http://11011.net/software/vspaste"></a>Ok, what I’m doing here? Let me explain, this interceptor intercept the “get_Products” method call, and enwrap the return type into an ObservableCollection. Then I store this collection in a dictionary for subsequent calls. 
+
+<br />
+
+<br />You need to register the Store entity as follows: 
+
+<br />
+
+<br />
+
+<pre class="code">container.Register(<span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">Store</span>&gt;()
+                       .Interceptors(<span style="color: blue">new </span><span style="color: #2b91af">InterceptorReference</span>(
+                           <span style="color: blue">typeof </span>(<span style="color: #2b91af">CollectionPropertyInterceptor</span>))).Anywhere
+                       .ImplementedBy&lt;<span style="color: #2b91af">Store</span>&gt;()
+                       .EnableNhibernateEntityCompatibility()
+                       .LifeStyle.Transient);
+
+container.Register(<span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IStore</span>&gt;()
+                       .UsingFactoryMethod(kernel =&gt; kernel.Resolve&lt;<span style="color: #2b91af">Store</span>&gt;())
+                       .LifeStyle.Transient);</pre>
+<a href="http://11011.net/software/vspaste"></a>Using the EnhancedBytecode provider from unhaddins this test also works: 
+
+<br />
+
+<br />
+
+<pre class="code">[<span style="color: #2b91af">Test</span>]
+<span style="color: blue">public void </span>add_should_raise_collectionchanged_on_nontrascient()
+{
+    <span style="color: blue">var </span>id = CreateFooStore();
+    <span style="color: #2b91af">IProduct </span>newProduct = CreateNewProduct();
+
+    <span style="color: blue">using </span>(<span style="color: blue">var </span>session = sessions.OpenSession())
+    <span style="color: blue">using</span>(session.BeginTransaction())
+    {
+        <span style="color: blue">var </span>store = session.Get&lt;<span style="color: #2b91af">Store</span>&gt;(id);
+        <span style="color: blue">bool </span>eventWasRaised = <span style="color: blue">false</span>;
+        ((<span style="color: #2b91af">INotifyCollectionChanged</span>)store.Products)
+            .CollectionChanged += (sender, args) =&gt;
+                {
+                    eventWasRaised = <span style="color: blue">true</span>;
+                    
+                    args.Action
+                        .Should().Be.EqualTo(<span style="color: #2b91af">NotifyCollectionChangedAction</span>.Add);
+                    
+                    args.NewItems.Count
+                        .Should().Be.EqualTo(1);
+                    
+                    args.NewItems[0]
+                        .Should().Be.EqualTo(newProduct);
+                };
+
+
+        store.AddProduct(newProduct);
+
+        eventWasRaised.Should().Be.True();
+    }
+
+}<br /></pre>
+
+<br />I'm going to merge these functions into one package with everything you need to work with wpf, nhibernate and the aforementioned interfaces. This package will be available at unhaddins.
+
+  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-425759318572067026' alt='' /></div>

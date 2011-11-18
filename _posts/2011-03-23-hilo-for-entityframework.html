@@ -1,0 +1,261 @@
+--- 
+layout: post
+title: HiLo for EntityFramework
+tags: 
+- EntityFramework
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/03/hilo-for-entityframework.html
+  dsq_thread_id: "314666581"
+  blogger_images: "1"
+---
+<p align="left">I wrote a little implementation of the HiLo pattern for EntityFramework. Those who are using NHibernate currently already knows how this pattern works but I am going to give a little explanation.</p>  <p align="left">The Hi/Lo pattern describe a mechanism for generating safe-ids on the client side rather than the database. Safe in this context means without collisions. This pattern is interesting for three reasons:</p>  <ul>   <li>     <div align="left">It doesn’t break the Unit of Work pattern (<a href="http://nhforge.org/blogs/nhibernate/archive/2008/12/21/identity-the-never-ending-story.aspx">check&#160; this link</a> and <a href="http://fabiomaulo.blogspot.com/2009_02_01_archive.html">this other one</a>)</div>   </li>    <li>     <div align="left">It doesn’t need many round-trips as the Sequence generator in other DBMS.</div>   </li>    <li>     <div align="left">It generates human readable identifier unlike to GUID techniques.</div>   </li> </ul>  <h2 align="left">How it works?</h2>  <p align="left">The identifier generated is composed of two parts; the Hi part and the Lo part. The Hi part of the identifier is controlled by the database while the Lo part is controlled by the client side. Applications need to agree in only one parameter called “MaxLo”.</p>  <p align="left">Imagine we agree to use a MaxLo of 100. Once the application needs to generate an ID for the first time; it will ask a Hi to the database; suppose the database returns “1”.&#160; Now the application knows, that it can use identifiers from 1 to 100. Once the application run out of “Lo” because it hits the MaxLo; the application will ask for another Lo to the database.</p>  <p align="left">NHibernate support this out of the box while EntityFramework is far from that.</p>  <h2 align="left">Test case</h2>  <p align="left">I didn’t write much tests cases for this feature but this should be very descriptive:</p>  <pre class="brush: csharp; wrap-line: false;">[Test]
+public void ShouldWork()
+{
+    var expected = Enumerable.Range(0, 200).Select(i =&gt; (long)i).ToList();
+
+    using(var context = new SampleContext())
+    {
+        //create 200 products:
+        var products = Enumerable.Range(0, 200)
+            .Select(i =&gt; new Product {Name = string.Format(&quot;Test product {0}&quot;, i) }).ToList();
+        
+        //add to the dbSet: DO NOT FLUSH THE CHANGES YET.
+        products.ForEach(p =&gt; context.Orders.Add(p));
+        
+        //Assert
+        products.Select(p =&gt; p.Id)
+            .Should().Have.SameSequenceAs(expected);
+
+
+        context.SaveChanges();
+    }
+}</pre>
+
+<p>First; create 200 new products; then call the method Add of the DbSet. One of the interesting things about this, is that I want the ID right when I call Add, despite if I flush the changes or no.</p>
+
+<h2>Solution</h2>
+
+<p>The first class is the HiLoGenerator:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class HiLoGenerator&lt;TDbContext&gt; : IHiLoGenerator
+    where TDbContext : DbContext, new()
+{
+    private static readonly object ConcurrencyLock = new object();
+    private readonly int maxLo;
+    private string connectionString;
+    private long currentHi = -1;
+    private int currentLo;
+
+    public HiLoGenerator(int maxLo)
+    {
+        this.maxLo = maxLo;
+    }
+
+    #region IHiLoGenerator Members
+
+    public long GetIdentifier()
+    {
+        long result;
+        lock (ConcurrencyLock)
+        {
+            if (currentHi == -1)
+            {
+                MoveNextHi();
+            }
+            if (currentLo == maxLo)
+            {
+                currentLo = 0;
+                MoveNextHi();
+            }
+            result = (currentHi*maxLo) + currentLo;
+            currentLo++;
+        }
+        return result;
+    }
+
+    public void SetConnectionString(string newConnectionString)
+    {
+        connectionString = newConnectionString;
+    }
+
+    #endregion
+
+    private void MoveNextHi()
+    {
+        using (var connection = CreateConnection())
+        {
+            connection.Open();
+            using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
+            using (var selectCommand = connection.CreateCommand())
+            {
+                selectCommand.Transaction = tx;
+                selectCommand.CommandText =
+                    &quot;SELECT next_hi FROM entityframework_unique_key;&quot; +
+                     &quot;UPDATE entityframework_unique_key SET next_hi = next_hi + 1;&quot;;
+                currentHi = (int)selectCommand.ExecuteScalar();
+
+                tx.Commit();
+            }
+            connection.Close();
+        }
+        
+    }
+
+    private IDbConnection CreateConnection()
+    {
+        using (var dbContext = new TDbContext())
+        {
+            var connectionType = dbContext.Database.Connection.GetType();
+            connectionString = connectionString ?? dbContext.Database.Connection.ConnectionString;
+            return (IDbConnection) Activator.CreateInstance(connectionType, connectionString);
+        }
+    }
+}</pre>
+
+<p>This class is intented to be used as singleton; for the whole application. That’s why it has a concurrency look. The most important thing happens here:</p>
+
+<blockquote>
+  <p>result = (currentHi * maxLo) + currentLo; </p>
+</blockquote>
+
+<p>Then we need to tweak our DbContext as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class SampleContext : DbContext
+{
+    private static readonly HiLoGenerator&lt;SampleContext&gt; HiloGenerator 
+        = new HiLoGenerator&lt;SampleContext&gt;(100);
+
+    private IDbSet&lt;Product&gt; orders;
+    public IDbSet&lt;Product&gt; Orders
+    {
+        get { return orders; }
+        set { orders = new HiLoSet&lt;Product&gt;(value, HiloGenerator); }
+    }
+
+    protected override void OnModelCreating(DbModelBuilder modelBuilder)
+    {
+        modelBuilder.Conventions.Remove&lt;StoreGeneratedIdentityKeyConvention&gt;();
+        modelBuilder.Entity&lt;Product&gt;().HasKey(p =&gt; p.Id);
+    }
+}</pre>
+
+<p>And then the HiLoSet is a wrapper arround DbSet;</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class HiLoSet&lt;T&gt; : IDbSet&lt;T&gt; where T : EntityBase
+{
+    private readonly IDbSet&lt;T&gt; dbSet;
+    private readonly IHiLoGenerator generator;
+
+    public HiLoSet(IDbSet&lt;T&gt; dbSet, IHiLoGenerator generator)
+    {
+        this.dbSet = dbSet;
+        this.generator = generator;
+    }
+
+    public T Add(T entity)
+    {
+        var add = dbSet.Add(entity);
+        TrySetId(entity);
+        return add;
+    }
+
+    private void TrySetId(EntityBase entity)
+    {
+        if (entity.Id == default(long))
+        {
+            entity.Id = generator.GetIdentifier();
+            HandleChildsObjects(entity);
+        }
+    }
+
+    private void HandleChildsObjects(EntityBase entity)
+    {
+        var propertyInfos = new List&lt;PropertyInfo&gt;();
+        var typeToLook = entity.GetType();
+        do
+        {
+            var newProps = entity.GetType()
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =&gt; typeof(IEnumerable&lt;EntityBase&gt;).IsAssignableFrom(p.PropertyType)).ToList();
+            propertyInfos.AddRange(newProps);
+            typeToLook = typeToLook.BaseType;
+        } while (typeToLook != typeof (object));
+        
+
+        var aggregated = propertyInfos
+            .Select(p =&gt; p.GetValue(entity, null))
+            .OfType&lt;IEnumerable&lt;EntityBase&gt;&gt;()
+            .Where(col =&gt; col != null).SelectMany(col =&gt; col);
+        foreach (var child in aggregated)
+        {
+            TrySetId(child);
+        }
+    }
+
+    #region no op methods
+        public IEnumerator&lt;T&gt; GetEnumerator()
+        {
+            return dbSet.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable)dbSet).GetEnumerator();
+        }
+
+        public Expression Expression
+        {
+            get { return dbSet.Expression; }
+        }
+
+        public Type ElementType
+        {
+            get { return dbSet.ElementType; }
+        }
+
+        public IQueryProvider Provider
+        {
+            get { return dbSet.Provider; }
+        }
+
+        public T Find(params object[] keyValues)
+        {
+            return dbSet.Find(keyValues);
+        }
+
+        public T Remove(T entity)
+        {
+            return dbSet.Remove(entity);
+        }
+
+        public T Attach(T entity)
+        {
+            return dbSet.Attach(entity);
+        }
+
+        public T Create()
+        {
+            return dbSet.Create();
+        }
+
+        public TDerivedEntity Create&lt;TDerivedEntity&gt;() where TDerivedEntity : class, T
+        {
+            return dbSet.Create&lt;TDerivedEntity&gt;();
+        }
+
+        public ObservableCollection&lt;T&gt; Local
+        {
+            get { return dbSet.Local; }
+        }
+        #endregion
+}</pre>
+
+<p>When we call the Add method, we set the ids for the object and we even explore the child objects to do the same. 
+  <br />It is a hacky solution but will work for most of the cases.
+
+  <br />That is all the code! I hope you find useful.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2373754305126295613' alt='' /></div>

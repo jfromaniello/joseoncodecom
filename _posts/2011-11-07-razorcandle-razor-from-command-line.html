@@ -1,0 +1,87 @@
+--- 
+layout: post
+title: RazorCandle; razor from command line
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  _edit_last: "1"
+  dsq_thread_id: "463766196"
+---
+<p><a href="https://github.com/jfromaniello/RazorCandle">RazorCandle</a> is an opensource command line utility to render razor templates and save the result to the disks that I built last week. The reason why I needed this is a matter for another post.</p>  <p>RazorCandle is deliver as a single file executable that you can download right on the github page.</p>  <h1>How it works</h1>  <p>The command line options are:</p>  <pre class="brush: plain; wrap-line: false;">RazorCandle.exe source  [destination] [/M]  [/V]
+
+source         Specifies the source razor file.
+[destination]  Specify the output file. By default is the same name as the
+               source with the html extension.
+[/?]           Show Help
+[/M]           Json model as string to the model.
+[/V]           Verbose mode. Show result in the output</pre>
+
+<h1>Sub Templates</h1>
+
+<p>I have implemented sub templates, so for instance you can invoke a subtemplate as follows:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;html&gt;
+    &lt;head&gt;
+    &lt;title&gt;Hello&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+    @Html.Partial(&quot;Nested.cshtml&quot;)
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<h1>Relative directories</h1>
+
+<p>You have to keep in mind that all the code that is executed inside a razor template has as a current directory the directory where the template is located, even for subtemplates.</p>
+
+<p>So you can do things like:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;html&gt;
+    &lt;head&gt;
+    &lt;title&gt;Hello&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+    @Html.Partial(&quot;..\\relative\\Nested.cshtml&quot;)
+
+    @foreach (var file in System.IO
+             .Directory.GetFiles(&quot;subtemplates\\&quot;, &quot;*.cshtml&quot;))
+    {
+       &lt;script type=&quot;text/javascript&quot; src=&quot;@file&quot;&gt;&lt;/script&gt;
+    }
+
+    @foreach (var file in System.IO
+             .Directory.GetFiles(&quot;scripts\\&quot;, &quot;*.js&quot;)
+                       .Select(f =&gt; f.Replace(&quot;\\&quot;, &quot;/&quot;)))
+    {
+       &lt;script type=&quot;text/javascript&quot; src=&quot;@file&quot;&gt;&lt;/script&gt;
+    }
+
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<h1>Template Model</h1>
+
+<p>RazorCandle also supports models. If you have a template like:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;html&gt;
+    &lt;head&gt;
+    &lt;title&gt;Hello&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;p&gt;hello @Model.FirstName @Model.LastName&lt;/p&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>You can render it as:</p>
+
+<pre class="brush: plain; wrap-line: false;">RazorCandle.exe myfile.cshtml /M=&quot;{FirstName: 'Alberto', LastName: 'Perez' }&quot;</pre>
+
+<p>The string in the M parameter is a JSON.</p>
+
+<h1>What’s next?</h1>
+
+<p>A .Net version of <a href="http://middlemanapp.com/">middleman</a>?</p>
+
+<p>Fork me on <a href="https://github.com/jfromaniello/RazorCandle">github</a>!</p>

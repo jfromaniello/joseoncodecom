@@ -1,0 +1,139 @@
+--- 
+layout: post
+title: RestBucks on .Net; querying the order
+tags: 
+- rest
+- RestBucks
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "324832348"
+---
+<p><em>Previous posts</em></p>  <ul>   <li><a href="http://joseoncode.com/2011/05/31/introducing-restbucks-on-net/"><em>Introducing RestBucks on .Net</em></a> </li>    <li><a href="http://joseoncode.com/2011/06/01/restbucks-on-net-ordering-coffee/"><em>RestBucks on .Net; ordering coffee</em></a><em> </em></li>    <li><a href="http://joseoncode.com/2011/06/03/restbucks-on-net-is-online/"><em>RestBucks on .Net is onilne!</em></a> </li> </ul>  <p>In my previous post; <a href="http://joseoncode.com/2011/06/01/restbucks-on-net-ordering-coffee/">ordering coffee</a> we end up with a response from the server with the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.30">Location</a> of the new resource.</p>  <p>Then, a REST client is supposed to do a GET of this URL in order to:</p>  <ul>   <li>Get some additional information, like the total cost of the order which is calculated in the backend. </li>    <li>Get the current state of the order. </li>    <li>Get the links for the next actions. </li> </ul>  <p>This must sound familiar if you’ve ever shop online. Even if we don’t have a graphical interface; the workflow is just like any online purchase.</p>  <p>In RESTBucks the order process follows this workflow:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-07_1150.png"><img style="background-image: none; border-right-width: 0px; margin: 0px auto 18px; padding-left: 0px; padding-right: 0px; display: block; float: none; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-06-07_1150" border="0" alt="2011-06-07_1150" src="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-07_1150_thumb.png" width="490" height="485" /></a></p>  <p>Then, if we do a GET of http://restbuckson.net/order/{id} we will expect something like this:</p>  <pre class="brush: xml; wrap-line: false;">&lt;order&gt;
+    &lt;links&gt;
+        &lt;link uri=&quot;http://restbuckson.net/order/557056&quot; 
+            rel=&quot;http://restbuckson.net/docs/order-get.htm&quot; 
+            mediaType=&quot;application/vnd.restbucks+xml&quot;/&gt;
+
+        &lt;link uri=&quot;http://restbuckson.net/order/557056&quot; 
+            rel=&quot;http://restbuckson.net/docs/order-update.htm&quot; 
+            mediaType=&quot;application/vnd.restbucks+xml&quot;/&gt;
+
+        &lt;link uri=&quot;http://restbuckson.net/order/557056&quot; 
+            rel=&quot;http://restbuckson.net/docs/order-cancel.htm&quot; 
+            mediaType=&quot;application/vnd.restbucks+xml&quot;/&gt;
+
+        &lt;link uri=&quot;http://restbuckson.net/order/557056/payment&quot; 
+            rel=&quot;http://restbuckson.net/docs/order-pay.htm&quot; 
+            mediaType=&quot;application/vnd.restbucks+xml&quot;/&gt;
+    &lt;/links&gt;
+    &lt;location&gt;inShop&lt;/location&gt;
+    &lt;cost&gt;7.60000&lt;/cost&gt;
+    &lt;items&gt;
+        &lt;item&gt;
+            &lt;name&gt;Latte&lt;/name&gt;
+            &lt;quantity&gt;1&lt;/quantity&gt;
+            &lt;milk&gt;skim&lt;/milk&gt;
+            &lt;size&gt;large&lt;/size&gt;
+        &lt;/item&gt;
+    &lt;/items&gt;
+    &lt;status&gt;unpaid&lt;/status&gt;
+&lt;/order&gt;</pre>
+
+<p>This is documented <a href="http://restbuckson.net/docs/order-get.htm">here</a> ;) . The purpose of the &lt;links /&gt; section is that the consumer of this API should not know much about the implementation or the location of each step. You can think this as if you were buying something in amazon, you don’t know where is the payment step and it is unlikely that some user will put an URL in the browser like “http://amazon.com/pay”.</p>
+
+<h1>Implementing the GET method</h1>
+
+<p>The implementation of the get method is this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[WebGet(UriTemplate = &quot;{orderId}&quot;)]
+public HttpResponseMessage Get(int orderId)
+{
+    var order = orderRepository.GetById(orderId);
+
+    if (order == null) return Responses.NotFound();
+    
+    var representation = OrderRepresentationMapper.Map(order);
+    var response = new HttpResponseMessage&lt;OrderRepresentation&gt;(representation);
+    
+    return response;
+}</pre>
+
+<p>As I said in my previous post, I am using a OrderRepresentation to -represent- the resource and serialize it.</p>
+
+<p>The OrderRepresentationMapper.Map method converts an Order to an OrderRepresentation as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class OrderRepresentationMapper
+{
+    public static OrderRepresentation Map(Order order)
+    {
+        return new OrderRepresentation
+                   {
+                       Cost = order.Total,
+                       Status = order.Status,
+                       Location = order.Location,
+                       Items = order.Items.Select(i =&gt; new OrderItemRepresentation
+                                    {
+                                        Name = i.Product.Name,
+                                        Preferences = i.Preferences.ToDictionary(p =&gt; p.Key, p =&gt; p.Value),
+                                        Quantity = i.Quantity
+                                    }).ToList(),
+                       Links = GetLinks(order).ToList()   
+                   };
+        
+    }
+
+    public static IEnumerable&lt;Link&gt; GetLinks(Order order)
+    {
+        var baseUri = new UriSegment(ConfigurationManager.AppSettings[&quot;baseUri&quot;]);
+        var linker = new ResourceLinker(baseUri.Segment);
+
+        var get = new Link(linker.GetUri&lt;OrderResourceHandler&gt;(r =&gt; r.Get(0, null), new { orderId = order.Id }), 
+                            baseUri + &quot;docs/order-get.htm&quot;, 
+                            MediaTypes.Default);
+
+        var update = new Link(linker.GetUri&lt;OrderResourceHandler&gt;(r =&gt; r.Update(0, null), new { orderId = order.Id }),
+                            baseUri + &quot;docs/order-update.htm&quot;,
+                            MediaTypes.Default);
+
+        var cancel = new Link(linker.GetUri&lt;OrderResourceHandler&gt;(r =&gt; r.Cancel(0), new { orderId = order.Id }),
+                            baseUri + &quot;docs/order-cancel.htm&quot;,
+                            MediaTypes.Default);
+
+        var pay = new Link(linker.GetUri&lt;OrderResourceHandler&gt;(r =&gt; r.Pay(0, null), new { orderId = order.Id }),
+                            baseUri + &quot;docs/order-pay.htm&quot;,
+                            MediaTypes.Default);
+
+        var receipt = new Link(linker.GetUri&lt;OrderResourceHandler&gt;(r =&gt; r.Receipt(0), new { orderId = order.Id }),
+                            baseUri + &quot;docs/receipt-coffee.htm&quot;,
+                            MediaTypes.Default);
+
+        switch (order.Status)
+        {
+            case OrderStatus.Unpaid:
+                yield return get;
+                yield return update;
+                yield return cancel;
+                yield return pay;
+                break;
+            case OrderStatus.Paid:
+            case OrderStatus.Delivered:
+                yield return get;
+                break;
+            case OrderStatus.Ready:
+                yield return receipt;
+                break;
+            case OrderStatus.Canceled:
+                yield break;
+            default:
+                yield break;
+        }
+    }
+}</pre>
+
+<p>The GetLinks method builds an enumeration of the possible next steps given the status of an order. The ResourceLinker is just a fancy way to get a link to another action/resource (we didn't implement those actions yet).</p>
+
+<p>If you want to explore how this work (or how to test it) you can have a look to <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/a964b0a6a660#RestBucks.Tests%2fDomain%2fGivenAnUnpaidOrder.cs">these</a> <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/a964b0a6a660#RestBucks.Tests%2fResources%2fWhenUserGETsAnOrder.cs">tests</a>.</p>
+
+<p>In the next article I am going to show how I did the Cancel operation, stay tuned!</p>

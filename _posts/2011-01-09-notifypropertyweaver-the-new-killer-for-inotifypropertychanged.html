@@ -1,0 +1,150 @@
+--- 
+layout: post
+title: "NotifyPropertyWeaver: The new killer for INotifyPropertyChanged"
+tags: 
+- DynamicProxy
+- PostSharp
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2011/01/notifypropertyweaver-new-killer-of.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314364955"
+---
+<p>I found <a href="http://code.google.com/p/notifypropertyweaver/">this project</a> several days ago. </p>  <p>This project uses <a href="http://www.mono-project.com/Cecil">Mono.Cecil</a> to “weave” your assemblies after compilation.</p>  <p>From the google code website you can see this example:</p>  <pre class="brush: csharp;">//Original
+public class Person : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    public string GivenNames { get; set; }
+    public string FamilyName { get; set; }
+
+    public string FullName
+    {
+        get
+        {
+            return string.Format(&quot;{0} {1}&quot;, GivenNames, FamilyName);
+        }
+    }
+
+}
+
+//Weaved
+public class Person : INotifyPropertyChanged
+{
+
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    private string givenNames;
+    public string GivenNames
+    {
+        get { return givenNames; }
+        set
+        {
+            if (value != givenNames)
+            {
+                givenNames = value;
+                OnPropertyChanged(&quot;GivenNames&quot;);
+                OnPropertyChanged(&quot;FullName&quot;);
+            }
+        }
+    }
+
+    private string familyName;
+    public string FamilyName
+    {
+        get { return familyName; }
+        set 
+        {
+            if (value != familyName)
+            {
+                familyName = value;
+                OnPropertyChanged(&quot;FamilyName&quot;);
+                OnPropertyChanged(&quot;FullName&quot;);
+            }
+        }
+    }
+
+    public string FullName
+    {
+        get
+        {
+            return string.Format(&quot;{0} {1}&quot;, GivenNames, FamilyName);
+        }
+    }
+
+    public void OnPropertyChanged(string propertyName)
+    {
+        var propertyChanged = PropertyChanged;
+        if (propertyChanged != null)
+        {
+            propertyChanged(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}</pre>
+
+<p>Some interesting points:</p>
+
+<ul>
+  <li>It works on almost all versions of SL and WPF (<a href="http://code.google.com/p/notifypropertyweaver/wiki/SupportedRuntimesAndIde">read more</a>). </li>
+
+  <li>It works if you already have a base class with any invoker method name (<a href="http://code.google.com/p/notifypropertyweaver/wiki/EventInvokerSelectionInjection">read more</a>).</li>
+
+  <li>It has a very sophisticated algorithm to detect when it has to inject the invocation (<a href="http://code.google.com/p/notifypropertyweaver/wiki/HowPropertiesAreSelected">read more</a>).</li>
+
+  <li>It show very useful information on the output console when you build the project.</li>
+
+  <li>It doesn't need any reference to any assembly.</li>
+
+  <li>You can tell the weaver to try to inject on any members of any type. (<a href="http://code.google.com/p/notifypropertyweaver/wiki/PropertyInclusion">read more</a>)</li>
+
+  <li>You can tell explicitly in which properties you want the invocation (with an attribute and a reference that is removed after weaving).</li>
+
+  <li>You can mix implicit and explicit mode.</li>
+</ul>
+
+<p>I’ve been writing about automatically implementing INotifyPropertyChanged with DynamicProxy and there are other solutions like PostSharp, but I think this is the best option so far.</p>
+
+<h2>Cons of the DynamicProxy version</h2>
+
+<p>There are two main concerns with the DynamicProxy version:</p>
+
+<ul>
+  <li>WPF and Silverlight databinding infrastructure use a lot of reflection, with dynamicproxy sometimes things simply wont work. Marco Amendola wrote about some workarounds&#160; (<a href="http://marcoamendola.wordpress.com/2010/03/01/binding-to-an-interface-property-with-wpf/">link</a> <a href="http://marcoamendola.wordpress.com/2009/09/18/wpf-binding-to-a-windsor-proxied-component/">link</a>).</li>
+
+  <li>DynamicProxy versions that I saw doesn’t handle readonly scenarios like FullName or does but in a very inefficient and complex way.</li>
+</ul>
+
+<h2>Cons of the PostSharp version</h2>
+
+<p>Like the DynamicProxy version, PostSharp versions that I saw, doesn’t handle readonly scenarios like FullName. I started a thread in the “Sharing Ideas” forum a on July of 2010, because I thought this was an important (and possible) feature to the framework, but the answer was that it wasn’t possible (<a href="http://www.sharpcrafters.com/forum/Topic4977-23-1.aspx">read the full thread here</a> surprisingly enough I gave they the same example that is in the NotifyPropertyWeaver main page). Gael Fraiteur said about an alternative approach, like having a code as follows:</p>
+
+<pre class="brush: csharp;">public class Person
+{
+  [NotifyPropertyChanged(Dependants = &quot;FullName&quot;)]
+  public string FirstName{get;set;}
+
+  [NotifyPropertyChanged(Dependants = &quot;FullName&quot;)]
+  public string LastName{get;set;}
+
+  public string FullName
+  {
+    get{ return FirstName + &quot; &quot; + LastName; }
+  }
+}</pre>
+
+<p>I’ve never used it, and I’ve never used PostSharp for INPC, because I don’t see any advantage compared the standard way in such cases.</p>
+
+<p>Because PostSharp is a general purpose AOP framework and it can do a lot of things more than the NotifyPropertyWeaver, the weaved code may look unfamiliar and very complex. I don’t think it is inefficient or slow code, and it is not an issue for me, but I hear other people to say that.</p>
+
+<h2>Finally</h2>
+
+<p>Don’t get me wrong, PostSharp and DynamicProxy are both great frameworks and they are useful for lot of other things. I really like PostSharp as an AOP framework, using Mono.Cecil to modify your assemblies is not something than mortals like me can do on daily work, but I can implement a PostSharp aspect with few lines of code.</p>
+
+<p>However my advice for INotifyPropertyChanged is to use this framework.</p>
+
+<p>Kudos for <a href="http://www.twitter.com/SimonCropp">Simon Cropp</a> for the amazing work and for be willing to hear opinions about his project. I started to tweet about his project, and he immediately added me to twitter and gtalk. This says a lot about him and his commitment as an OSS project lead. </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-31365774326984989' alt='' /></div>

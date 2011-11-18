@@ -1,0 +1,64 @@
+--- 
+layout: post
+title: Extendiendo ModelBinder de ASP.Net MVC
+tags: 
+- ModelBinder
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/03/modelbinder-al-extremo.html
+  dsq_thread_id: "318923621"
+---
+A raíz de una <a href="http://groups.google.com/group/sharp-architecture/browse_thread/thread/9252c7908c0d87ba/de046f33669d1739?lnk=gst&amp;q=model+binder#de046f33669d1739">pregunta</a> que hice en el foro de <a href="http://code.google.com/p/sharp-architecture/">S#arp</a>, fue que surgió este tema. El problema es que en un modelo MVC la vista es totalmente agnóstica con respecto al modelo de dominio. No obstante ASP.Net MVC introduce un concepto denominado ModelBinder cuyo funcionamiento sería algo así; supongamos que en una vista que sirve para llenar los datos de una persona tenemos 3 inputs llamados Persona.Nombre, Persona.Apellido y Persona.Domicilio. Mi action method podría ser de la siguiente forma:   <pre class="c-sharp" name="code">//Sin usar model binder.
+[AcceptVerbs(HttpVerbs.Post)]
+public ActionResult GuardarPersona(string nombre, string apellido, string domicilio)
+{
+    //bla-bla-bla
+    return View();
+}
+
+//Usando model binder.
+[AcceptVerbs(HttpVerbs.Post)]
+public ActionResult GuardarPersona(Persona personaAGuardar)
+{
+    //bla-bla-bla
+    return View();
+}</pre>
+La ventaja de usar el modelbinder en este caso es que automáticamente obtengo una instancia de la clase del modelo con todas sus propiedades cargadas. El problema empieza cuando tengo una clase un poco mas complejas con propiedades no triviales (no es string, int, decimal, etc.) Para los fines del ejemplo, supongamos una vista de este tipo: <a href="http://joseoncode.com/wp-content/uploads/2011/06/pantalla%5B4%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="pantalla" border="0" alt="pantalla" src="" width="332" height="372" /></a> El dominio tiene esta pinta: 
+
+<pre class="c-sharp" name="code">    public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string UserName { get; set; }
+    public string Password { get; set; }
+    public Country Country { get; set; }
+    public IEnumerable&lt;Sport&gt; SportsPreferences { get; set; }
+}
+
+public class Country
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+public class Sport
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}</pre>
+DefaultModelBinder no puede con las propiedades Country y SportsPreferences y sería muy POSITIVO que si pudiera. <strong>Un problema-muchos caminos</strong> El problema radica en que la vista no tiene información acerca de países ni deportes, mas que la necesaria para mostrarle al usuario esos datos y permitirle saber al controlador cuales son los que el usuario selecciono. A grandes rasgos las soluciones que se plantean son las siguientes; 
+
+<ul>
+  <li>Que la vista contenga instancias reales sobre países y deportes. </li>
+
+  <li>Que la acción en el controlador reciba un DTO de Usuario con propiedades triviales y a partir de él construir un objeto de dominio. </li>
+
+  <li>Crear un model binder especifico para cada situación, ya sea implementando <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.imodelbinder.aspx">IModelBinder</a> o heredando de <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.defaultmodelbinder.aspx">DefaultModelBinder</a>. </li>
+
+  <li>Crear un model binder genérico que sepa como resolver propiedades mas complejas ubicando la instancia a través de su respectivo repositorio (u otro método proporcionado) o creando una instancia nueva en caso de ser necesario. </li>
+</ul>
+Estoy muy entusiasmado con la opción 4 si bien es el camino mas engorroso. Este model binder de alguna manera resolvería la propiedad User.Country dado que el usuario ha seleccionado un país cuyo ID=’AR’ (es decir en el htmlform tenemos ‘AR’) buscando a través del método indicado dicha instancia. Intentaría que este Modelbinder no este ligado a un repositorio en concreto, ni a una forma particular de obtener las instancias. Este es el concepto: <a href="http://joseoncode.com/wp-content/uploads/2011/06/Concept2%5B11%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="Concept2" border="0" alt="Concept2" src="" width="451" height="232" /></a>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-2493812369678144306?l=jfromaniello.blogspot.com' alt='' /></div>

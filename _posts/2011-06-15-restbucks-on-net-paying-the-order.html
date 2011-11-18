@@ -1,0 +1,51 @@
+--- 
+layout: post
+title: RestBucks on .Net; paying the order
+tags: 
+- rest
+- RestBucks
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "332936569"
+---
+<p><em>Previous posts</em></p>  <ul>   <li><a href="http://joseoncode.com/2011/05/31/introducing-restbucks-on-net/"><em>Introducing RestBucks on .Net</em></a> </li>    <li><a href="http://joseoncode.com/2011/06/01/restbucks-on-net-ordering-coffee/"><em>RestBucks on .Net; ordering coffee</em></a><em></em> </li>    <li><a href="http://joseoncode.com/2011/06/03/restbucks-on-net-is-online/"><em>RestBucks on .Net is onilne!</em></a> </li>    <li><em><a href="http://joseoncode.com/2011/06/07/restbucks-on-net-querying-the-order/">RestBucks on .Net; querying the order</a></em> </li>    <li><em><a href="http://joseoncode.com/2011/06/09/restbucks-on-net-canceling-an-order/">RestBucks on .Net; canceling the order</a></em> </li> </ul>  <p>This time I am going to show how did I implement the use case for payment.</p>  <p>As I shown in my previous post about <a href="http://joseoncode.com/2011/06/09/restbucks-on-net-canceling-an-order/">canceling the order</a>, the first thing to modify is our domain class Order;</p>  <pre class="brush: csharp; wrap-line: false;">public class Order
+{
+    //more properties and methods
+
+
+    public virtual Payment     Payment { get; private set; }
+    public virtual OrderStatus Status  { get; private set; }
+
+    public virtual void Pay(string cardNumber, string cardOwner)
+    {
+        if (Status != OrderStatus.Unpaid)
+        {
+            string message = string.Format(&quot;The order can not be paid because it is {0}.&quot;,
+                                           Status.ToString().ToLower());
+            throw new InvalidOrderOperationException(message);
+        }
+        Status = OrderStatus.Paid;
+        Payment = new Payment
+                  {
+                      CardOwner = cardOwner, 
+                      CreditCardNumber = cardNumber
+                  };
+    }
+}</pre>
+
+<p>And the next step is to add another operation to our REST end point:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[WebInvoke(UriTemplate = &quot;{orderId}/payment&quot;, Method = &quot;POST&quot;)]
+public HttpResponseMessage Pay(int orderId, PaymentRepresentation paymentArgs)
+{
+    var order = orderRepository.GetById(orderId);
+    if (order == null) return Responses.NotFound();
+    order.Pay(paymentArgs.CardNumber, paymentArgs.CardOwner);
+    return Responses.Ok();
+}</pre>
+
+<p>It is a POST to <a href="http://restbuckson.net/order/{id}/payment">http://restbuckson.net/order/{id}/payment</a>. As usual you can see the tests <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/c318a36da791#RestBucks.Tests%2fResources%2fWhenUserPayAnOrder.cs">here</a>.</p>
+
+<p>After you paid an order the order will remain in the “Paid” status for few minutes until the barista prepares it. In my next post I will show how I wrote my barista-bot ;).</p>

@@ -1,0 +1,151 @@
+--- 
+layout: post
+title: RestBucks on .Net; canceling an order
+tags: 
+- rest
+- RestBucks
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "327066969"
+---
+<p><em>Previous posts</em></p>  <ul>   <li><a href="http://joseoncode.com/2011/05/31/introducing-restbucks-on-net/"><em>Introducing RestBucks on .Net</em></a> </li>    <li><a href="http://joseoncode.com/2011/06/01/restbucks-on-net-ordering-coffee/"><em>RestBucks on .Net; ordering coffee</em></a><em></em> </li>    <li><a href="http://joseoncode.com/2011/06/03/restbucks-on-net-is-online/"><em>RestBucks on .Net is onilne!</em></a> </li>    <li><em><a href="http://joseoncode.com/2011/06/07/restbucks-on-net-querying-the-order/">RestBucks on .Net; querying the order</a></em> </li> </ul>  <p>In this post we are going to implement a new use case; the customer cancels an order.</p>  <p>Before we go to the REST operation itself it is important to introduce some modifications to our domain class:</p>  <pre class="brush: csharp; wrap-line: false;">public class Order : Entity
+{
+    //more properties and methods....
+    
+    public OrderStatus Status { get; private set; }
+    public string CancelReason { get; private set; }
+
+    public virtual void Cancel(string cancelReason)
+    {
+        if(Status != OrderStatus.Unpaid)
+        {
+            throw new InvalidOrderOperationException(string.Format(&quot;The order can not be canceled because it is {0}.&quot;,
+                Status.ToString().ToLower()));
+        }
+        CancelReason = cancelReason;
+        Status = OrderStatus.Canceled;
+    }
+}</pre>
+
+<p>The method is simple, before changing the state of the order to Canceled we have to validate if the order is at the Unpaid state (<a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-06-07_1150_thumb.png">remember this graph</a>?), once the order has been Paid or it is at any other stage of the process; the Cancel method will throw an exception.</p>
+
+<p>I’ve tested the happy path as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[TestFixture]
+public class GivenAnUnpaidOrder
+{
+    private Order order;
+
+    [SetUp]
+    public void SetUp()
+    {
+        order = new Order();
+    }
+
+    [Test]
+    public void CancelShouldWork()
+    {
+        order.Cancel(&quot;error&quot;);
+        order.Status.Should().Be.EqualTo(OrderStatus.Canceled);
+    }
+}</pre>
+
+<p>And then the not so happy path:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[TestFixture]
+public class GivenAPayedOrder
+{
+    private Order order;
+
+    [SetUp]
+    public void SetUp()
+    {
+        order = new Order();
+        order.Pay(&quot;123&quot;, &quot;jose&quot;);
+    }
+
+    [Test]
+    public void CancelShouldThrow()
+    {
+        order.Executing(o =&gt; o.Cancel(&quot;error&quot;))
+            .Throws&lt;InvalidOrderOperationException&gt;()
+            .And
+            .Exception.Message.Should().Be.EqualTo(&quot;The order can not be canceled because it is paid.&quot;);
+    }
+}</pre>
+
+<p>I choose to use different classes much like as per-context fixtures, because I needed to test several other things when the order is Unpaid/Paid.</p>
+
+<p>The next thing is to handle the REST stuff in the handler:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[WebInvoke(UriTemplate = &quot;{orderId}&quot;, Method = &quot;DELETE&quot;)]
+public HttpResponseMessage Cancel(int orderId)
+{
+    var order = orderRepository.GetById(orderId);
+    if(order == null) return Responses.NotFound();
+    order.Cancel(&quot;canceled from the rest interface&quot;);
+    return Responses.NoContent();
+}</pre>
+
+<p>This handler validate first if the order exists, if it doesn't exists; return 404. If the order exists it calls the Cancel operation and returns 204. You can see the tests <a href="http://restbucks.codeplex.com/SourceControl/changeset/view/a964b0a6a660#RestBucks.Tests%2fResources%2fWhenUserCancelAnOrder.cs">here</a>.</p>
+
+<p>Since we are doing something like &quot;soft deletes&quot; the next question is what will happen if somebody makes a GET requests to order/id with the id of a canceled order. In my mind the above Cancel method moves the resource from one collection to another one (the trash) so we can modify our GET to work as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void ACallToGet_ShouldReturnMovedPermanentlyAndNewLocation()
+{
+    var order = new Order { Id = 123 };
+    var handler = new OrderResourceHandler(new RepositoryStub&lt;Order&gt;(order), resourceLinker);
+    handler.Cancel(123);
+
+    
+    var responseToGet = handler.Get(123, null);
+
+    var expected = &quot;http://restbuckson.net/trash/order/123&quot;;
+    responseToGet.Satisfy(r =&gt; r.StatusCode == HttpStatusCode.MovedPermanently
+                            &amp;&amp; r.Headers.Location.ToString() == expected);
+}</pre>
+
+<p>The implementation:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void ACallToGet_ShouldReturnMovedPermanentlyAndNewLocation()
+{
+    var order = new Order { Id = 123 };
+    var handler = new OrderResourceHandler(new RepositoryStub&lt;Order&gt;(order), resourceLinker);
+    handler.Cancel(123);
+
+    
+    var responseToGet = handler.Get(123, null);
+
+    var expected = &quot;http://restbuckson.net/trash/order/123&quot;;
+    responseToGet.Satisfy(r =&gt; r.StatusCode == HttpStatusCode.MovedPermanently
+                            &amp;&amp; r.Headers.Location.ToString() == expected);
+}</pre>
+
+<p>And finally we need a TrashHandler (nice name!):</p>
+
+<pre class="brush: csharp; wrap-line: false;">[ServiceContract, WithUriPrefix(&quot;trash&quot;)]
+public class TrashHandler
+{
+    private readonly IRepository&lt;Order&gt; orderRepository;
+
+    public TrashHandler(IRepository&lt;Order&gt; orderRepository)
+    {
+        this.orderRepository = orderRepository;
+    }
+    
+    [WebGet(UriTemplate = &quot;/order/{orderId}&quot;)]
+    public HttpResponseMessage GetCanceled(int orderId)
+    {
+        var order = orderRepository.Retrieve(o =&gt; o.Id == orderId &amp;&amp; o.Status == OrderStatus.Canceled)
+                                   .FirstOrDefault();
+
+        return order == null ? Responses.NotFound()
+            : new HttpResponseMessage&lt;OrderRepresentation&gt;(OrderRepresentationMapper.Map(order));
+    }
+}</pre>
+
+<p>This is all for now! I will talk about the Pay operation in my next article, thanks for reading!</p>

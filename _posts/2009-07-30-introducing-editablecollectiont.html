@@ -1,0 +1,108 @@
+--- 
+layout: post
+title: Introducing EditableCollection<T>
+tags: 
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/introducing-editablecollection.html
+  dsq_thread_id: "317066572"
+  blogger_images: "1"
+---
+<p>In the lasts lines of this <a href="http://jfromaniello.blogspot.com/2009/07/ieditableobject-useful-interface.html">post</a> I talk about a Collection type that implements <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.ieditableobject.aspx">IEditableObject</a> interface.     <br />Let’s start with a simple interface:     <br /></p>  <pre class="brush: csharp;">public interface IEditableCollection&lt;T&gt; : <br />IEnumerable&lt;T&gt;, IEditableObject, INotifyCollectionChanged
+{}</pre>
+
+<p>As you can see the interface also inherits INotifyCollectionChanged this is very usefull in data binding scenarios. 
+  <br />This is the implementation: </p>
+
+<pre class="brush: csharp;">public class EditableCollection&lt;T&gt; : ObservableCollection&lt;T&gt;, IEditableCollection&lt;T&gt;
+{
+    private IList&lt;T&gt; _bakupList;
+    private bool _isInEditMode;
+
+    #region IEditableCollection Members
+
+    public void BeginEdit()
+    {
+        _bakupList = new List&lt;T&gt;();
+        Items.ForEach(_bakupList.Add);
+        _isInEditMode = true;
+    }
+
+    public void EndEdit()
+    {
+        if (!_isInEditMode)
+            throw new InvalidOperationException(&quot;EndEdit without a BeginEdit&quot;); 
+        _isInEditMode = false;
+        _bakupList = null;
+    }
+
+    public void CancelEdit()
+    {
+        if(!_isInEditMode)
+            throw new InvalidOperationException(&quot;CancelEdit without a BeginEdit&quot;); 
+        _isInEditMode = false;
+        ClearItems();
+        _bakupList.ForEach(Add);
+        _bakupList = null;
+    }
+
+    #endregion
+}</pre>
+
+<p>Some unit test to see what you can do: </p>
+
+<pre class="brush: csharp;">[Test]
+public void can_add_and_cancel()
+{
+    var editableList = new EditableCollection&lt;string&gt;
+                           {
+                               &quot;a&quot;,&quot;b&quot;,&quot;c&quot;
+                           };
+    
+    editableList.BeginEdit();
+    editableList.Add(&quot;f&quot;);
+    editableList.CancelEdit();
+
+    editableList.Should().Have.SameSequenceAs(&quot;a,b,c&quot;.Split(','));
+    
+
+}
+
+[Test]
+public void can_remove_and_cancel()
+{
+    var editableList = new EditableCollection&lt;string&gt;
+                           {
+                               &quot;a&quot;,&quot;b&quot;,&quot;c&quot;
+                           };
+
+    editableList.BeginEdit();
+    editableList.Remove(&quot;c&quot;);
+    editableList.CancelEdit();
+
+    editableList.Should().Have.SameSequenceAs(&quot;a,b,c&quot;.Split(','));
+
+}
+
+[Test]
+public void can_clear_and_cancel()
+{
+    var editableList = new EditableCollection&lt;string&gt;
+                           {
+                               &quot;a&quot;,&quot;b&quot;,&quot;c&quot;
+                           };
+
+    editableList.BeginEdit();
+    editableList.Clear();
+    editableList.CancelEdit();
+
+    editableList.Should().Have.SameSequenceAs(&quot;a,b,c&quot;.Split(','));
+
+}</pre>
+
+<p>This code is in <a href="http://code.google.com/p/unhaddins/source/browse/#svn/trunk/uNhAddIns/uNhAddIns.WPF">uNhAddins.Wpf</a> with the complete set of unit test.&#160; </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2529191435954589351' alt='' /></div>

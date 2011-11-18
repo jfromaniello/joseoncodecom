@@ -1,0 +1,65 @@
+--- 
+layout: post
+title: Generate better NHibernate logs
+tags: 
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/05/generate-better-nhibernate-logs.html
+  dsq_thread_id: "313752605"
+  _edit_last: "1"
+  blogger_images: "1"
+---
+I will show you in this post two tricks you can do to enhance and add value to your nhibernate logs.
+<h1>Format Sql</h1>
+This is widely know trick, you can add a configuration setting to your hibernate.cfg.xml, app.config or web.config as follow:
+<pre class="brush: xml; wrap-line: false;">&lt;property name="hibernate.format_sql" value="true" /&gt;</pre>
+or you can simply do it in code:
+<pre class="brush: csharp; wrap-line: false;">config.DataBaseIntegration(db =&gt; db.LogFormatedSql = true)</pre>
+with this trick you will get nicely formated sql in your logs files.
+<h1>Logging the session identifier</h1>
+All nice, we have a bunch of sql logs, but we don’t know which queries belongs to which sessions. This might be useful when you are debugging an application with multiples threads or requests.
+
+I found this trick inside NHibernate, the easy way I found so far is to add a log4net appender like this one:
+<pre class="brush: xml; wrap-line: false;">&lt;appender name="NHibernateAppender" type="log4net.Appender.RollingFileAppender"&gt;
+  &lt;appendToFile value="true"/&gt;
+  &lt;datePattern value="yyyyMMdd"/&gt;
+  &lt;file value="./logs/NHibernate.log"/&gt;
+  &lt;layout type="log4net.Layout.PatternLayout"&gt;
+    &lt;conversionPattern value="%date Session id: %property{sessionId} - %message%newline"/&gt;
+  &lt;/layout&gt;
+  &lt;rollingStyle value="Date"/&gt;
+&lt;/appender&gt;</pre>
+See the %property{sessionId} in the conversion pattern?
+
+Well, in order to log something there you need to do two steps.
+
+Add a class like this one:
+<pre class="brush: csharp; wrap-line: false;">public class SessionIdCapturer
+{
+    public override string ToString()
+    {
+        return SessionIdLoggingContext.SessionId.ToString();
+    }
+}</pre>
+Add the following code in some place at the application initialization:
+<pre class="brush: csharp; wrap-line: false;">ThreadContext.Properties["sessionId"] = new SessionIdCapturer();</pre>
+That is all! I found this code inside a nhibernate test.. it is something not very known.
+
+After doing so, your logs will look like:
+<pre>2011-05-05 18:35:59,899 Session id: 5e172068-5064-44b6-bf96-99362ca05c46 -
+    SELECT
+        myFoo0_.AccountId as AccountId3_0_,
+        myFoo0_.Name as Name3_0_,
+        myFoo0_.Version as Version3_0_
+    FROM
+        MyFoo myFoo0_
+    WHERE
+        myFoo0_.AccountId=@p0;
+    @p0 = 1 [Type: Int32 (0)]</pre>
+Another way to have this information (and much more) is to use the <a href="http://nhprof.com/">nhprof</a> tool.
+<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img src="http://joseoncode.com/wp-content/uploads/images/2935908889399243312-157288844156505290" alt="" width="1" height="1" /></div>

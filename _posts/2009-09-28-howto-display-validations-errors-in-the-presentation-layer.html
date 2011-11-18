@@ -1,0 +1,71 @@
+--- 
+layout: post
+title: "HowTo: display validations errors in the presentation layer"
+tags: 
+- Nhibernate Validator
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/09/howto-display-validations-errors-in.html
+  blogger_images: "1"
+  dsq_thread_id: "319501997"
+---
+<p>This time I will talk about validation. Although there is a growing use of validation frameworks like <a href="http://nhforge.org/media/p/7.aspx">NHV</a>, <a href="http://msdn.microsoft.com/en-us/library/cc309509.aspx">Validation Application Block</a>, <a href="http://www.codeplex.com/xval">xVal</a>, and so on, I’ve seen a lot of people doing some <em>weird </em>things to display error messages in the UI.</p>  <p>For instance:</p>  <pre class="brush: csharp;">public static void Validate(this Controller controller, object Entity)
+{
+    ValidatorEngine vtor = Environment.SharedEngineProvider.GetEngine();
+    InvalidValue[] errors = vtor.Validate(Entity);
+    foreach (InvalidValue error in errors)
+    {
+        controller.ModelState.AddModelError(error.PropertyName, error.Message);
+    }
+}</pre>
+
+<p>This extension method for Asp.Net MVC takes messages from NHibernate Validator and places them in the ModelState. If you are using model-binding (which is one should really be doing with MVC), I don’t like this code because the .net framework already has something for this purpose and you don’t have to do *anything*.</p>
+
+<p>The interface is <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.idataerrorinfo.aspx">IDataErrorInfo</a> and is very ugly. But it has a <strong>great </strong>value because it works within almost any presentation technology out of the box. It works for <a href="http://www.codegod.de/WebAppCodeGod/objectdatasource-and-idataerrorinfo-with-winforms-AID427.aspx">WinForm</a>, <a href="http://www.codegod.de/WebAppCodeGod/WPF-IDataErrorInfo-and-Databinding-AID416.aspx">WPF</a>, <a href="http://davidhayden.com/blog/dave/archive/2009/05/11/ASPNETMVCValidationIDataErrorInfoDefaultModelBinder.aspx">ASP.Net MVC</a> and <a href="http://dotnetslackers.com/ASP_NET/re-63537_IDataErrorInfo_for_ASP_NET.aspx">ASP.Net</a> (non-native).</p>
+
+<p>So, how to combine a validation framework with IDataErrorInfo in my classes?</p>
+
+<h3>First way: Very easy but coupled</h3>
+
+<p>Create a base entity as follows:</p>
+
+<pre class="brush: csharp;">public class VaildatableEntity : EntityBase, IDataErrorInfo
+{
+    string IDataErrorInfo.this[string columnName]
+    {
+        get { 
+            var messages = Environment.SharedEngineProvider.GetEngine()
+                    .Validate(this, column)
+                    .Select(iv =&gt; iv.Message)
+                    .ToArray(); 
+            return String.Join(Environment.NewLine, messages);
+        }
+    }
+
+    string IDataErrorInfo.Error
+    {
+        get { 
+            var messages = Environment.SharedEngineProvider.GetEngine()
+                    .Validate(this)
+                    .Select(iv =&gt; iv.Message)
+                    .ToArray(); 
+
+            return String.Join(Environment.NewLine, messages);
+        }
+    }
+}</pre>
+
+<p>The wrong with this is that is very coupled to your validation framework, and is almost impossible to switch or test some concepts.</p>
+
+<h4>Second way: ServiceLocator</h4>
+
+<p>The second way is also easy, instead of using the validation framework directly, you write an interface like <a href="http://code.google.com/p/unhaddins/source/browse/trunk/uNhAddIns/uNhAddIns.Adapters/IEntityValidator.cs">this</a> and the implementation like <a href="http://code.google.com/p/unhaddins/source/browse/trunk/uNhAddIns/uNhAddIns.NHibernateValidator/EntityValidator.cs">this</a>, (thanks <a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a>) them you register the service in your DI container and ask that service in the ValidatableEntity through a ServiceLocator. </p>
+
+<h4>Third way: DynamicProxy</h4>
+
+<p>The third way is a little more complicated and is explained <a href="http://nhforge.org/blogs/nhibernate/archive/2009/08/27/nhibernate-and-wpf-validations.aspx">here</a> by me. This approach is good because you don’t need anything in your domain. This is implemented in <a href="http://code.google.com/p/unhaddins/">unhaddins</a> and doesn’t depend on NHibernate Validator, this means that you can use any validation framework. </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-116213034518830573' alt='' /></div>

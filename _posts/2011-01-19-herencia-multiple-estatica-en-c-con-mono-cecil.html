@@ -1,0 +1,506 @@
+--- 
+layout: post
+title: "Herencia m\xC3\xBAltiple est\xC3\xA1tica en C# con Mono.Cecil"
+tags: 
+- Heredar
+- Mono.Cecil
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2011/01/herencia-multiple-estatica-en-c-con.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314450000"
+---
+<h1>Introducción</h1>  <p>Este fin de semana empecé una prueba de concepto, que luego se transformo en un proyecto. Mi idea en este artículo es mostrar todo mi razonamiento, mi metodología para enfrentar este desarrollo, como fui aprendiendo las herramientas&#160; y como nacieron los distintos artefactos que componen esta solución.</p>  <p>Todo el código que voy a mostrar puede ser descargado o visto online en este <a href="https://bitbucket.org/jfromaniello/heredar-poc/">sitio</a> (HeredarPoc bitbucket). Si bien en ese repositorio llegamos a un lugar bastante avanzado, actualmente esta congelado y el código actualizado puede encontrarse <a href="http://code.google.com/p/heredar">aquí</a>. No obstante, para seguir esta guía recomiendo el primer repositorio ya que parte prácticamente desde cero hasta llegar a algo bastante avanzado.</p>  <h1>Un poco de teoría</h1>  <p>El objetivo del proyecto es crear una herramienta que modifique nuestro ensamblado después de haber sido compilado, de manera tal que un código como este:</p>  <pre class="brush: csharp;">public class Auditable : IAuditable
+{
+  public DateTime Creado        { get; set; }
+  public string   CreadoPor     { get; set; }
+  public DateTime Modificado    { get; set; }
+  public string   ModificadoPor { get; set; }
+}
+
+public class Validable : IValidable
+{
+  public IEnumerable&lt;string&gt; Validate()
+  {
+     ValidationService.Validate(this);
+  }
+}
+
+
+[ExtendWith(typeof(Auditable), typeof(Validable))]
+public class Persona
+{
+  public string Nombre   { get; set; }
+  public string Apellido { get; set; }
+}</pre>
+
+<p>Se transforme en esto, luego de compilarse: </p>
+
+<pre class="brush: csharp;">public class Persona : IAuditable, IValidable
+{
+  public string   Nombre        { get; set; }
+  public string   Apellido      { get; set; }
+
+  public IEnumerable&lt;string&gt; Validate()
+  {
+     ValidationService.Validate(this);
+  }
+
+  public DateTime Creado        { get; set; }
+  public string   CreadoPor     { get; set; }
+  public DateTime Modificado    { get; set; }
+  public string   ModificadoPor { get; set; }
+}</pre>
+
+<p>Básicamente este es uno de los casos de uso más sencillos y utilizados de herencia múltiple; conocidos como MixIns. La idea es que cada Template (me gusta llamar a los templates “<a href="http://buscon.rae.es/draeI/SrvltConsulta?TIPO_BUS=3&amp;LEMA=condimento">Condimento</a>”) es un pedazo de funcionalidad mínima que podemos utilizar al programar una clase. </p>
+
+<p>En este tipos de escenarios la herencia convencional falla; ya que cuando heredamos, heredamos un todo. Es probable que nuestra clase base tenga demasiadas cosas inconexas, lo cual sea difícil de mantener con el tiempo. Las cadenas de herencia largas también son difíciles de seguir, de mantener y de entender. Es por ello que una buena práctica de programación es favorecer la composición a la herencia.</p>
+
+<p>Más información:</p>
+
+<ul>
+  <li><a href="http://www.artima.com/designtechniques/compoinh.html">Composición versus herencia (ingles)</a> </li>
+
+  <li><a href="http://es.wikipedia.org/wiki/Mixin">Mixin – Wikipedia (artículo en español)</a> </li>
+
+  <li><a href="http://www.scala-lang.org/node/117">A Tour of Scala: Mixin Class Composition</a> </li>
+</ul>
+
+<h1>Definiendo lo que queremos</h1>
+
+<p>Mi primer idea fue empezar a jugar con un test mas o menos así:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using NUnit.Framework;
+using SharpTestsEx;
+
+namespace HeredarPoc.Tests
+{
+    [TestFixture]
+    public class MixinTests
+    {
+        private string weavedAssemblyPath;
+
+        [TestFixtureSetUp]
+        public void Setup()
+        {
+            var weaver = new Weaver();
+            const string assemblytoprocessBinDebugAssemblytoprocessDll =
+                @&quot;......AssemblyToProcessBinDebugAssemblyToProcess.dll&quot;;
+            var assemblyPath = Path.GetFullPath(assemblytoprocessBinDebugAssemblytoprocessDll);
+            weavedAssemblyPath = assemblyPath.Replace(&quot;.dll&quot;, &quot;2.dll&quot;);
+            weaver.Weave(assemblyPath, weavedAssemblyPath);
+        }
+
+        [Test]
+        public void CanMixASimpleProperty()
+        {
+            var type = Assembly.LoadFile(weavedAssemblyPath).GetType(&quot;AssemblyToProcess.SampleClass1&quot;, true);
+            type.Satisfy(t =&gt; t.GetProperties()
+                .Any(p =&gt; p.Name == &quot;MixedProperty&quot; &amp;&amp; p.PropertyType == typeof (string)));
+        }
+
+        [Test]
+        public void CanUseAMixedProperty()
+        {
+            var assembly = Assembly.LoadFile(weavedAssemblyPath);
+            dynamic instance = assembly.CreateInstance(&quot;AssemblyToProcess.SampleClass1&quot;);
+            instance.MixedProperty = &quot;hello&quot;;
+            Assert.AreEqual(&quot;hello&quot;, instance.MixedProperty);
+        }
+
+    }
+}</pre>
+
+<p>El test hace lo siguiente:</p>
+
+<ul>
+  <li>El setup, llama a nuestro objeto bajo estudio Weaver del cual voy a hablar en un momento, pasandole una ruta a un ensamblado original, y una ruta a un ensamblado de destino, es en esa ruta donde va a quedar nuestra dll “retocada”. </li>
+
+  <li>El método CanMixASimpleProperty carga un tipo desde el ensamblado “retocado” mediante reflection, y comprueba que ese tipo tenga la propiedad que estaba en el template. </li>
+
+  <li>El método CanUseAMixedProperty crea una instancia de este tipo, también desde el ensamblado retocado, e intentar utilizar una propiedad definida en el template. Para ello hice uso de la palabra clave “dynamic”. </li>
+</ul>
+
+<p>El template es el siguiente:</p>
+<script src="https://bitbucket.org/jfromaniello/heredar-poc/src/f8e97b831a4c/AssemblyToProcess/Templates/SimplePropertyTemplate.cs?embed=t"></script>
+
+<p>Y la clase que use como objetivo para las pruebas es esta:</p>
+<script src="https://bitbucket.org/jfromaniello/heredar-poc/src/f8e97b831a4c/AssemblyToProcess/SampleTargetWithSimpleProperty.cs?embed=t"></script>
+
+<blockquote>
+  <p><strong><u>Nota sobre TDD y estilo de desarrollo</u></strong></p>
+
+  <p>Es evidente que este tipo de tests no son “exactamente” unit tests. En este punto del desarrollo no puedo darme el lujo de escribir tests unitarios, por que apenas conozco el modelo interno de las herramientas que voy a utilizar.</p>
+
+  <p>Por otro lado una de las cosas mas menospreciadas de la metodología <a href="http://jamesshore.com/Blog/Red-Green-Refactor.html">Red-Green-Refactor</a> es la primer parte: Red. Considero que tiene mucho valor, no por el hecho de ver que este en rojo, si no que lo que mas valor me aporta es ver que la falla del test es realmente la que yo quiero.&#160; Llegar a ese punto en este tipo de experimentos suele ser un desafío también.</p>
+</blockquote>
+
+<h1></h1>
+
+<h1>Introducción a Mono.Cecil</h1>
+
+<p>En este punto debería quedar claro, que la intención es crear una implementación de la clase Weaver. Para ello, voy a utilizar una herramienta muy específica llamada <a href="http://www.mono-project.com/Cecil">Mono.Cecil</a>:</p>
+
+<blockquote>
+  <p>Cecil is a library written by <a href="http://evain.net/blog/">Jb Evain</a> to generate and inspect programs and libraries in the ECMA CIL format. It has full support for generics, and support some debugging symbol format.</p>
+
+  <p>In simple English, with Cecil, you can load existing managed assemblies, browse all the contained types, modify them on the fly and save back to the disk the modified assembly.</p>
+</blockquote>
+
+<p>Para los que están familiarizados con Reflection en .Net, es bastante sencillo de entender lo que hace. Al igual que la API de reflection, puedo obtener un tipo, ver que propiedades, métodos, fields,&#160; sus atributos, etc. Los dos atractivos más grandes para mi caso son:</p>
+
+<ul>
+  <li>Permite llegar hasta niveles muchos más bajos que el api de reflection de .Net. Por ejemplo, puedo preguntar que variables están definidas dentro de un método, o cuales son las instrucciones que un método tiene. </li>
+
+  <li>Todo es modificable y puedo guardar los cambios que haga. Puedo agregar variables a un método, quitar un método de una clase, etc. </li>
+</ul>
+
+<p>Este diagrama de clases resulta muy importante para lo que voy a explicar a continuación:</p>
+
+<p align="center"><a href="http://joseoncode.com/wp-content/uploads/2011/06/diagram%5B7%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="diagram" border="0" alt="diagram" src="http://joseoncode.com/wp-content/uploads/images/diagram_thumb5B55D.png" width="505" height="834" /></a></p>
+
+<p align="left">El diagrama es bastante trivial, los ensamblados en .Net contienen módulos, dichos módulos contienen tipos. TypeDefinition es de particular interés por que ahí esta todo lo que necesitamos importar, en otro TypeDefinition. Como se puede ver la mayoría son colecciones de cosas, y a todas estas colecciones se pueden agregar/quitar elementos. No son simple enumeradores.</p>
+
+<p align="left">La técnica que fui implementando es la de clonar.</p>
+
+<blockquote>
+  <p align="left">Recordar que en el caso de nuestro test el Template tenía solamente un auto-property. Pero en realidad… una auto-property es un concepto de alto nivel, una forma abreviada o un truco del compilador. Al compilarse esto genera una propiedad común y corriente que internamente utiliza un backing field. </p>
+</blockquote>
+
+<p align="left">Lo que hice fue primero clonar los fields, luego clonar los métodos y luego clonar las propiedades. </p>
+
+<p align="left">De más esta decir que en cada paso hay que hacer alguna magia, para redireccionar algo que estaba apuntando a otra cosa del template. Por ejemplo, al clonar una propiedad, hay que apuntar su SetMethod y su GetMethod a los métodos ya importados.</p>
+
+<p align="left">La mayor complejidad la encontré al intentar clonar una instrucción, esto merece un título aparte.</p>
+
+<h1 align="left">Instrucciones en CIL</h1>
+
+<p align="left"><a href="http://es.wikipedia.org/wiki/Common_Intermediate_Language">MSIL, CIL o Common Intermediate Language</a> según wikipedia es:</p>
+
+<blockquote>
+  <p align="left">…es el <a href="http://es.wikipedia.org/wiki/Lenguaje_de_programaci%C3%B3n">lenguaje de programación</a> <a href="http://es.wikipedia.org/wiki/Legible_por_humano">legible por humanos</a> de más bajo nivel en el <a href="http://es.wikipedia.org/wiki/Common_Language_Infrastructure">Common Language Infrastructure</a> y en el <a href="http://es.wikipedia.org/wiki/.NET_Framework">.NET Framework</a>. Los lenguajes del .NET Framework compilan a CIL. CIL es un <a href="http://es.wikipedia.org/wiki/Lenguaje_ensamblador">lenguaje ensamblador</a> <a href="http://es.wikipedia.org/wiki/Orientado_a_objetos">orientado a objetos</a>, y está basado en <a href="http://es.wikipedia.org/wiki/Pila_(inform%C3%A1tica)">pilas</a>. Es ejecutado por una <a href="http://es.wikipedia.org/wiki/M%C3%A1quina_virtual">máquina virtual</a>. Los lenguajes .NET principales son <a href="http://es.wikipedia.org/wiki/C">C#</a>, <a href="http://es.wikipedia.org/wiki/Visual_Basic_.NET">Visual Basic .NET</a>, <a href="http://es.wikipedia.org/w/index.php?title=C%2B%2B/CLI&amp;action=edit&amp;redlink=1">C++/CLI</a>, y <a href="http://es.wikipedia.org/wiki/J_Sharp">J#</a>.</p>
+</blockquote>
+
+<p align="left">Me quedo con la parte, que más me gusto “lenguaje ensamblador orientado a objetos”. Me recuerda mucho a mis prácticas en la secundaria con lenguaje ensamblador, solo que ese lenguaje ensamblador no era orientado a objetos. Dentro de CIL existe todo lo que explique en el título anterior Clase, Propiedad, Método, Attributos, Variables, etc. sus modificadores de acceso y demás cosas. Pero al llegar a nivel de instrucción es cuando más se parece a assembler.</p>
+
+<p align="left">Las instrucciones en CIL, son propiamente como las de cualquier lenguaje ensamblador, están compuestas básicamente de dos partes:</p>
+
+<ul>
+  <li>
+    <div align="left">Operador: también conocido como OpCode</div>
+  </li>
+
+  <li>
+    <div align="left">Operando</div>
+  </li>
+</ul>
+
+<p align="left">Como el Operador (por el momento) lo puedo clonar tal y cual esta no me preocupé mucho. El operando es la parte más difícil, ¿Qué valores puede tener un operando?</p>
+
+<ul>
+  <li>
+    <div align="left">Un operando puede apuntar a otra instrucción, un ejemplo sería en un bloque condicional, es decir un if. </div>
+  </li>
+
+  <li>
+    <div align="left">Un operando puede apuntar a un field definido en la misma clase.</div>
+  </li>
+
+  <li>
+    <div align="left">Un operando puede apuntar a un field definido en otra clase.</div>
+  </li>
+
+  <li>
+    <div align="left">Un operando puede ser igual a una constante string, int, lo que sea.</div>
+  </li>
+
+  <li>
+    <div align="left">Un operando puede apuntar a un type.</div>
+  </li>
+</ul>
+
+<p align="left">Aunque en nuestro ejemplo anterior (test) solo se presentan el caso de field y de instrucción. </p>
+
+<h1>Mínima implementación</h1>
+
+<p>Me costo bastante llegar a la mínima implementación. En el camino descubrí otras cosas:</p>
+
+<ul>
+  <li>Para agilizar mi trabajo utilice <a href="http://www.red-gate.com/products/dotnet-development/reflector/">Reflector Pro</a>. Esto me ayudó mucho a ver como iba quedando mi ensamblado, inclusive reflector permite alternar entre c# y código CIL. Lo cual es muy útil. </li>
+
+  <li>Mono.Cecil permite hacer cualquier cosa, por más mal que parezca. Prácticamente no realiza ninguna validación de lo que estamos haciendo y no garantiza que el runtime de .net pueda si quiera cargar nuestros ensamblados. </li>
+
+  <li>Dado lo que dije en el punto anterior, se hace imprescindible una herramienta de línea de comandos que viene con .Net llamada PeVerify. </li>
+
+  <li>El runtime de .Net es muchas veces más permisivo que PeVerify. </li>
+</ul>
+
+<p>La primera implementación, que hace que el escenario antes mencionado funcione, es la siguiente:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using System;
+using System.Collections.Generic;
+using System.Linq;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+using Mono.Collections.Generic;
+
+namespace HeredarPoc
+{
+    public class Weaver
+    {
+        public void Weave(string source, string target)
+        {
+            var assembly = AssemblyDefinition.ReadAssembly(source);
+            var module = assembly.Modules.First();
+
+            var toBeWeaved = from t in module.Types
+                             let attributes =
+                                 t.CustomAttributes.Where(ca =&gt; ca.AttributeType.FullName == typeof (MixInAttribute).FullName)
+                             where attributes.Any()
+                             select new
+                                        {
+                                            Type = t,
+                                            MixedClasses = attributes.SelectMany(a =&gt; a.ConstructorArguments.Select(ca =&gt; ca.Value))
+                                                                     .OfType&lt;CustomAttributeArgument[]&gt;()
+                                                                     .SelectMany(caas =&gt; caas.Select(caa =&gt; caa.Value))
+                                                                    .OfType&lt;TypeReference&gt;()
+                                                                    .Select(tr =&gt; module.Types.First(td =&gt; td.FullName == tr.FullName))
+                                   };
+            
+            foreach (var pair in toBeWeaved)
+            {
+                
+                foreach (var fieldDefinition in pair.MixedClasses.SelectMany(mc =&gt; mc.Fields))
+                {
+                    var newfield = new FieldDefinition(fieldDefinition.Name, fieldDefinition.Attributes, fieldDefinition.FieldType);
+                    //newfield.Attributes = fieldDefinition.Attributes;
+                    foreach (var ca in fieldDefinition.CustomAttributes)
+                    {
+                        newfield.CustomAttributes.Add(ca);
+                    }
+                    pair.Type.Fields.Add(newfield);
+                }
+
+                foreach (var propertyToBeMixed in pair.MixedClasses.SelectMany(tr =&gt; tr.Properties))
+                {
+                    var propertyDefinition = new PropertyDefinition(propertyToBeMixed.Name, propertyToBeMixed.Attributes, propertyToBeMixed.PropertyType)
+                                                 {
+                                                     GetMethod = CloneMethod(propertyToBeMixed.GetMethod, pair.Type),
+                                                     SetMethod = CloneMethod(propertyToBeMixed.SetMethod, pair.Type)
+                                                 };
+                    foreach (var customAttribute in propertyToBeMixed.CustomAttributes)
+                    {
+                        propertyDefinition.CustomAttributes.Add(customAttribute);
+                    }
+                    pair.Type.Properties.Add(propertyDefinition);
+                    pair.Type.Methods.Add(propertyDefinition.GetMethod);
+                    pair.Type.Methods.Add(propertyDefinition.SetMethod);
+                }
+
+                //foreach (var methodToMixIn in pair.MixedClasses.SelectMany(tr =&gt; tr.Methods))
+                //{
+                //    pair.Type.Methods.Add(new MethodDefinition(methodToMixIn.Name, methodToMixIn.Attributes, methodToMixIn.ReturnType)
+                //                            {
+                //                                Body = methodToMixIn.Body
+                //                            });
+                //}
+            }
+
+            module.Write(target);
+        }
+
+        private static MethodDefinition CloneMethod(MethodDefinition sourceMethod, TypeDefinition into)
+        {
+            var methodDefinition = new MethodDefinition(sourceMethod.Name, sourceMethod.Attributes, sourceMethod.ReturnType)
+                                       {
+                                           MetadataToken = MetadataToken.Zero,
+                                           DeclaringType = into,
+                                           Body = {InitLocals = sourceMethod.Body.InitLocals}
+                                       };
+
+            foreach (var customAttribute in sourceMethod.CustomAttributes)
+            {
+                methodDefinition.CustomAttributes.Add(customAttribute);
+            }
+
+            foreach (var variableDefinition in sourceMethod.Body.Variables)
+            {
+                methodDefinition.Body.Variables.Add(new VariableDefinition(variableDefinition.Name, variableDefinition.VariableType));
+            }
+
+            foreach (var parameterDefinition in sourceMethod.Parameters)
+            {
+                var definition = new ParameterDefinition(parameterDefinition.Name, parameterDefinition.Attributes, parameterDefinition.ParameterType);
+                methodDefinition.Parameters.Add(definition);
+            }
+
+            var pendingInstructions = new Dictionary&lt;int, Instruction&gt;();
+
+            foreach (var instruction in sourceMethod.Body.Instructions)
+            {
+                Instruction instructionToAdd;
+                if(!pendingInstructions.TryGetValue(sourceMethod.Body.Instructions.IndexOf(instruction), out instructionToAdd))
+                {
+                    instructionToAdd = CloneInstruction(methodDefinition, into, sourceMethod.Body.Instructions, instruction, pendingInstructions);
+                }
+                methodDefinition.Body.Instructions.Add(instructionToAdd);
+            }
+            for (int i = 0; i &lt; methodDefinition.Body.Instructions.Count - 1; i++)
+            {
+                if(methodDefinition.Body.Instructions[i] == null)
+                {
+                    methodDefinition.Body.Instructions.RemoveAt(i);
+                }
+            }
+            return methodDefinition;
+        }
+
+        private static Instruction CloneInstruction(
+            MethodDefinition newMethod, 
+            TypeDefinition newType, 
+            Collection&lt;Instruction&gt; sourceInstructions, 
+            Instruction instructionToClone, 
+            IDictionary&lt;int, Instruction&gt; pendingInstructions)
+        {
+
+            if (instructionToClone.Operand == null) return Instruction.Create(instructionToClone.OpCode);
+
+            var fieldDefinition = instructionToClone.Operand as FieldDefinition;
+            if(fieldDefinition != null)
+            {
+                return Instruction.Create(instructionToClone.OpCode, newType.Fields.First(f =&gt; f.Name == fieldDefinition.Name));
+            }
+            
+            var instructionDefinition = instructionToClone.Operand as Instruction;
+            if(instructionDefinition != null)
+            {
+                var offset = sourceInstructions.IndexOf(instructionDefinition);
+
+                var targetInstruction = newMethod.Body.Instructions.ElementAtOrDefault(offset)
+                                        ?? pendingInstructions.GetValueOrDefault(offset);
+
+                if (targetInstruction == null)
+                {
+                    targetInstruction = CloneInstruction(newMethod, newType, sourceInstructions, instructionDefinition, pendingInstructions);
+                    pendingInstructions[offset] = targetInstruction;
+                }
+
+                return Instruction.Create(instructionToClone.OpCode, targetInstruction);
+            }
+
+            throw new NotImplementedException(string.Format(&quot;can't clone instructions with operand equals to {0}&quot;, instructionToClone.Operand.GetType()));
+        }
+    }
+
+    public static class DictionaryExtensions
+    {
+        public static TValue GetValueOrDefault&lt;TKey, TValue&gt;(this IDictionary&lt;TKey, TValue&gt; dic, TKey key)
+        {
+            TValue value;
+            return dic.TryGetValue(key, out value) ? value : default(TValue);
+        }
+    }
+}</pre>
+
+<p>Lo que esta clase hace en principio es buscar que tipos tiene que modificar y que templates debe importar en ellos. Luego para cada template va clonando pedacitos de su estructura (por ahora fields, métodos y propiedades) en la clase de destino.</p>
+
+<p>El código que clona la instrucción puede parecer complejo. El problema ahí es que mi forma de clonar es secuencial, y es muy factible que el operando de una instrucción, sea otra instrucción que aún no fue clonada. Por lo tanto lo que hago es clonar inmediatamente la otra instrucción recursivamente, y almacenar en una lista para luego agregarla cuando sea su turno.</p>
+
+<h1>Avance y refactoring posteriores</h1>
+
+<p>Fui progresivamente agregando escenarios fáciles como “un método en el template que usa una propiedad del template” hasta casos mas complejos como un “template que implementa una interfaz”.</p>
+
+<p>Sucesivos refactorings hicieron que el weaver me quedara de esta forma:</p>
+
+<pre class="brush: csharp; wrap-line: false;">﻿using System.Collections.Generic;
+using System.Linq;
+using HeredarPoc.Cloners;
+using HeredarPoc.Inspectors;
+using Mono.Cecil;
+
+namespace HeredarPoc
+{
+    public class Weaver
+    {
+        private static readonly IEnumerable&lt;IInspector&gt; Inspectors
+            = new IInspector[] { new AttributeBaseInspector() };
+
+        private static readonly IEnumerable&lt;ICloneVisitor&gt; Visitors
+            = new ICloneVisitor[]
+                  {
+                    new FieldCloneVisitor(), 
+                    new MethodCloneVisitor(), 
+                    new PropertyCloneVisitor(),
+                    new InterfaceCloneVisitor()
+                  };
+
+        public void Weave(string source, string target)
+        {
+            var assembly = AssemblyDefinition.ReadAssembly(source);
+            var pairs = Inspectors.SelectMany(i =&gt; i.GetPairs(assembly));
+
+            foreach (var mixPair in pairs)
+            {
+                foreach (var mixedClass in mixPair.Templates)
+                {
+                    foreach (var cloneVisitor in Visitors)
+                    {
+                        cloneVisitor.Visit(mixedClass, mixPair.Target);
+                    }
+                }
+            }
+
+            assembly.MainModule.Write(target);
+        }
+    }
+}</pre>
+
+<p>Como se puede ver acá, pude extraer artefactos que realizan una parte más especifica de la clonación. Como así también extraje otro artefacto que es el encargado de inspeccionar el ensamblado y encontrar que tipos debe modificar y que templates le tiene que agregar.</p>
+
+<p>Inclusive el MethodCloneVisitor utiliza otros clases mas pequeñas para poder llevar a cabo el clonado del cuerpo del método. Lo cual hace que el código sea más entendible.</p>
+
+<h1>Plan</h1>
+
+<p><a href="http://twitter.com/SimonCropp">Simon Cropp</a> (Australia) es quien esta trabajando conmigo en este proyecto opensource. Como dije antes, el nombre del proyecto es <a href="https://code.google.com/p/heredar">Heredar y se encuentra en google code</a>. No se encuentra liberada ninguna versión todavía.</p>
+
+<p>Hasta ahora soporta casos simples, nuestra idea es ir agregando progresivamente. Un buen lugar para ver los casos que están soportados son los tests, <a href="http://code.google.com/p/heredar/source/browse/AssemblyToProcess">pero esta vista en el browser puede ser muy útil también</a>.</p>
+
+<p>Hemos ido importando código desde otro proyecto de Simon, del cual ya hablé antes <a href="code.google.com/p/notifypropertyweaver">NotifyPropertyWeaver</a>. Esto nos permitió de manera rápida brindar soporte para muchas plataformas:</p>
+
+<li>.Net 3.5 </li>
+
+<li>.Net 3.5 Client Profile </li>
+
+<li>.Net 4 </li>
+
+<li>.Net 4 Client Profile </li>
+
+<li>Silverlight 3 </li>
+
+<li>Silverlight 4 </li>
+
+<li>Silverlight on Windows Phone 7 
+  <p>Absolutamente todo lo que esta soportado hasta el momento funciona en las plataformas antes mencionadas y disponemos de una suite de tests que lo verifica cada vez. También estamos utilizando integración continua con TeamCity, en el sitio de codebetters para proyectos opensource.</p>
+
+  <p>Al igual que NotifyPropertyWeaver;</p>
+
+  <ul>
+    <li>para utilizarlo solo hará falta insertar una línea que llama a una tarea de msbuild en el archivo de proyecto. (<strike>implementado</strike>) </li>
+
+    <li>no se requiere dependencias para el deployment. Dado que el weaver automáticamente eliminará el atributo y la referencia. (<strike>parc</strike>ialmente implementado) </li>
+  </ul>
+
+  <p>Estamos abiertos a cualquier tipo de sugerencia o aporte, ya sea por mail, twitter o lo que sea. </p>
+
+  <p>Gracias y espero no haber <img style="border-bottom-style: none; border-right-style: none; border-top-style: none; border-left-style: none" class="wlEmoticon wlEmoticon-smile" alt="Sonrisa" src="http://joseoncode.com/wp-content/uploads/images/wlEmoticon-smile5B25D.png" /></p>
+
+  
+</li>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-952351927867866999' alt='' /></div>

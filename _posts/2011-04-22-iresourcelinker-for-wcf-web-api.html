@@ -1,0 +1,167 @@
+--- 
+layout: post
+title: IResourceLinker for Wcf Web API
+tags: 
+- WCF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/04/iresourcelinker-in-wcf-web-api.html
+  dsq_thread_id: "315000488"
+  blogger_images: "1"
+---
+<p>I wrote an approach to make -resource linking- easier with the new <a href="http://wcf.codeplex.com">Web Api</a> in this <a href="http://jfromaniello.blogspot.com/2011/03/wcf-web-api-strongly-typed-resource.html">post</a>. This is an alternative approach and I think it is much better.</p>  <p>This time I wrote the Uri template in only one place;</p>  <pre class="brush: csharp; wrap-line: false;">[ServiceContract, WithUriPrefix(&quot;products&quot;)]
+public class ProductsResourceHandler
+{
+    [WebGet(UriTemplate = &quot;&quot;)]
+    public Product[]  Get()
+    {
+        //handle 
+    }
+    
+    [WebGet(UriTemplate = &quot;{productId}&quot;)]
+    public Product GetProductById(int productId)
+    {
+        //handle 
+    }
+}</pre>
+
+<p>Now, if I with my uri template there; I can register all routes as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class RouteTableConfigurator
+{
+    public static void Configure(IHttpHostConfigurationBuilder builder)
+    {
+        var routeInfo = typeof (RouteTableConfigurator)
+            .Assembly.GetTypes()
+            .Where(t =&gt; Attribute.IsDefined(t, typeof (ServiceContractAttribute))
+                        &amp;&amp; Attribute.IsDefined(t, typeof (WithUriPrefix)))
+            .Select(t =&gt; new{ ServiceType = t, UriPrefix = GetPrefix(t)});
+
+        var routes = routeInfo
+            .Select(rinfo =&gt; new ServiceRoute(rinfo.UriPrefix, 
+                                              new HttpConfigurableServiceHostFactory
+                                                    {
+                                                        Builder = builder
+                                                    }, 
+                                              rinfo.ServiceType));
+
+
+        foreach (var route in routes)
+        {
+            RouteTable.Routes.Add(route);
+        }
+    }
+
+    private static string GetPrefix(Type t)
+    {
+        return t.GetCustomAttributes(typeof(WithUriPrefix), true)
+                .OfType&lt;WithUriPrefix&gt;()
+                .First().Uri;
+    }
+}</pre>
+
+<p>This only works if you can register everything with the same configuration, otherwise you will must to define other set of conventions. But for this example it works</p>
+
+<p>Then my IResourceLinker interface is:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public interface IResourceLinker
+{
+    string GetUri&lt;T&gt;(Expression&lt;Action&lt;T&gt;&gt; method, object uriArgs = null);
+}</pre>
+
+<p>How the implementation should work?</p>
+
+<pre class="brush: csharp; wrap-line: false;">[TestFixture]
+public class LocationsSpecifications
+{
+    
+    protected IResourceLinker resourceLinker 
+        = new ResourceLinker(&quot;http://foo.bar&quot;);
+    
+    [Test]
+    public void TheUriOfProductsIsOk()
+    {
+        resourceLinker.GetUri&lt;ProductsResourceHandler&gt;(pr =&gt; pr.Get())
+            .Should().Be.EqualTo(&quot;http://foo.bar/products&quot;);
+    }
+
+    [Test]
+    public void TheUriToGetAProductIsOk()
+    {
+        resourceLinker.GetUri&lt;ProductsResourceHandler&gt;(pr =&gt; pr.GetProductById(0), 
+                                                       new{productId = 123})
+            .Should().Be.EqualTo(&quot;http://foo.bar/products/123&quot;);
+    }
+}</pre>
+
+<p>And the implementation is:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class ResourceLinker : IResourceLinker
+{
+    private readonly Uri baseUri;
+
+    public ResourceLinker(string baseUri)
+    {
+        this.baseUri = new Uri(baseUri, UriKind.Absolute);
+    }
+
+    public string GetUri&lt;T&gt;(Expression&lt;Action&lt;T&gt;&gt; method, object uriArgs = null)
+    {
+        string prefix = GetServicePrefix&lt;T&gt;();
+
+        var methodInfo = ((MethodCallExpression)method.Body).Method;
+        var methodTemplate = GetUriTemplateForMethod(methodInfo);
+    
+        var newBaseUri = new Uri(baseUri, prefix);
+        var uriTemplate = new UriTemplate(methodTemplate, true);
+
+        return uriTemplate.BindByName(newBaseUri, ToDictionary(uriArgs ?? new{})).ToString();
+    }
+
+    public static IDictionary&lt;string, string&gt; ToDictionary(object anonymousInstance)
+    {
+        var dictionary = anonymousInstance as IDictionary&lt;string, string&gt;;
+        if (dictionary != null) return dictionary;
+
+        return TypeDescriptor.GetProperties(anonymousInstance)
+            .OfType&lt;PropertyDescriptor&gt;()
+            .ToDictionary(p =&gt; p.Name, p =&gt; p.GetValue(anonymousInstance).ToString());
+    }
+
+    private static string GetServicePrefix&lt;T&gt;()
+    {
+        var withUriPrefixAttribute = typeof (T)
+                            .GetCustomAttributes(typeof (WithUriPrefix), true)
+                            .OfType&lt;WithUriPrefix&gt;()
+                            .FirstOrDefault();
+
+        if(withUriPrefixAttribute == null )
+        {
+            var message = string.Format(&quot;Can't find the WithUriPrefix in {0}&quot;, typeof(T).Name);
+            throw new InvalidOperationException(message);
+        }
+        return withUriPrefixAttribute.Uri;
+    }
+
+    private static string GetUriTemplateForMethod(MethodInfo method)
+    {
+        var webGet = method.GetCustomAttributes(true)
+                            .OfType&lt;WebGetAttribute&gt;()
+                            .FirstOrDefault();
+        if (webGet != null) return webGet.UriTemplate ?? method.Name;
+
+        var webInvoke = method.GetCustomAttributes(true)
+                            .OfType&lt;WebInvokeAttribute&gt;()
+                            .FirstOrDefault();
+        if (webInvoke != null) return webInvoke.UriTemplate ?? method.Name;
+
+        var message = string.Format(&quot;The method {0} is not a web method.&quot;, method.Name);
+        throw new InvalidOperationException(message);
+    }
+}</pre>
+
+<p>I am still not happy with this, but it is nicer and less invasive than the first aproach.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-8497032852362209962' alt='' /></div>

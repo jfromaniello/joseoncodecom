@@ -1,0 +1,154 @@
+--- 
+layout: post
+title: Static Mixins in .Net
+tags: 
+- AOP
+- Heredar
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2011/02/static-mixins-in-net.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "316049288"
+---
+<p>Simon Cropp and I are working on a tool to add multiple inheritance support to the .net framework as a post build task (msbuild) using the glorious Mono.Cecil library. The project is hosted <a href="http://code.google.com/p/heredar">here</a>.</p>  <h1>Why multiple inheritance?</h1>  <p>We are not interested in Multiple Inheritance as such, but in one specific case: Mixins. Mixins are an special case of multiple inheritance, where the inheritance doesn’t mean specialization as in single inheritance but means adding an specific functionality.</p>  <ul>   <li>     <p>A simple way to think of mixins is as “an interface with implementation”. If you have written Java interfaces, you have surely found yourself writing the same implementations over and over for each class that implements the interface. A mixin lets you write the implementation once and have it automatically included in each class that uses it.</p>   </li>    <li>     <p>Mixins work best when they are small, independent units of functionality, orthogonal to other classes and mixins. If your mixins obey this guideline, then the model of how mixins work is very simple: it is as if the body of each mixin were copied textually into each class that uses it.&#160; <em><a href="http://wiki.openlaszlo.org/Mixins">From OpenLaszlo site</a>.</em></p>   </li> </ul>  <p>This concept is widely used in other languages such as Simula, Smalltalk, Perl, Javascript, Ruby and Python (<a href="http://en.wikipedia.org/wiki/Mixin#Programming_languages_that_use_mixins">more languages here</a>).</p>  <h1>Why static?</h1>  <p>We know about other tools for creating mixins dynamically like <a href="http://www.castleproject.org/dynamicproxy/index.html">Castle DynamicProxy</a>, <a href="http://www.springframework.net/">Spring.Net</a> and <a href="http://code.google.com/p/linfu/">LinFu</a>. These tools work by creating a proxy type on runtime, and redirecting calls to each target or mixed instance. This work well for some use cases, but we found it doesn’t in others:</p>  <ul>   <li>Sometimes you don’t own the activation of the instance. E.g. you want to use mixin with an entity but you don’t have control on the instantiation of the entity when it come from an ORM tool. </li>    <li>Type hell: lets say that you have a validation framework, configured to validate an specific class: Person. When working with dynamic proxies, you have an instance of PersonProxy instead of Person, so you will need to tell your validation framework somehow that PersonProxy must be validated as a Person. </li>    <li>Reflection-heavy scenarios like WPF sometimes fail. </li> </ul>  <h1>How it works?</h1>  <pre class="brush: csharp;">//Simple templates
+
+public class Auditable : IAuditable
+{
+    public DateTime CreateDate { get; set; }
+    public string CreatedBy { get; set; }
+    public DateTime UpdateDate { get; set; }
+    public string UpdateBy { get; set; }
+}
+
+
+public class ErrorInfo : IDataErrorInfo
+{
+    public object Target { get; set; }
+
+    #region IDataErrorInfo Members
+
+    public string this[string columName]
+    {
+        get { return Validator.Validate(Target, columName); }
+    }
+
+    public string Error
+    {
+        get { return Validator.Validate(Target); }
+    }
+
+    #endregion
+}
+
+//Your code
+
+[ExtendWith(typeof(ErrorInfo), typeof(Auditable))]
+public class Person
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime Birthdate { get; set; }
+}
+
+//What gets compiled
+
+public class Person : IAuditable, IDataErrorInfo
+{
+    private Auditable Auditable_1 = new Auditable();
+    private ErrorInfo ErrorInfo_1 = new ErrorInfo();
+
+    public Person()
+    {
+        this.ErrorInfo_1.Target = this;
+    }
+
+    public DateTime Birthdate { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+        
+    //Auditable members
+        
+    public DateTime CreateDate
+    {
+        get
+        {
+            return this.Auditable_1.CreateDate;
+        }
+        set
+        {
+            this.Auditable_1.CreateDate = value;
+        }
+    }
+
+    public string CreatedBy
+    {
+        get
+        {
+            return this.Auditable_1.CreatedBy;
+        }
+        set
+        {
+            this.Auditable_1.CreatedBy = value;
+        }
+    }
+        
+    public string UpdateBy
+    {
+
+        get
+        {
+            return this.Auditable_1.UpdateBy;
+        }
+
+        set
+        {
+            this.Auditable_1.UpdateBy = value;
+        }
+    }
+
+    public DateTime UpdateDate
+    {
+        get
+        {
+            return this.Auditable_1.UpdateDate;
+        }
+        set
+        {
+            this.Auditable_1.UpdateDate = value;
+        }
+    }
+
+    //dataerror info members
+        
+    public string Error
+    {
+        get
+        {
+            return this.ErrorInfo_1.Error;
+        }
+    }
+
+    public string this[string columName]
+    {
+        get
+        {
+            return this.ErrorInfo_1[columName];
+        }
+    }
+}</pre>
+
+<p>This is the current implementation now. In the beginning we though about cloning instruction per instruction but it is really hard when it comes to generics templates. Also with this approach you can debug mixed templates.</p>
+
+<h2>Simple configuration</h2>
+
+<p>You only need to add these few lines to the end of your project file.</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-02-01_0837%5B3%5D.png"><img style="background-image: none; border-bottom: 0px; border-left: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top: 0px; border-right: 0px; padding-top: 0px" title="2011-02-01_0837" border="0" alt="2011-02-01_0837" src="http://joseoncode.com/wp-content/uploads/images/2011-02-01_0837_thumb5B15D.png" width="601" height="176" /></a></p>
+
+<h2>No reference required</h2>
+
+<p>Just add the attribute to your project, it can be internal and that’s all. Heredar will find the attribute by name. Otherwise, you can add a reference to Heredar.dll (there is a version for standard .net, Silverlight and phone) use the attribute, and Heredar will remove the attributes and the reference after weaving.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5911281311614968381' alt='' /></div>

@@ -1,0 +1,27 @@
+--- 
+layout: post
+title: Debugging avanzado con Reflector Pro
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/10/debugging-avanzado-con-reflector-pro.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_images: "1"
+  dsq_thread_id: "426847354"
+---
+<p>He estado dedicando un buen tiempo a mi extensión para Visual Studio, llamada <a href="http://hqladdin.codeplex.com">HqlAddin</a>. Al trabajar una extensión que va a ser utilizada otro sistema (en este caso Visual Studio) me ha ocurrido que en ciertas ocasiones no se como se va a comportar dicho sistema. Si bien es cierto que dicho comportamiento debería estar documentado, ya sea de forma escrita o en UnitTests, en la vida real no siempre sucede eso. Es por ello que Reflector Pro me ha sido de gran utilidad a la hora de desarrollar nuevas funcionalidades, como también a la hora de resolver errores.</p>  <p>Utilizar Reflector Pro, es muy sencillo, luego de abrir el proyecto tenemos que ir al menú Reflector y clickear en “Choose Assemblies to Debug”:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2010-10-11_1952%5B3%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="2010-10-11_1952" border="0" alt="2010-10-11_1952" src="http://joseoncode.com/wp-content/uploads/images/2010-10-11_1952_thumb5B15D.png" width="469" height="256" /></a></p>  <p>Es probable que si es la primera vez que lo utilizamos nos solicite desactivar “Just My Code”.</p>  <p>Luego tenemos que seleccionar el ensamblado sobre el cual nos gustaría adentrarnos:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image%5B3%5D1.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb5B15D.png" width="624" height="345" /></a> </p>  <p>Y eso es todo…. una vez que le damos aceptar, Reflector descompilara el ensamblado que hayamos seleccionado y a partir de este momento podemos depurar dentro del ensamblado con F11.. paso a paso.</p>  <p>Algunas aclaraciones:</p>  <ul>   <li>Si el ensamblado que seleccionamos, en su directorio tiene un archivo PDB, esto quiere decir que nosotros ya tenemos los símbolos de depuración. Aquí pueden suceder dos cosas:      <ul>       <li>Si nosotros tenemos el código fuente de ese ensamblado (en el estado en que estaba cuando se compilo), utilizar Reflector para este caso es innecesario. Pero igual se puede. </li>        <li>Si nosotros no tenemos el código fuente de ese ensamblado, lo mejor sería borrar el PDB del directorio en el que estaba, o simplemente dejar que reflector haga una copia a otro directorio y modifique temporalmente nuestras referencias. Esto luego se puede desactivar con un solo click. </li>     </ul>   </li>    <li>Algunos ensamblados, de Visual Studio por ejemplo, están compilados de una manera que se llama “código optimizado”, si bien es posible seguir paso a paso la ejecución en este código, no es posible hacer cosas triviales como observar el valor de una variable. </li>    <li>Después de un tiempo de utilizar la herramienta, uno se da cuenta que hay algunas cosas que no están tan bien descompiladas, un caso típico son los bloques enumeradores: </li> </ul>  <pre class="brush: csharp;">public IEnumerable&lt;int&gt; EjemploEnumerador(string parametro)
+{
+    yield return 0;
+    if (parametro == &quot;a&quot;) yield return 1;
+    yield return 32;
+}</pre>
+
+<p>Hay que recordar que los bloques enumeradores son solo un truco del compilador, y por lo tanto, no esta tan fácil descompilarlo.</p>
+
+<p>Estoy muy conforme con la herramienta y considero que es muy útil a la hora de trabajar con .Net.</p>
+
+<p>Por último quería agradecer a RedGate por brindarme una licencia gratuita para utilizar en el desarrollo de mi proyecto OpenSource y a todas las empresas que siguen esta línea, tanto JetBrains, SharpCrafters, e inclusive el mismo Microsoft. </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5115720305833766445' alt='' /></div>

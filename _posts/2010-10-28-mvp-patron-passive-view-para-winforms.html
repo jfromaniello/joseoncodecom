@@ -1,0 +1,287 @@
+--- 
+layout: post
+title: "MVP: Patr\xC3\xB3n Passive View para WinForms"
+tags: 
+- MVP
+- Patrones
+- Winforms
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/10/mvp-patron-passive-view-para-winforms.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_images: "1"
+  dsq_thread_id: "314364802"
+---
+<p>Este es el primer post de una serie que voy a escribir, explicando distintos patrones de Presentación para aplicaciones de escritorio, los cuales en general permiten la separación de responsabilidades. Dicha separación nos permitirá escribir tests de los diferentes artefactos.</p>  <p>En esta entrada voy a hablar puntualmente del patrón <a href="http://martinfowler.com/eaaDev/PassiveScreen.html">Passive View definido por Martin Fowler</a> y voy a mostrar una implementación para un caso de uso sencillo. Hacia al final del artículo he dejado el link para descargar el código completo del ejemplo.</p>  <p>En este patrón el View expone una serie de métodos los cuales permiten al Presenter manejar cada uno de sus widgets (controles) y&#160; sus respectivas propiedades. Una característica importante de este patrón es que el View no conoce ningún Modelo.</p>  <p>Imaginemos un caso de uso para editar los datos de un cliente, al iniciar la pantalla tenemos que mostrar los datos actuales del cliente, luego el usuario realizará modificaciones y guardará o cancelará.</p>  <p>Esta sería nuestra pantalla:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image2.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb.png" width="244" height="209" /></a> </p>  <p>La <strong><u>interfaz del artefacto View</u></strong> se podría definir de la siguiente manera:</p>  <pre class="brush: csharp;">public interface IEditarClienteView
+{
+    string Nombre { get; set; }
+    string Apellido { get; set; }
+    string CodigoPais { get; set; }
+
+    void CargarPaisParaSeleccion(string codigoIso, string nombre);
+
+    event EventHandler GuardarClick;
+    event EventHandler CancelarClick;
+    
+    void Close();
+    void Show();
+}</pre>
+
+<p>El <u><strong>Presenter</strong></u> sería algo así:</p>
+
+<pre class="brush: csharp;">public class EditarClientePresenter
+{
+    private readonly IEditarClienteView editarClienteView;
+    private readonly IRepositorioClientes repositorioClientes;
+    private readonly IRepositorioPaises repositorioPaises;
+    private int clienteEnEdicion;
+
+    public EditarClientePresenter(IEditarClienteView editarClienteView, 
+        IRepositorioClientes repositorioClientes, 
+        IRepositorioPaises repositorioPaises)
+    {
+        this.editarClienteView = editarClienteView;
+        this.repositorioClientes = repositorioClientes;
+        this.repositorioPaises = repositorioPaises;
+        editarClienteView.GuardarClick += EditarClienteViewGuardarClick;
+        editarClienteView.CancelarClick += EditarClienteViewCancelarClick;
+    }
+
+    public void Iniciar(int idCliente)
+    {
+        clienteEnEdicion = idCliente;
+        foreach (var pais in repositorioPaises.ObtenerOrdenadosPorNombre())
+        {
+            editarClienteView.CargarPaisParaSeleccion(pais.CodigoIso, pais.Nombre);
+        }
+
+        var cliente = repositorioClientes.Obtener(idCliente);
+        
+        editarClienteView.Nombre = cliente.Nombre;
+        editarClienteView.Apellido = cliente.Apellido;
+        editarClienteView.CodigoPais = cliente.Pais.CodigoIso;
+
+        editarClienteView.Show();
+    }
+
+    private void EditarClienteViewCancelarClick(object sender, EventArgs e)
+    {
+        editarClienteView.Close();
+    }
+
+    private void EditarClienteViewGuardarClick(object sender, EventArgs e)
+    {
+        var cliente = repositorioClientes.Obtener(clienteEnEdicion);
+        cliente.Nombre = editarClienteView.Nombre;
+        cliente.Apellido= editarClienteView.Apellido;
+        cliente.Pais = repositorioPaises.Obtener(editarClienteView.CodigoPais);
+    }
+}</pre>
+
+<p>Cabe mencionar que este presenter, así como la interfaz del view, nace a partir de una serie de tests que fui escribiendo al principio. Esta técnica se denomina comúnmente <a href="http://es.wikipedia.org/wiki/Desarrollo_guiado_por_pruebas">TDD</a>, aunque sus derivados como <a href="http://en.wikipedia.org/wiki/Behavior_Driven_Development">BDD</a> también son válidos. Esta es la serie de <u><strong>tests</strong></u> que definieron mi implementación:</p>
+
+<pre class="brush: csharp;">using System;
+using Moq;
+using NUnit.Framework;
+using PassiveView.Dominio;
+using PassiveView.Repositorios;
+using SharpTestsEx;
+
+namespace PassiveView.Tests
+{
+    [TestFixture]
+    public class EditarClientePresenterTests
+    {
+        public IRepositorioPaises CrearDobleDeRepositorioPaises()
+        {
+            var repositorioPaises = new Mock&lt;IRepositorioPaises&gt;();
+            repositorioPaises.Setup(r =&gt; r.ObtenerOrdenadosPorNombre())
+                .Returns(new[]
+                             {
+                                 new Pais {CodigoIso = &quot;AR&quot;, Nombre = &quot;Argentina&quot;},
+                                 new Pais {CodigoIso = &quot;UY&quot;, Nombre = &quot;Uruguay&quot;}
+                             });
+
+            return repositorioPaises.Object;
+        }
+
+        private static IRepositorioClientes CrearDobleRepositorioClientes()
+        {
+            var repositorio = new Mock&lt;IRepositorioClientes&gt;();
+            var cliente = new Cliente
+                                    {
+                                        Nombre = &quot;Jose&quot;,
+                                        Apellido = &quot;Romaniello&quot;,
+                                        Pais = new Pais {CodigoIso = &quot;AR&quot;, Nombre = &quot;Argentina&quot;}
+                                    };
+            repositorio.Setup(r =&gt; r.Obtener(1)).Returns(cliente);
+            return repositorio.Object;
+        }
+
+        [Test]
+        public void AlIniciarCargarPaises()
+        {
+            var view = new Mock&lt;IEditarClienteView&gt;();
+
+            var presenter = new EditarClientePresenter(
+                view.Object,
+                CrearDobleRepositorioClientes(),
+                CrearDobleDeRepositorioPaises());
+
+            presenter.Iniciar(1);
+
+            view.Verify(v =&gt; v.CargarPaisParaSeleccion(&quot;AR&quot;, &quot;Argentina&quot;));
+            view.Verify(v =&gt; v.CargarPaisParaSeleccion(&quot;UY&quot;, &quot;Uruguay&quot;));
+        }
+
+        [Test]
+        public void CuandoInicioCargoLosDatosDelCliente()
+        {
+            var view = new Mock&lt;IEditarClienteView&gt;();
+            view.SetupAllProperties();
+
+            var presenter = new EditarClientePresenter(
+                view.Object,
+                CrearDobleRepositorioClientes(),
+                CrearDobleDeRepositorioPaises());
+
+            presenter.Iniciar(1);
+
+            view.Object.Satisfy(v =&gt; v.Apellido == &quot;Romaniello&quot;
+                                     &amp;&amp; v.Nombre == &quot;Jose&quot;
+                                     &amp;&amp; v.CodigoPais == &quot;AR&quot;);
+        }
+
+        [Test]
+        public void CuandoInicioMostrarForm()
+        {
+            var view = new Mock&lt;IEditarClienteView&gt;();
+            view.SetupAllProperties();
+
+            var presenter = new EditarClientePresenter(
+                view.Object,
+                CrearDobleRepositorioClientes(),
+                CrearDobleDeRepositorioPaises());
+
+            presenter.Iniciar(1);
+
+            view.Verify(v =&gt; v.Show());
+        }
+
+        [Test]
+        public void CuandoGuardoCargarLosValoresDeLaPantalla()
+        {
+            var view = new Mock&lt;IEditarClienteView&gt;();
+            view.SetupAllProperties();
+
+            var repositorioClientes = CrearDobleRepositorioClientes();
+            var cliente = repositorioClientes.Obtener(1);
+
+            var presenter = new EditarClientePresenter(
+                view.Object,
+                repositorioClientes,
+                CrearDobleDeRepositorioPaises());
+
+            presenter.Iniciar(1);
+
+            view.Object.Nombre = &quot;Pedro&quot;;
+
+            view.Raise(v =&gt; v.GuardarClick += null, EventArgs.Empty);
+
+            cliente.Nombre.Should().Be.EqualTo(&quot;Pedro&quot;);
+
+        }
+        [Test]
+        public void CuandoCanceloCierroElForm()
+        {
+            var view = new Mock&lt;IEditarClienteView&gt;();
+            view.SetupAllProperties();
+
+            
+            var presenter = new EditarClientePresenter(
+                view.Object,
+                CrearDobleRepositorioClientes(),
+                CrearDobleDeRepositorioPaises());
+
+            view.Raise(v =&gt; v.CancelarClick += null, EventArgs.Empty);
+
+            view.Verify(v =&gt; v.Close());
+        }
+
+
+    }
+}</pre>
+
+<p>La <u><strong>implementación del view</strong></u> es algo que he hecho al final, y es la siguiente:</p>
+
+<pre class="brush: csharp;">using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace PassiveView
+{
+
+    public partial class FormEditarCliente : Form, IEditarClienteView
+    {
+        private readonly BindingList&lt;KeyValuePair&lt;string, string&gt;&gt;  paises 
+                = new BindingList&lt;KeyValuePair&lt;string, string&gt;&gt;();
+
+        public FormEditarCliente()
+        {
+            InitializeComponent();
+
+            cmbPaises.DataSource = paises;
+            cmbPaises.DisplayMember = &quot;Value&quot;;
+            cmbPaises.ValueMember = &quot;Key&quot;;
+        }
+
+        public string Nombre
+        {
+            get { return tNombre.Text; }
+            set { tNombre.Text = value; }
+        }
+
+        public string Apellido
+        {
+            get { return tApellido.Text; }
+            set { tApellido.Text = value; }
+        }
+
+        public string CodigoPais
+        {
+            get { return cmbPaises.SelectedValue.ToString(); }
+            set { cmbPaises.SelectedValue = value; }
+        }
+
+        public void CargarPaisParaSeleccion(string codigoIso, string nombre)
+        {
+            paises.Add(new KeyValuePair&lt;string, string&gt;(codigoIso, nombre));
+        }
+
+        public event EventHandler GuardarClick
+        {
+            add { btAceptar.Click += value; }
+            remove { btAceptar.Click -= value; }
+        }
+
+        public event EventHandler CancelarClick
+        {
+            add { btCancelar.Click += value; }
+            remove { btCancelar.Click -= value; }
+        }
+    }
+}</pre>
+
+<p>Este código esta escrito en el código behind del formulario.</p>
+
+<h2>Conclusiones</h2>
+
+<p>Este patrón tiene la ventaja de lograr una muy buena separación entre Model View y Presenter, nuestro código de view es relativamente sencillo y el view hace muy pocas cosas, por lo tanto podríamos decir que el patrón logra muy bien su objetivo.</p>
+
+<p>Como desventaja podríamos decir, que en este caso de uso sencillo se puede observar que estamos desaprovechando las características de databinding que winforms nos ofrece, haciendo que la interfaz de nuestra View sea muy pesada (muchos métodos) y el mapeo entre propiedades y controles puede llegar a ser tedioso.</p>
+
+<p><a href="https://bitbucket.org/jfromaniello/mvp-passive-view">El código completo de este sencillo ejemplo puede ser descargado de aquí.</a></p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-8430919085419511039' alt='' /></div>

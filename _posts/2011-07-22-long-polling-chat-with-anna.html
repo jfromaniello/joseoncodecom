@@ -1,0 +1,192 @@
+--- 
+layout: post
+title: Long polling chat with Anna
+tags: 
+- PubSub
+- ReactiveExtensions
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "365258697"
+---
+<p>This is an example chat built on top of <a href="https://github.com/jfroma/Anna">Anna</a>. Anna is an evolution of what I wrote in this <a href="http://joseoncode.com/2011/06/17/event-driven-http-server-in-c-with-rx-and-httplistener/">post</a> and it is in my github (and nuget) if you want to have a look.</p>  <p>Today, I have read this <a href="http://tarnbarford.net/journal/manos-long-polling-chat">very nice post</a> about <a href="http://jacksonh.tumblr.com/post/1159500924/manos-de-mono-the-manifesto">Manos de Mono</a> and decide to borrow the javascript files and the idea to Tarn Barford&#160; (I hope he don’t mind). </p>  <p>The Html page looks like this:</p>  <pre class="brush: xml; wrap-line: false;">&lt;!DOCTYPE HTML&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;title&gt;Anna Chat&lt;/title&gt;
+    &lt;script type=&quot;text/javascript&quot; 
+            src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js&quot;&gt;
+    &lt;/script&gt;
+    &lt;script type=&quot;text/javascript&quot; src=&quot;/app.js&quot;&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Chat&lt;/h1&gt;
+    &lt;input type=&quot;text&quot; id=&quot;message&quot; name=&quot;message&quot; /&gt;
+    &lt;input type=&quot;submit&quot; id=&quot;send-message&quot; name=&quot;Send&quot; /&gt;
+    &lt;ul id=&quot;messages&quot;&gt;
+    &lt;/ul&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>And the javascript file &quot;app.js&quot; as follows: </p>
+
+<pre class="brush: js; wrap-line: false;">$(function () {
+
+    var showMessage = function (message) {
+        $('#messages').prepend($('&lt;li/&gt;').append(message));
+    };
+
+    var getMessages = function () {
+        $.ajax({
+            type: 'POST',
+            url: '/wait',
+            data: 'data=none',
+            success: function (data) {
+                showMessage(data);
+            },
+            complete: function (q, s) {
+                getMessages();
+            }
+        });
+    };
+
+    var sendMessage = function (message) {
+        $.ajax({
+            type: 'POST',
+            url: '/send',
+            data: message,
+            contentType: &quot;text/plain&quot;,
+            success: function (data) {
+            },
+            error: function (d, m, et) {
+                alert(m + &quot;: &quot; + et);
+            }
+        });
+    };
+
+    $('#send-message').click(function (e) {
+        e.preventDefault();
+        var m = $('#message').val();
+        sendMessage(m);
+    });
+
+    getMessages();
+
+});</pre>
+
+<p>The first version of my code is:</p>
+
+<pre class="brush: csharp; wrap-line: false;">using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reactive.Concurrency;
+using System.Threading;
+using Anna;
+using Anna.Request;
+using Anna.Responses;
+
+namespace LongPollingChat
+{
+    class Program
+    {
+        static void Main()
+        {
+            var eventLoop = new EventLoopScheduler();
+            var waiting = new Queue&lt;RequestContext&gt;();
+
+            using (var requests = new HttpServer(&quot;http://127.0.0.1:987/&quot;, eventLoop))
+            {
+                requests.GET(&quot;app.js&quot;)
+                    .Subscribe(r =&gt; r.Respond(new StaticFileResponse(&quot;app.js&quot;)));
+
+                requests.GET(&quot;index.html&quot;)
+                    .Subscribe(r =&gt; r.Respond(new StaticFileResponse(&quot;index.html&quot;)));
+
+                requests.POST(&quot;wait&quot;)
+                    .Subscribe(waiting.Enqueue);
+
+                requests.POST(&quot;send&quot;)
+                    .Subscribe(r =&gt; {
+                              string message;
+                              using(var sr = new StreamReader(r.Request.InputStream))
+                              {
+                                  message = sr.ReadToEnd();
+                              }
+
+                              r.Respond(201);
+
+                              while (waiting.Count &gt; 0)
+                              {
+                                  waiting.Dequeue().Respond(new StringResponse(message));
+                              }
+                    });
+
+                Console.ReadLine();
+            }
+        }
+    }
+}</pre>
+
+<p>Notice:</p>
+
+<ul>
+  <li>Everything is happening in the same thread because the EventLoopScheduler from Rx. The same way that node.js and Manos de Mono does. </li>
+
+  <li>The StaticFileResponse is an async operation. It is async when reading from the disk and it is async to write to the stream. </li>
+
+  <li>Requests is an observable, and the GET and POST methods are just extension methods that filter the observable based on URI matching and Http METHOD. </li>
+
+  <li>I am responding with a 201 to the POST method before pushing to all clients. I don’t need to make the POST to wait. </li>
+</ul>
+
+<h2>A more functional way</h2>
+
+<p>Even if the above code works, I think is still very imperative…. So, follow my reasoning and think that the POST is just an stream of messages, it is an IObservable&lt;string&gt; so we can do something like this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">static void Main()
+{
+    var eventLoop = new EventLoopScheduler();
+    
+    using (var requests = new HttpServer(&quot;http://127.0.0.1:987/&quot;, eventLoop))
+    {
+        requests.GET(&quot;app.js&quot;)
+            .Subscribe(r =&gt; r.Respond(new StaticFileResponse(&quot;app.js&quot;)));
+
+        requests.GET(&quot;index.html&quot;)
+            .Subscribe(r =&gt; r.Respond(new StaticFileResponse(&quot;index.html&quot;)));
+
+        var messageStream = requests.POST(&quot;send&quot;)
+            .Select(r =&gt; {
+                      string message;
+                      using(var sr = new StreamReader(r.Request.InputStream))
+                      {
+                          message = sr.ReadToEnd();
+                      }
+                      r.Respond(201);
+                      return message;
+            }).Publish().RefCount();
+
+        requests.POST(&quot;wait&quot;)
+            .Subscribe(subscriber =&gt; messageStream
+                          .Take(1)
+                          .Subscribe(m =&gt; subscriber.Respond(new StringResponse(m))));
+        
+        messageStream.Subscribe(m =&gt; Console.WriteLine(&quot;New messages published {0}&quot;, m));
+
+        Console.ReadLine();
+    }
+}</pre>
+
+<p>And this new version doesn’t need a queue.. We are only “chaining” observables…</p>
+
+<h2>Can we do it better?</h2>
+
+<p>I don’t know if it is any better but you can start take advantage of the Rx operators, for instance the above code for subscriptions could be implemented with a SelectMany:</p>
+
+<pre class="brush: csharp; wrap-line: false;">requests.POST(&quot;wait&quot;)
+        .SelectMany(subscriber =&gt; messageStream.Take(1),
+                   (subscriber, message) =&gt; new {subscriber, message})
+        .Subscribe(kp =&gt; kp.subscriber.Respond(new StringResponse(kp.message)));</pre>
+
+<p>The code is just an experiment and you can play with it <a href="https://github.com/jfromaniello/LongPollingChat">here</a>.</p>

@@ -1,0 +1,46 @@
+--- 
+layout: post
+title: "Unit tests: Anonymous Types and Dynamic"
+tags: 
+- Asp.Net MVC
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/04/unit-tests-anonymous-types-and-dynamic.html
+  dsq_thread_id: "313763298"
+  blogger_images: "1"
+---
+<p>I just saw a chunk of code in <a href="http://ayende.com/Blog/archive/2011/04/10/refactoring-toward-frictionless-amp-odorless-code-the-case-for-the.aspx">Ayende's blog</a> as follows:</p>  <pre class="brush: csharp; wrap-line: false;">public class HomeController : SessionController
+{
+    public ActionResult Blog(int id)
+    {
+        var blog = Session.Get&lt;Blog&gt;(id);
+
+        return Json(new
+        {
+            blog.AllowsComments,
+            blog.CreatedAt,
+            blog.Id,
+            blog.Subtitle
+        }, JsonRequestBehavior.AllowGet);
+    }
+}</pre>
+
+<p>I like using anonymous types in this fashion and then tests as follows: </p>
+
+<pre class="brush: csharp; wrap-line: false;">
+dynamic result = ((JsonResult)controller.Blog(1)).Data;
+
+Assert.AreEqual(&quot;The subtitle&quot;, result.Subtitle);
+Assert.AreEqual(1, result.Id);</pre>
+
+<p>If you do so, it is not going to work...Why? The quick answer is that anonymous type are internal.</p>
+
+<p>The solution is very simple, edit the AssemblyInfo.cs in the project of the controllers and add the following code:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[assembly: InternalsVisibleTo(&quot;MySuperProject.Tests&quot;)]</pre>
+
+<p>Replace the &quot;MySuperProject.Tests&quot; with the name of your test project.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3912966007548697185' alt='' /></div>

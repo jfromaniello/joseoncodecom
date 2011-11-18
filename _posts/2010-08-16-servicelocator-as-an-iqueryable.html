@@ -1,0 +1,119 @@
+--- 
+layout: post
+title: ServiceLocator as an IQueryable
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/08/servicelocator-as-queryable.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_images: "1"
+  dsq_thread_id: "314364769"
+---
+<p>I had an idea few days ago, about using an <strike>Enumerable</strike> Queryable as ServiceLocator, lets say a sequence of things that you can query. </p>  <p>I will explain this idea through simple tests. Suppose we have the following interface:</p>  <pre class="brush: csharp;">public interface IContainer
+{
+    IEnumerable&lt;T&gt; GetServices&lt;T&gt;();
+    T GetService&lt;T&gt;();
+}</pre>
+
+<h4></h4>
+
+<h4>1-It is a bad thing to ask to our ServiceLocator for all services so:</h4>
+
+<pre class="brush: csharp; line-wrap: false;">[Test]
+public void WhenEnumeratingWithoutTypeThenThrowException()
+{
+    var container = new Mock&lt;IContainer&gt;();
+    
+    var sl = new QueryableLocator&lt;object&gt;(container.Object);
+    
+    sl.Executing(q =&gt; q.ToArray())
+    .Throws&lt;InvalidOperationException&gt;()
+    .And.ValueOf.Message
+        .Should().Be.EqualTo(&quot;You must start with an OfType call.&quot;);
+}</pre>
+
+<p>Prety easy to understand, if I try to enumerate for ALL services, just throw an exception</p>
+
+<h4>2-How to query all instances of a given type registered in the container.</h4>
+
+<pre class="brush: csharp;">[Test]
+public void WhenEnumeratingWithOfTypeThenReturnAllInstancesOfTheGivenType()
+{
+    var container = new Mock&lt;IContainer&gt;();
+    var serviceInstances = new []{&quot;a&quot;, &quot;b&quot;};
+    container.Setup(c =&gt; c.GetServices&lt;string&gt;())
+             .Returns(serviceInstances);
+
+    var sl = new QueryableLocator&lt;object&gt;(container.Object);
+    sl.OfType&lt;string&gt;().ToArray()
+            .Should().Have.SameValuesAs(serviceInstances);
+}</pre>
+
+<p>I can query for all services implementing a given interface. Same stuff is on CommonServiceLocator.</p>
+
+<h4>3-How to get an instance of a given type</h4>
+
+<pre class="brush: csharp;">[Test]
+public void WhenEnumeratingWithOfTypeAndCallingSingleThenResolveOnlyOneInstance()
+{
+    var container = new Mock&lt;IContainer&gt;();
+    container.Setup(c =&gt; c.GetService&lt;string&gt;())
+            .Returns(&quot;a&quot;);
+
+    var sl = new QueryableLocator&lt;object&gt;(container.Object);
+    sl.OfType&lt;string&gt;().Single()
+        .Should().Be.Equals(&quot;a&quot;);
+}</pre>
+
+<p>This is the most widely used scenario, doing sl.OfType<imyservice>().Single() is the same than commonServiceLocator.GetInstance<imyservice>()</p>
+
+<h4>4-Throw an exception when you try to do a Select, Count, Where, etc</h4>
+
+<pre class="brush: csharp; line-wrap: false;">[Test]
+public void WhenExecutingAnUnrelatedLinqMethodThenThrowException()
+{
+    var container = new Mock&lt;IContainer&gt;();
+    
+    var query = new QueryableLocator&lt;object&gt;(container.Object);
+
+    query.Executing(q =&gt; q.Count(s =&gt; true))
+        .Throws&lt;InvalidOperationException&gt;()
+        .And.ValueOf.Message
+            .Should().Be.EqualTo(&quot;Count is not allowed over the service locator.&quot;);
+}</pre>
+
+<p>Ok, this is all for now. </p>
+
+<h3></h3>
+
+<h4></h4>
+
+<h2>Advantages of QueryableServiceLocator over CommonServiceLocator</h2>
+
+<p>There are two big advantages:</p>
+
+<ul>
+  <li>You don’t need an extra assembly Microsoft.CommonServiceLocator. In fact IoC containers can provide their own implementation, so there is not need for an implementor assembly.</li>
+
+  <li>Easy to create Factories, you don’t need to write another interface/implementation for factories. Do you want a MessageHandlerFactory? var messageHandlerFactory = serviceLocator.OfType&lt;IMessageHandler&gt;(). </li>
+</ul>
+
+<h2>TODOs</h2>
+
+<p>This is a rough idea, so far I don’t know how to handle the following two scenarios:</p>
+
+<ul>
+  <li>Retrieve a service by key, generally speaking a string key.</li>
+
+  <li>Create a factory of an open generic type, like “IRepository&lt;&gt;”</li>
+</ul>
+
+<p>&#160;</p>
+
+<p>The implementation is right <a href="http://bitbucket.org/jfromaniello/queryableservicelocator">here</a>. The class you might be interested on is <a href="http://bitbucket.org/jfromaniello/queryableservicelocator/src/tip/QueryableServiceLocator/QueryableLocator.cs">this one</a>.</p>
+
+<p>Ideas?</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-4718223817265361031' alt='' /></div>

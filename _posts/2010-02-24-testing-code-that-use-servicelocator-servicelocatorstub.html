@@ -1,0 +1,92 @@
+--- 
+layout: post
+title: "Testing code that use ServiceLocator: ServiceLocatorStub"
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2010/02/testing-code-that-use-servicelocator.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_images: "1"
+  dsq_thread_id: "314364418"
+---
+<p>This a common question, and the answer usually is that this kind of code is harder to test. Really? For me this is not so true.</p>  <p>This is an example test:</p>  <pre class="brush: csharp;">[Test]
+public void do_something_save_the_object_properly()
+{
+    var daoMock = new DaoMock();
+
+    //initializing my servicelocator stub.
+    ServiceLocatorStub.Create().AddInstance&lt;IDao&gt;(daoMock);
+
+    //this component use service locator internally
+    var component = new AComponent(); 
+    component.DoSomething();
+
+    Assert.AreEqual(&quot;hey&quot;, daoMock.WasCalledWith); 
+
+}</pre>
+
+<p>The implementation of DoSomething look as follows:</p>
+
+<pre class="brush: csharp;">public void DoSomething()
+{
+    ServiceLocator.Current.GetInstance&lt;IDao&gt;().Save(&quot;hey&quot;);
+}</pre>
+
+<p>The “DaoMock” implementation is not so usefull, but:</p>
+
+<pre class="brush: csharp;">public class DaoMock : IDao
+{
+    public string WasCalledWith { get; private set; }
+    public void Save(string anObject)
+    {
+        WasCalledWith = anObject;
+    }
+}</pre>
+
+<p>And finally here is the ServiceLocatorStub: </p>
+
+<pre class="brush: csharp;">public class ServiceLocatorStub : ServiceLocatorImplBase 
+{
+    private readonly IDictionary&lt;Type, ICollection&lt;object&gt;&gt; 
+        registeredTypes = new Dictionary&lt;Type, ICollection&lt;object&gt;&gt;();
+
+    private ServiceLocatorStub()
+    {}
+
+    public ServiceLocatorStub AddInstance&lt;TService&gt;(TService instance)
+    {
+        ICollection&lt;object&gt; instanceCollection;
+        if(!registeredTypes.TryGetValue(typeof(TService), out instanceCollection))
+        {
+            instanceCollection = new List&lt;object&gt;();
+            registeredTypes[typeof (TService)] = instanceCollection;
+        }
+        instanceCollection.Add(instance);
+        return this;
+    }
+
+    public static ServiceLocatorStub Create()
+    {
+        var fakeServiceLocator = new ServiceLocatorStub();
+        ServiceLocator.SetLocatorProvider(() =&gt; fakeServiceLocator);
+        return fakeServiceLocator;
+    }
+
+    protected override object DoGetInstance(Type serviceType, string key)
+    {
+        return registeredTypes[serviceType].FirstOrDefault();
+    }
+
+    protected override IEnumerable&lt;object&gt; DoGetAllInstances(Type serviceType)
+    {
+        return registeredTypes[serviceType];
+    }
+}</pre>
+
+<p>The constructor of the class is private, you must call Create(), this will return a new instance and set this instance as the current service locator. Then you can add services (mocks or stubs) fluently! </p>
+
+<p>You don't need to reference a concrete container, neither the implementation of the service locator for the container.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3346532387956938459' alt='' /></div>

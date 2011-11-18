@@ -1,0 +1,108 @@
+--- 
+layout: post
+title: "Aprendiendo Session-Per-Request con NHibernate; en solo 100 p\xC3\xA1ginas"
+tags: 
+- Asp.Net
+- Asp.Net MVC
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/11/como-usar-session-per-request-con.html
+  dsq_thread_id: "314364097"
+  blogger_images: "1"
+---
+<p>A menudo veo en el foro de NHibernate hispano que alguien pregunta como manejar la session de NHibernate en aplicaciones WEB, o algunas otras preguntas raras como si es necesario algún framework para manejar la session. </p>  <p>Sea ASP.NET o ASP.Net MVC el patrón que solemos usar es session-per-request. En este post voy a comentar como yo suelo hacer esto.</p>  <p>Las 50 primeras páginas las voy a dedicar pura y exclusivamente a la teoría:</p>  <blockquote>   <p><font style="background-color: #ffffff">Session y Transaction tienen igual ciclo de vida que un web request.</font></p> </blockquote>  <p>Recordar que NHibernate ya dispone de una forma de manejar sesiones de contexto, y la que vamos a usar es “managed_web”.&#160; entonces lo único que tenemos que hacer en nuestro archivo de configuración de NHibernate es lo siguiente:</p>  <pre class="code"><span style="color: blue">&lt;</span><span style="color: #a31515">property </span><span style="color: red">name</span><span style="color: blue">=</span>&quot;<span style="color: blue">current_session_context_class</span>&quot;<span style="color: blue">&gt;</span>managed_web<span style="color: blue">&lt;/</span><span style="color: #a31515">property</span><span style="color: blue">&gt;</span></pre>
+
+<p><a href="http://11011.net/software/vspaste"></a>De esta forma le estamos diciendo a nhibernate que vamos a utilizar ese contexto. La particularidad de ese “manejador” de contexto es que guarda la session actual en un HttpContext.</p>
+
+<p>Luego en el código lo único que tenemos que hacer es lo siguiente:</p>
+
+<pre class="brush: csharp;">public class Global: System.Web.HttpApplication
+{
+    public static ISessionFactory SessionFactory 
+                            = CreateSessionFactory();
+    
+    protected static ISessionFactory CreateSessionFactory()
+    {
+        return new Configuration()
+            .Configure()
+            .BuildSessionFactory();
+    }
+    
+    
+    protected void Global()
+    {
+        BeginRequest += (sender, args) =&gt; 
+        {
+                var session = Session.OpenSession()
+                ManagedWebSessionContext.Bind(
+                        HttpContext.Current,
+                        session);
+                session.BeginTransaction();
+
+        };
+        EndRequest += (sender, args) =&gt; 
+        {
+                ISession session = ManagedWebSessionContext.Unbind(
+                                HttpContext.Current, SessionFactory);
+                if (session != null)
+                {
+                    if (session.Transaction != null &amp;&amp;
+                        session.Transaction.IsActive)
+                    {
+                        session.Transaction.Commit();
+                    }
+                    session.Close();
+                }
+        };
+    }
+}</pre>
+
+<p>Si la aplicación tiene mucho contenido que no necesita acceder a la persistencia, como páginas estáticas haría una pequeña modificación allí para que no inicie una transacción por cada request. </p>
+
+<p>Como acceder a la Session desde nuestros repositorios o daos, es muy sencillo:</p>
+
+<pre class="brush: csharp;">namespace SGF.Data.Impl.Repositories
+{
+    public class Dao&lt;T&gt; : IDao&lt;T&gt;
+    {
+        private readonly ISessionFactory _factory;
+
+        public Dao(ISessionFactory factory)
+        {
+            _factory = factory;
+        }
+
+        protected ISession Session
+        {
+            get { return _factory.GetCurrentSession(); }
+        }
+
+        #region IDao&lt;T&gt; Members
+
+        public T Get(object id)
+        {
+            return Session.Get&lt;T&gt;(id);
+        }
+
+        public T GetProxy(object id)
+        {
+            return Session.Load&lt;T&gt;(id);
+        }
+
+        public T Save(T entity)
+        {
+            Session.Save(entity);
+            return entity;
+        }
+
+        // and so on..
+
+    }
+}</pre>
+
+<p>Nuestros DAO’s dependen de ISessionFactory, dado que en el constructor esperan un ISessionFactory. Casi nunca construyo un DAO manualmente siempre lo hace mi IoC container… Pero eso son 200 páginas más.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7363188261136423464' alt='' /></div>

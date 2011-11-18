@@ -1,0 +1,88 @@
+--- 
+layout: post
+title: Windsor ISubDependencyResolver example
+tags: 
+- Castle
+- IoC
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2011/01/windsor-isubdependencyresolver-example.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "319254565"
+---
+<p>This is a basic example of ISubDependencyResolver for <a href="http://www.castleproject.org/container">Castle Windsor</a>. </p>  <p>Given the following service:</p>  <pre class="brush: csharp;">public class MySuperService
+{
+  public MySuperService(string connectionString)
+  {
+    //..
+  }
+}</pre>
+
+<p>I want Windsor automatically to look at the web.config or app.config settings and if there is a configuration with key equals to the parameter name (i.e. “connectionString”) to inject automatically the value when constructing MySuperService instance.</p>
+
+<p>The infrastructure code is this:</p>
+
+<pre class="brush: csharp;">public class DependenciesFromAppSettings : AbstractFacility
+{
+    protected override void Init()
+    {
+        var dic = ConfigurationManager
+            .AppSettings
+            .AllKeys
+            .ToDictionary(k =&gt; k, k =&gt; ConfigurationManager.AppSettings[k]);
+
+        Kernel.Resolver.AddSubResolver(new DependenciesFromAppSettingsResolver(dic));
+    }
+}
+
+public class DependenciesFromAppSettingsResolver : ISubDependencyResolver
+{
+    private readonly IDictionary&lt;string, string&gt; webConfig;
+
+    public DependenciesFromAppSettingsResolver(IDictionary&lt;string, string&gt; webConfig)
+    {
+        this.webConfig = webConfig;
+    }
+
+    public object Resolve(
+        CreationContext context, 
+        ISubDependencyResolver contextHandlerResolver, 
+        ComponentModel model, 
+        DependencyModel dependency)
+    {
+        return webConfig[dependency.DependencyKey];
+    }
+
+    public bool CanResolve(
+        CreationContext context, 
+        ISubDependencyResolver contextHandlerResolver, 
+        ComponentModel model, 
+        DependencyModel dependency)
+    {
+        return dependency.DependencyType == DependencyType.Parameter 
+            &amp;&amp; webConfig.ContainsKey(dependency.DependencyKey);
+    }
+}</pre>
+
+<p>And the usage is very straightforward:</p>
+
+<pre class="brush: csharp;">[TestFixture]
+public class DependenciesFromAppSettingsTests
+{
+  [Test]
+  public void CanInjectSettingsFromAppConfig()
+  {
+    var container = new WindsorContainer();
+
+    container.AddFacility&lt;DependenciesFromAppSettings&gt;();
+    container.Register(Component.For&lt;MySuperService&gt;());
+
+    var superInstance = container.Resolve&lt;MySuperService&gt;();
+    superInstance.ConnectionString
+                 .Should().Be.EqualTo(&quot;sample conn string&quot;);
+  } 
+}</pre>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2194163085327331495' alt='' /></div>

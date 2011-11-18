@@ -1,0 +1,175 @@
+--- 
+layout: post
+title: "Caso pr\xC3\xA1ctico: patr\xC3\xB3n Visitor"
+tags: 
+- MundoReal
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/11/caso-practico-patron-visitor.html
+  blogger_images: "1"
+  dsq_thread_id: "314364305"
+---
+<p>En este post voy a comentar un caso de uso del mundo real donde utilicé el patrón Visitor.</p>  <p>La historia comienza cuando en mi código me encontré con un método que estaba creciendo de tal forma que en poco tiempo tendría el siguiente aspecto (pseudo código):</p>  <pre class="brush: csharp;">public override void Procesar(FacturaViewModel entidad)
+{
+    //1-Crear Factura a partir de FacturaViewModel
+
+    //2-Si la Factura implica mover stock
+    //    Realizar Movimiento stock.
+
+    //3-Si la Factura es de contado
+    //    Realizar Operación Contable de Contado
+
+    //4-Si la Factura es en Cuenta Corriente
+    //    Realizar Operación Contable de CtaCte
+    //    y generar comprobante XYZ
+
+    //5-Si el monto total de la factura excede los 1000
+    //    Aplicar consolidación de cliente
+
+    //6-Si la Factura incluye &quot;envases retornables&quot;
+    //    Generar comprobante de conformidad y
+    //    actualizar info de envases XYZ
+
+    base.Guardar(entidad);
+}</pre>
+
+<p>Para simplificar he mencionado solo algunos escenarios o situaciones que se llevan a cabo en este proceso, según determinadas condiciones.</p>
+
+<p>Esto era el ABC de mis servicios hasta hace algún tiempo, incluso es la forma que he utilizado ampliamente en aplicaciones VB6 (no estoy diciendo que ya no lo uso más). Este patrón esta muy bien explicado al estilo de <a href="http://martinfowler.com">Martin Fowler</a> como <a href="http://martinfowler.com/eaaCatalog/transactionScript.html">Transaction Script</a>.</p>
+
+<p>Uno de los principales motivos por los cuales decidí este caso hacerlo con visitors, es que desde mi punto de vista esta suerte de Transaction Script tiene los siguientes problemas:</p>
+
+<ul>
+  <li>A mi criterio en algunos casos viola “Single Responsability Principle”; el principio dice que solo debería existir una razón para que una clase cambie. Depende en cierta forma de la granularidad que uno lo mire, pero para este escenario, encuentro la respuesta “Cambió el Script de Transacción” como inaceptable. Por lo tanto esta clase escrita de esta forma esta sujeta a cambios por múltiples razones: 
+    <ul>
+      <li>Cambio la forma de tratar las facturas de contado. </li>
+
+      <li>Cambio la forma de mover stock. </li>
+
+      <li>etc. </li>
+    </ul>
+  </li>
+
+  <li>Difícil de diseñar con TDD: esta es la razón principal que me hizo cambiar de idea en este escenario, realizar pruebas unitarias sobre un transaction script es prácticamente imposible. Lo que se debería hacer en realidad son pruebas con diferentes “escenarios” pero a mi criterio es mas una prueba de integración que unitaria. También quería destacar que configurar el contexto o escenario para la prueba involucra hacer mock de varios servicios. </li>
+
+  <li>Difícil de mantener y cambiar. Esto es el producto de los dos puntos anteriores. </li>
+</ul>
+
+<h2>Utilizando una especie de patrón Visitor</h2>
+
+<p>El patrón Visitor esta explicado en estos <a href="http://en.wikipedia.org/wiki/Visitor_pattern">dos</a> <a href="http://www.dofactory.com/Patterns/PatternVisitor.aspx#_self1">links</a> (gracias a <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a> por los links y aclaraciones). La forma en que he aplicado el patrón es la siguiente, imaginese una interface así:</p>
+
+<pre class="brush: csharp;">public interface IVisitor&lt;T&gt;
+{
+    bool Aplica(T entity);
+    void Aplicar(T entity);
+}</pre>
+
+<p>Esta interface tiene dos métodos. Aplica devuelve verdadero o falso dependiendo si el Visitor debe “visitar” dicha entidad del tipo T y el método Aplicar, que es el que finalmente ejecuta la acción sobre la entidad.</p>
+
+<p>Mi servicio ahora tendría la siguiente forma</p>
+
+<pre class="brush: csharp;">public class ServicioFacturacion 
+{
+    private readonly IVisitor&lt;Factura&gt;[] _visitors;
+   
+    public ServicioFactura(
+        IVisitor&lt;Factura&gt;[] visitors, 
+        ..) : base(..)
+    {
+        _visitors = visitors;
+    }
+
+    public override void Guardar(FacturaPedido entidad)
+    {
+        foreach (var visitor in _visitors)
+        {
+            if(visitor.Aplica(entidad))
+            {
+                visitor.Aplicar(entidad);
+            }
+        }
+        base.Guardar(entidad);
+    }
+}</pre>
+
+<p>Como se puede ver el servicio ahora tiene una dependencia con un array de IVistor&lt;Factura&gt;. Probar esto es trivial:</p>
+
+<pre class="brush: csharp;">var factura = new Factura();
+var daoFactura = new Mock&lt;IDao&lt;Factura&gt;&gt;();
+
+var visitor1 = new Mock&lt;IVisitor&lt;Factura&gt;&gt;();
+visitor1.Setup(a =&gt; a.Aplica(factura)).Returns(true);
+
+var visitor2 = new Mock&lt;IVisitor&lt;Factura&gt;&gt;();
+visitor2.Setup(a =&gt; a.Aplica(factura)).Returns(false);
+
+
+var modelo = new ServicioFacturacion(
+        new[] {visitor1.Object, visitor2.Object},  
+        new DaoFactoryMock().PushDao(daoFacturaPedido.Object));
+
+modelo.Guardar(factura);
+
+
+visitor1.VerifyAll();
+visitor2.VerifyAll();
+visitor2.Verify(a =&gt; a.Aplicar(factura), Times.Never());
+visitor1.Verify(a =&gt; a.Aplicar(factura));
+daoFactura.Verify(d =&gt; d.Save(factura));</pre>
+
+<p>Este test verifica:</p>
+
+<ul>
+  <li>Un visitor que aplica, debe aplicarse. </li>
+
+  <li>Un visitor que no aplica, no debe aplicarse. </li>
+
+  <li>El método Guardar del dao es llamado. </li>
+</ul>
+
+<p>La idea en general es que uno ya esta usando inyección de dependencia y esto es muy fácil de configurar con cualquier container, por lo tanto nunca se construirá la instancia manualmente (excepto en el test je!). Aquí les dejo la referencia de como hacerlo con Castle <a href="http://www.castleproject.org/container/documentation/v1rc3/usersguide/arrayslistsanddicts.html">Arrays, List and Dics</a>.</p>
+
+<p>Otra ventaja es que al estar dentro del Container, cualquier servicio puede ser inyectado en un Visitor.</p>
+
+<p>Esto también nos da la posibilidad en el futuro de añadir visitors sin necesidad&#160; de cambiar el servicio. Inclusive si los Visitors se crean en base a una interfaz pueden ser reutilizados en otros servicios similares.</p>
+
+<p>Un ejemplo de un visitor es el siguiente:</p>
+
+<pre class="brush: csharp;">public class VisitorMovimientoStock : IVisitor&lt;Factura&gt;
+{
+    private readonly IDaoReadOnly&lt;Deposito&gt; _daoDeposito;
+
+    public VisitorMovimientoStock(IDaoFactory daoFactory)
+    {
+        _daoDeposito = daoFactory.GetDaoReadOnlyOf&lt;Deposito&gt;();
+    }
+
+    public bool Aplica(Factura entity)
+    {
+        return entity.Tipo.MueveStock;
+    }
+
+    public void Aplicar(Factura entidad)
+    {
+        var destino = _daoDeposito
+                .First(d =&gt; d.Nombre == DepositosConocidos.EGRESO_VENTAS);
+
+        var movimientosDeStock = entidad.Lineas
+            .Select(l =&gt; l.ToMovimientoStock(entidad.PuntoVenta.DepositoVentas, destino))
+            .ToList();
+
+        entidad.AgregarMovimientosStock(movimientosDeStock);
+    }
+}</pre>
+
+<p>Hacer un test solamente de este aspecto es bastante fácil y voy a omitirlo.</p>
+
+<p>Quería también pedir disculpas, por los nombres, sé que no son muy agradables. No me agrada mezclar ingles y castellano en los nombres de las clases, pero salió así!</p>
+
+<p>Y por último comentar que este ejemplo es también parte del <a href="http://jfromaniello.blogspot.com/search/label/MundoReal">MundoReal</a>.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2708151773422831862' alt='' /></div>

@@ -1,0 +1,12 @@
+--- 
+layout: post
+title: Introducing Hermes
+tags: 
+- Hermes
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "356276226"
+---
+<p>Today, we are very pleased to announce <a href="https://github.com/TellagoDevLabs/Hermes">Hermes</a>, a new open source messaging system based on the well know <a href="http://en.wikipedia.org/wiki/Publish/subscribe">Publish/Subscribe pattern</a>.</p>  <p>The project was born as part of one of the projects at <a href="http://tellago.com">Tellago</a> and after a while we decided to refactor and make it available and opensource for everyone. I have been working in this project with <a href="http://silviomassari.wordpress.com">Silvio Massari</a>, <a href="http://thegsharp.wordpress.com/">Gustavo Machado</a> and <a href="http://geekswithblogs.net/BizTalkUnleashed/Default.aspx">Vishal Mody</a> as part of the open source initiative of Tellago; named <a href="http://tellago.codeplex.com/">Tellago Dev Labs</a>. There are other two masterminds behind this project that I’d like to mention: <a href="http://weblogs.asp.net/gsusx/">Jesus Rodriguez</a> and <a href="http://weblogs.asp.net/cibrax/">Pablo Cibraro</a>.</p>  <p>The power of Hermes resides in its simple <strong><u>RESTfull API</u></strong> documented <a href="https://github.com/TellagoDevLabs/Hermes/wiki/AdministrationApi">here</a>. Messages are <a href="https://github.com/TellagoDevLabs/Hermes/wiki/Publish">POSTed in to different topics</a> and <a href="https://github.com/TellagoDevLabs/Hermes/wiki/Subscribe">subscribers polls an atom feed</a> of the topics they are interested in. Hermes comes with a very basic administration web portal and a c# client library as example. </p>  <p>Hermes uses <a href="http://www.mongodb.org/">MongoDb</a> as a backend storage for messages and it was built on .Net/c# using the new <a href="http://wcf.codeplex.com/">WCF Web API</a> and <a href="http://structuremap.net/structuremap/">Structure Map</a> among other technologies.</p>  <p>Our roadmap is:</p>  <ul>   <li>Enhance the REST api.</li>    <li>Add more use cases and reports to the web portal</li>    <li>Build a Javascript client library</li>    <li>Build an example application</li>    <li>Setup an Hermes instance on the cloud (azure or amazon ec2)</li>    <li>Explore new messaging patterns </li> </ul>  <p>If you want to explore Hermes please read the <a href="https://github.com/TellagoDevLabs/Hermes/wiki">wiki</a> pages and the suite of tests.    <br />As any open source project we look forward to receive your feedback!    </p>

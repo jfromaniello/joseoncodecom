@@ -1,0 +1,62 @@
+--- 
+layout: post
+title: Running QUnit tests in TeamCity
+tags: 
+- Continuos Integration
+- javascript
+- qunit
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "381126801"
+---
+<p>In my <a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">previous post</a> I shown how to use <a href="http://docs.jquery.com/Qunit">QUnit</a> and <a href="http://www.phantomjs.org/">PhantomJS</a> to do continuous testing. In this post I will show how to integrate QUnit to <a href="http://www.jetbrains.com/teamcity/">TeamCity</a>; the powerful and user-friendly continuous integration server from <a href="http://www.jetbrains.com">JetBrains</a>.</p>  <p>Running the tests is not that complicated. The challenging part is how we can let Teamcity to know the tests results. Teamcity has two options for reading tests results;</p>  <ol>   <li>By reading an xml report file (from nunit, mstests, junit and lot of other frameworks). </li>    <li>With <a href="http://confluence.jetbrains.net/display/TCD65/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-ServiceMessages">service messages</a>. Which basically means that our build script write special messages in the standard output that TeamCity can read. </li> </ol>  <p>I am used to use option 1 with nunit, but for this case, and since qunit doesn’t generate any xml out of the box we have to use option 2.</p>  <p>The first step is to create a file (which I call QUnit.Teamcity.js), with the following code:</p>  <pre class="brush: js; wrap-line: false;">
+//QUnit.moduleStart({ name })
+QUnit.moduleStart = function(settings){
+    console.log(&quot;##teamcity[testSuiteStarted name='&quot; + settings.name + &quot;']&quot;);
+};
+
+//QUnit.moduleDone({ name, failed, passed, total })
+QUnit.moduleDone = function(settings){
+    console.log(&quot;##teamcity[testSuiteFinished name='&quot; + settings.name + &quot;']&quot;);
+};
+
+//QUnit.testStart({ name })
+QUnit.testStart = function (settings){
+    console.log(&quot;##teamcity[testStarted name='&quot; + settings.name + &quot;']&quot;);
+};
+
+//QUnit.testDone({ name, failed, passed, total })
+QUnit.testDone = function(settings){
+    if(settings.failed &gt; 0){
+        console.log(&quot;##teamcity[testFailed name='&quot; + settings.name + &quot;'&quot;
+                     + &quot; message='Assertions failed: &quot; + settings.failed + &quot;'&quot;
+                     + &quot; details='Assertions failed: &quot; + settings.failed + &quot;']&quot;);
+    }
+    console.log(&quot;##teamcity[testFinished name='&quot; + settings.name + &quot;']&quot;);
+};</pre>
+
+<p>MMmmmmOkaay, but what is this?</p>
+
+<ul>
+  <li>QUnit.moduleStart/moduleDone/testStart/testDone, are extensibility points of QUnit well explained in the very first page of QUnit.</li>
+
+  <li>console.log is javascript brought to you by the PhantomJs “runtime”. Since phantomjs is a webkit javascript runtime without graphical interface, this is the way you use to print messages to the standard output.</li>
+
+  <li>##teamcity messages are in the format that Teamcity can read, this is documented <a href="http://confluence.jetbrains.net/display/TCD65/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-ReportingTests">here</a>.</li>
+</ul>
+
+<p>And as John Smith would say; </p>
+
+<blockquote>
+  <p>I love it when a plans comes together</p>
+</blockquote>
+
+<p>The next step is to reference QUnit.TeamCity.js in your html test harness (this is explained in the first page of QUnit) and then you can call it from your build script as:</p>
+
+<blockquote>
+  <p>phantomjs.exe run-qunit.js my.html.tests.harness.htm</p>
+</blockquote>
+
+<p>where run-qunit.js is exactly the same than in my <a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">previous post</a>.</p>

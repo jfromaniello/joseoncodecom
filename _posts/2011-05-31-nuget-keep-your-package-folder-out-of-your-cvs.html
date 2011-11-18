@@ -1,0 +1,37 @@
+--- 
+layout: post
+title: NuGet; keep your package folder out of the CVS
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "318395207"
+---
+<p>I am using <a href="http://mercurial.selenic.com/">Mercurial</a> since long time ago, and yesterday I was fighting to push a repository to codeplex. It is well known fact than Mercurial is bad when it comes to large files (yes, it is worse than Git or even SVN).</p>  <p>After all you might wonder if it is right to push all those files to the [D]CVS. The important information for recreating the whole package folder is in your “packages.config” file.</p>  <p>My friend <a href="http://simoncropp.posterous.com">Simon Cropp</a> gave me yesterday this chunk of msbuild configuration:</p>  <pre class="brush: xml; wrap-line: false;">  &lt;Target Name=&quot;BeforeBuild&quot;&gt;
+    &lt;Exec Condition=&quot;Exists('$(ProjectDir)packages.config')&quot; 
+            Command=&quot;&amp;quot;$(SolutionDir)Tools\nuget.exe&amp;quot; install &amp;quot;$(ProjectDir)packages.config&amp;quot; -o &amp;quot;$(SolutionDir)Packages&amp;quot;&quot; /&gt;
+  &lt;/Target&gt;</pre>
+
+<p>Which come from a <a href="http://blog.davidebbo.com/2011/03/using-nuget-without-committing-packages.html">David Ebbo post</a>. Paste this chunk of code at the end of your csproj files.. before the closing &lt;/Project&gt; tag.</p>
+
+<p>What it does? It will read your “packages.config” file and look for your Packages folder. If your packages folder doesn’t have one of the packages, nuget.exe will fetch those from the nuget repository. Be aware that this is not going to fetch the latest version of a package but the same version your packages.config say you are using.</p>
+
+<p>As you can see it is a “BeforeBuild” task, it means that this task will run before compiling your code.</p>
+
+<p>The next thing you should do is to ignore the packages folder in hgignore with:</p>
+
+<blockquote>
+  <p>Packages\*</p>
+</blockquote>
+
+<p>The “condition” of the task is interesting. I agree with my friend Simon, if you are not longer using nuget in a project or you are not using it <u>yet</u> you don’t want to be inserting or removing the task. It could be even in your default project template.</p>
+
+<p>The first time you build your solution, you will see something like this:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/05/2011-05-31_0845.png"><img style="background-image: none; border-right-width: 0px; margin: 0px auto 18px; padding-left: 0px; padding-right: 0px; display: block; float: none; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-05-31_0845" border="0" alt="2011-05-31_0845" src="http://joseoncode.com/wp-content/uploads/2011/05/2011-05-31_0845_thumb.png" width="426" height="238" /></a></p>
+
+<p>Do I need Internet to work this way? Yes! and you need internet for a bunch of other things.</p>
+
+<p>Note: Use this method for new projects. If you already have the package folder in source control it is not worth deleting it, for obvious reasons :)</p>

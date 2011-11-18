@@ -1,0 +1,333 @@
+--- 
+layout: post
+title: The same domain with ConfORM and NHibernate
+tags: 
+- ConfORM
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/03/same-domain-with-conform-and-nhibernate.html
+  dsq_thread_id: "313764336"
+  blogger_images: "1"
+---
+<p>In this post I will map the same domain I used in the <a href="http://jfromaniello.blogspot.com/2011/03/entityframework-41-rc-code-first-review.html">previous post about EntityFramework</a> but without the overhead of the crazy properties I had to add to fix the deficiencies of EntityFramework 4.1:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-03-29_2015_001%5B4%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-03-29_2015_001" border="0" alt="2011-03-29_2015_001" src="http://joseoncode.com/wp-content/uploads/images/2011-03-29_2015_001_thumb5B25D.png" width="611" height="388" /></a></p>  <p>For this post I’m using the following <a href="http://nuget.org">nuget</a>s:</p>  <ul>   <li>ConfORM (depends on NHibernate): This help me to automap the domain to a relational model based on conventions. </li>    <li>NHibernate.LinFu: This is a proxy generator used by nhibernate for lazy loading. Note that the next version of NHibernate 3.2 (trunk) doesn’t need this. It is inside NHibernate.dll </li>    <li>NHibernate.SetForNet4: This is because NHibernate doesn’t support System.Collections.Generic.ISet&lt;T&gt; out of the box. ISet&lt;T&gt; is from .Net 4, while nhibernate support set mapping from version 1 with Iesi.Collections. This nuget add support for lazy loading an ISet&lt;T&gt; </li> </ul>  <p>This is a console project and I have the following files:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-03-31_1047%5B3%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-03-31_1047" border="0" alt="2011-03-31_1047" src="http://joseoncode.com/wp-content/uploads/images/2011-03-31_1047_thumb5B15D.png" width="373" height="364" /></a></p>  <p>Net4Collections is a class installed by the NHibernate.SetForNet4, so the only I did for this example was:</p>  <pre class="brush: csharp; wrap-line: false;">internal class Program
+{
+    private static void Main()
+    {
+        HbmMapping mappings = AutomapDomain(typeof (Order),
+                                            typeof (OrderItem),
+                                            typeof (Product),
+                                            typeof (Customization));
+
+        Configuration configuration = ConfigureNHibernate(mappings);
+        Console.WriteLine(&quot;Generating the schema&quot;);
+        new SchemaExport(configuration).Create(true, true);
+
+        Console.WriteLine(&quot;Persiting some objects&quot;);
+        var sf = configuration.BuildSessionFactory();
+        
+        using(var s = sf.OpenSession())
+        using(var tx = s.BeginTransaction())
+        {
+            s.Save(new Product
+                       {
+                           Name = &quot;Fideos&quot;,
+                           Customizations = {new Customization
+                                                 {
+                                                     Name = &quot;Tuco&quot;,
+                                                     PossibleValues = {&quot;Pocon&quot;, &quot;Medio&quot;, &quot;Sopa&quot;}
+                                                 }}
+                       });
+            tx.Commit();
+        }
+        Console.ReadLine();
+    }
+
+    private static HbmMapping AutomapDomain(params Type[] entities)
+    {
+        var orm = new ObjectRelationalMapper();
+        //We are telling here to conform that ISet&lt;&gt; properties should be mapped as &lt;set&gt;
+        orm.Patterns.Sets.Add(
+            m =&gt; m.GetPropertyOrFieldType()
+                  .GetGenericIntercafesTypeDefinitions()
+                  .Contains(typeof (ISet&lt;&gt;)));
+
+        orm.TablePerClass(entities);
+        CustomizeMappings(orm);
+
+        //Some ConfORM.Shop patterns
+        var englishInflector = new EnglishInflector();
+        var patterns = new SafePropertyAccessorPack()
+            .Merge(new CoolTablesAndColumnsNamingPack(orm))
+            .Merge(new PluralizedTablesPack(orm, englishInflector)
+            .Merge(new CollectionOfElementsColumnApplier(orm, englishInflector)));
+
+        //Mapper
+        var mapper = new Mapper(orm, patterns);
+
+        var mapping = mapper.CompileMappingFor(entities);
+        Console.WriteLine(Serialize(mapping));
+        return mapping;
+
+    }
+
+    private static void CustomizeMappings(ObjectRelationalMapper orm)
+    {
+        orm.PersistentProperty&lt;Order&gt;(o =&gt; o.Total);
+        orm.Cascade&lt;Product, Customization&gt;(Cascade.All);
+    }
+
+    private static Configuration ConfigureNHibernate(HbmMapping mapping)
+    {
+        var configuration = new Configuration();
+
+        //nhibernate support for ISet&lt;&gt;
+        configuration.CollectionTypeFactory&lt;Net4CollectionTypeFactory&gt;();
+
+        //Use linfu proxy facotory: NOTE: This is going to be deprecated in vNext.
+        configuration.Proxy(p =&gt; p.ProxyFactoryFactory&lt;ProxyFactoryFactory&gt;());
+
+        //The database connection configuration
+        configuration.DataBaseIntegration(db =&gt;
+                                              {
+                                                  db.KeywordsAutoImport = Hbm2DDLKeyWords.AutoQuote;
+                                                  db.Dialect&lt;MsSql2008Dialect&gt;();
+                                                  db.Driver&lt;SqlClientDriver&gt;();
+                                                  db.ConnectionStringName = &quot;NHibernateTest&quot;;
+                                                  db.LogSqlInConsole = true;
+                                                  db.LogFormatedSql = true;
+                                              });
+
+
+        configuration.AddDeserializedMapping(mapping, &quot;AllMappings&quot;);
+
+        return configuration;
+    }
+
+    //This method is only used to show you in the console the nhibernate mappings in XML 
+    protected static string Serialize(HbmMapping hbmElement)
+    {
+        var setting = new XmlWriterSettings {Indent = true};
+        var serializer = new XmlSerializer(typeof (HbmMapping));
+        using (var memStream = new MemoryStream())
+        using (XmlWriter xmlWriter = XmlWriter.Create(memStream, setting))
+        {
+            serializer.Serialize(xmlWriter, hbmElement);
+            memStream.Flush();
+            memStream.Position = 0;
+
+            var sr = new StreamReader(memStream);
+            return sr.ReadToEnd();
+        }
+    }
+}</pre>
+
+<p>There are only one customization in this example to map the readonly property. By default ConfORM doesn’t map readonly properties but as I said yesterday I was trying to do so in EntityFramework… 
+  <br />I am using a set of conventions to map the domain, the power of ConfORM to infer most of the things and also ConfORM.Shop.dll that comes with the ConfORM nuget package to generate this beautiful schema:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-03-31_1115%5B5%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-03-31_1115" border="0" alt="2011-03-31_1115" src="http://joseoncode.com/wp-content/uploads/images/2011-03-31_1115_thumb5B35D.png" width="630" height="565" /></a></p>
+
+<p>Please take your time to examine this schema. </p>
+
+<p>Want to see the output of the console?</p>
+
+<pre class="brush: sql; wrap-line: false;">Generating the schema
+
+    if exists (select 1 from sys.objects where object_id = OBJECT_ID(N'[FK3E8588581FEFE3AB]') AND parent_object_id = OBJECT_ID('OrderItems'))
+alter table OrderItems  drop constraint FK3E8588581FEFE3AB
+
+
+    if exists (select 1 from sys.objects where object_id = OBJECT_ID(N'[FK3E858858F373BEAE]') AND parent_object_id = OBJECT_ID('OrderItems'))
+alter table OrderItems  drop constraint FK3E858858F373BEAE
+
+
+    if exists (select 1 from sys.objects where object_id = OBJECT_ID(N'[FKEF9298D4286FF938]') AND parent_object_id = OBJECT_ID('OrderItemPreferences'))
+alter table OrderItemPreferences  drop constraint FKEF9298D4286FF938
+
+
+    if exists (select 1 from sys.objects where object_id = OBJECT_ID(N'[FKC2F496971FEFE3AB]') AND parent_object_id = OBJECT_ID('Customizations'))
+alter table Customizations  drop constraint FKC2F496971FEFE3AB
+
+
+    if exists (select 1 from sys.objects where object_id = OBJECT_ID(N'[FK956AE80DAF824711]') AND parent_object_id = OBJECT_ID('CustomizationPossibleValues'))
+alter table CustomizationPossibleValues  drop constraint FK956AE80DAF824711
+
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'Orders') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table Orders
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'OrderItems') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table OrderItems
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'OrderItemPreferences') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table OrderItemPreferences
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'Products') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table Products
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'Customizations') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table Customizations
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'CustomizationPossibleValues') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table CustomizationPossibleValues
+
+    if exists (select * from dbo.sysobjects where id = object_id(N'hibernate_unique_key') and OBJECTPROPERTY(id, N'IsUserTable') = 1) drop table hibernate_unique_key
+
+    create table Orders (
+        Id BIGINT not null,
+       [Date] DATETIME null,
+       Status INT null,
+       Location INT null,
+       primary key (Id)
+    )
+
+    create table OrderItems (
+        Id BIGINT not null,
+       ProductId BIGINT null,
+       Quantity INT null,
+       UnitPrice DECIMAL(19,5) null,
+       OrderId BIGINT null,
+       primary key (Id)
+    )
+
+    create table OrderItemPreferences (
+        OrderItemId BIGINT not null,
+       Preference NVARCHAR(255) null,
+       idx NVARCHAR(255) not null,
+       primary key (OrderItemId, idx)
+    )
+
+    create table Products (
+        Id BIGINT not null,
+       Name NVARCHAR(255) null,
+       Price DECIMAL(19,5) null,
+       primary key (Id)
+    )
+
+    create table Customizations (
+        Id BIGINT not null,
+       Name NVARCHAR(255) null,
+       ProductId BIGINT null,
+       primary key (Id)
+    )
+
+    create table CustomizationPossibleValues (
+        CustomizationId BIGINT not null,
+       PossibleValue NVARCHAR(255) null
+    )
+
+    alter table OrderItems 
+        add constraint FK3E8588581FEFE3AB 
+        foreign key (ProductId) 
+        references Products
+
+    alter table OrderItems 
+        add constraint FK3E858858F373BEAE 
+        foreign key (OrderId) 
+        references Orders
+
+    alter table OrderItemPreferences 
+        add constraint FKEF9298D4286FF938 
+        foreign key (OrderItemId) 
+        references OrderItems
+
+    alter table Customizations 
+        add constraint FKC2F496971FEFE3AB 
+        foreign key (ProductId) 
+        references Products
+
+    alter table CustomizationPossibleValues 
+        add constraint FK956AE80DAF824711 
+        foreign key (CustomizationId) 
+        references Customizations
+
+    create table hibernate_unique_key (
+         next_hi BIGINT 
+    )
+
+    insert into hibernate_unique_key values ( 1 )
+Persiting some objects
+NHibernate: 
+    select
+        next_hi 
+    from
+        hibernate_unique_key with (updlock,
+        rowlock)
+NHibernate: 
+    update
+        hibernate_unique_key 
+    set
+        next_hi = @p0 
+    where
+        next_hi = @p1;
+    @p0 = 2 [Type: Int64 (0)], @p1 = 1 [Type: Int64 (0)]
+NHibernate: 
+    select
+        next_hi 
+    from
+        hibernate_unique_key with (updlock,
+        rowlock)
+NHibernate: 
+    update
+        hibernate_unique_key 
+    set
+        next_hi = @p0 
+    where
+        next_hi = @p1;
+    @p0 = 3 [Type: Int64 (0)], @p1 = 2 [Type: Int64 (0)]
+NHibernate: 
+    INSERT 
+    INTO
+        Products
+        (Name, Price, Id) 
+    VALUES
+        (@p0, @p1, @p2);
+    @p0 = 'Fideos' [Type: String (4000)], @p1 = 0 [Type: Decimal (0)], @p2 = 32768 [Type: Int64 (0)]
+NHibernate: 
+    INSERT 
+    INTO
+        Customizations
+        (Name, Id) 
+    VALUES
+        (@p0, @p1);
+    @p0 = 'Tuco' [Type: String (4000)], @p1 = 65536 [Type: Int64 (0)]
+NHibernate: 
+    UPDATE
+        Customizations 
+    SET
+        ProductId = @p0 
+    WHERE
+        Id = @p1;
+    @p0 = 32768 [Type: Int64 (0)], @p1 = 65536 [Type: Int64 (0)]
+NHibernate: 
+    INSERT 
+    INTO
+        CustomizationPossibleValues
+        (CustomizationId, PossibleValue) 
+    VALUES
+        (@p0, @p1);
+    @p0 = 65536 [Type: Int64 (0)], @p1 = 'Pocon' [Type: String (4000)]
+NHibernate: 
+    INSERT 
+    INTO
+        CustomizationPossibleValues
+        (CustomizationId, PossibleValue) 
+    VALUES
+        (@p0, @p1);
+    @p0 = 65536 [Type: Int64 (0)], @p1 = 'Medio' [Type: String (4000)]
+NHibernate: 
+    INSERT 
+    INTO
+        CustomizationPossibleValues
+        (CustomizationId, PossibleValue) 
+    VALUES
+        (@p0, @p1);
+    @p0 = 65536 [Type: Int64 (0)], @p1 = 'Sopa' [Type: String (4000)]</pre>
+
+<p>In this domain we have things like ISet<string> and IDictionary<string string ,> (the OrderItemPreferences table). 
+  <br />It is a quite simple example but as you can see ConfORM resolve most of the things *automagicallly although you can customize everything.</p>
+
+<p>There is also an inflector for Spanish and Italian in ConfORM.Shop. You don’t need an inflector to work with ConfORM you can remove all that part and use singular names. 
+  <br />
+
+  <br />I'll publish this example somewhere soon. But if you need to get into ConfORM I strongly recommend you to see the <a href="http://code.google.com/p/codeconform/source/browse/#hg%2FConfOrm%2FConfOrmExample">ConfOrm.UsageExamples</a> and also <a href="https://bitbucket.org/fabiomaulo/nhmystic/">NHibernate.Mystic</a>.</p>
+
+<p>I did a lot of corrections to this article after published; thank <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a> very much for doing a deep review.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7822324277397546756' alt='' /></div>

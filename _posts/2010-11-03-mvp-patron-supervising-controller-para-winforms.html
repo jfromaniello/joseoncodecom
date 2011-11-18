@@ -1,0 +1,227 @@
+--- 
+layout: post
+title: "MVP: Patr\xC3\xB3n Supervising Controller para WinForms"
+tags: 
+- MVP
+- Patrones
+- Winforms
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/11/mvp-patron-supervising-controller-para.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_images: "1"
+  dsq_thread_id: "314364855"
+---
+<p>En mi <a href="http://jfromaniello.blogspot.com/2010/10/mvp-patron-passive-view-para-winforms.html">entrada anterior</a> explique el patrón Passive View&quot;. Ahora es el turno del patrón Supervising Controller. </p>  <p>Este patrón aprovecha la infraestructura de binding que posee winforms. A diferencia del Passive View, el View en este caso conoce un modelo al cual conectarse. Dado que el view puede interactuar con un modelo tanto su implementación como su interfaz es bastante mas simple en comparación con Passive View.</p>  <p>El Presenter en este caso se ocupa de la lógica mas complejas, mientras que el view se ocupa de la lógica simple, delegando esto último al mecanismo de databinding que usualmente se define de forma declarativa.</p>  <p>Sin más preámbulo, y siguiendo con nuestro ejemplo anterior esta es la interfaz del view:</p>  <pre class="brush: csharp;">public interface IEditarClienteView
+{
+    Cliente ClienteEnEdicion { get; set; }
+    void CargarPaises(IEnumerable&lt;Pais&gt; paises);
+
+    event EventHandler GuardarClick;
+    event EventHandler CancelarClick;
+    void Show();
+    void Close();
+}</pre>
+
+<p>Estos son los tests de nuestro presenter:</p>
+
+<pre class="brush: csharp;">[TestFixture]
+public class EditarClientePresenterTests
+{
+    public IRepositorioPaises CrearDobleDeRepositorioPaises()
+    {
+        var repositorioPaises = new Mock&lt;IRepositorioPaises&gt;();
+        repositorioPaises.Setup(r =&gt; r.ObtenerOrdenadosPorNombre())
+            .Returns(new[]
+                         {
+                             new Pais {CodigoIso = &quot;AR&quot;, Nombre = &quot;Argentina&quot;},
+                             new Pais {CodigoIso = &quot;UY&quot;, Nombre = &quot;Uruguay&quot;}
+                         });
+
+        return repositorioPaises.Object;
+    }
+
+    private static IRepositorioClientes CrearDobleRepositorioClientes()
+    {
+        var repositorio = new Mock&lt;IRepositorioClientes&gt;();
+        var cliente = new Cliente
+        {
+            Nombre = &quot;Jose&quot;,
+            Apellido = &quot;Romaniello&quot;,
+            Pais = new Pais { CodigoIso = &quot;AR&quot;, Nombre = &quot;Argentina&quot; }
+        };
+        repositorio.Setup(r =&gt; r.Obtener(1)).Returns(cliente);
+        return repositorio.Object;
+    }
+
+    [Test]
+    public void AlIniciarCargarPaises()
+    {
+        var view = new Mock&lt;IEditarClienteView&gt;();
+
+        var repositorioPaises = CrearDobleDeRepositorioPaises();
+        var presenter = new EditarClientePresenter(
+            view.Object,
+            CrearDobleRepositorioClientes(),
+            repositorioPaises);
+
+        presenter.Iniciar(1);
+
+        view.Verify(v =&gt; v.CargarPaises(repositorioPaises.ObtenerOrdenadosPorNombre()));
+    }
+
+    [Test]
+    public void CuandoInicioCargoLosDatosDelCliente()
+    {
+        var view = new Mock&lt;IEditarClienteView&gt;();
+        view.SetupAllProperties();
+
+        var repositorioClientes = CrearDobleRepositorioClientes();
+
+        var presenter = new EditarClientePresenter(
+            view.Object,
+            repositorioClientes,
+            CrearDobleDeRepositorioPaises());
+
+        presenter.Iniciar(1);
+        view.Object.ClienteEnEdicion
+            .Should().Be.SameInstanceAs(repositorioClientes.Obtener(1));
+    }
+
+
+    [Test]
+    public void CuandoInicioMostrarForm()
+    {
+        var view = new Mock&lt;IEditarClienteView&gt;();
+        view.SetupAllProperties();
+
+        var presenter = new EditarClientePresenter(
+            view.Object,
+            CrearDobleRepositorioClientes(),
+            CrearDobleDeRepositorioPaises());
+
+        presenter.Iniciar(1);
+
+        view.Verify(v =&gt; v.Show());
+    }
+
+    [Test]
+    public void CuandoPresionoElBotonGuardarEntoncesGuardoConRepositorio()
+    {
+        var view = new Mock&lt;IEditarClienteView&gt;();
+        view.SetupAllProperties();
+
+        var repositorioClientes = CrearDobleRepositorioClientes();
+        var cliente = repositorioClientes.Obtener(1);
+
+        var presenter = new EditarClientePresenter(
+            view.Object,
+            repositorioClientes,
+            CrearDobleDeRepositorioPaises());
+
+        presenter.Iniciar(1);
+
+        view.Raise(v =&gt; v.GuardarClick += null, EventArgs.Empty);
+
+        Mock.Get(repositorioClientes).Verify(r =&gt; r.Actualizar(cliente));
+    }
+
+
+    [Test]
+    public void CuandoCanceloCierroElForm()
+    {
+        var view = new Mock&lt;IEditarClienteView&gt;();
+        view.SetupAllProperties();
+
+        new EditarClientePresenter(
+            view.Object,
+            CrearDobleRepositorioClientes(),
+            CrearDobleDeRepositorioPaises());
+
+        view.Raise(v =&gt; v.CancelarClick += null, EventArgs.Empty);
+
+        view.Verify(v =&gt; v.Close());
+    }
+
+
+}</pre>
+
+<p>Esta es la implementación del presenter:</p>
+
+<pre class="brush: csharp;">public class EditarClientePresenter
+{
+    private readonly IEditarClienteView editarClienteView;
+    private readonly IRepositorioClientes repositorioClientes;
+    private readonly IRepositorioPaises repositorioPaises;
+
+    public EditarClientePresenter(
+        IEditarClienteView editarClienteView,  
+        IRepositorioClientes repositorioClientes, 
+        IRepositorioPaises repositorioPaises)
+    {
+        this.editarClienteView = editarClienteView;
+        this.repositorioClientes = repositorioClientes;
+        this.repositorioPaises = repositorioPaises;
+        editarClienteView.GuardarClick += EditarClienteViewGuardarClick;
+        editarClienteView.CancelarClick += EditarClienteViewCancelarClick;
+    }
+
+    void EditarClienteViewCancelarClick(object sender, EventArgs e)
+    {
+        editarClienteView.Close();
+    }
+
+    void EditarClienteViewGuardarClick(object sender, EventArgs e)
+    {
+        repositorioClientes.Actualizar(editarClienteView.ClienteEnEdicion);
+        editarClienteView.Close();
+    }
+
+    public void Iniciar(int idCliente)
+    {
+        editarClienteView.CargarPaises(repositorioPaises.ObtenerOrdenadosPorNombre());
+        editarClienteView.ClienteEnEdicion = repositorioClientes.Obtener(1);
+        editarClienteView.Show();
+    }
+}</pre>
+
+<p>Ahora bien, esta es la implementación de nuestro view:</p>
+
+<pre class="brush: csharp;">public partial class FormEditarCliente : Form, IEditarClienteView
+{
+    public FormEditarCliente()
+    {
+        InitializeComponent();
+    }
+
+    public Cliente ClienteEnEdicion
+    {
+        get { return (Cliente) clienteBindingSource.DataSource; }
+        set { clienteBindingSource.DataSource = value; }
+    }
+
+    public void CargarPaises(IEnumerable&lt;Pais&gt; paises)
+    {
+        paisBindingSource.DataSource = paises;
+    }
+
+    public event EventHandler GuardarClick
+    {
+        add { GuardarButton.Click += value; }
+        remove { GuardarButton.Click -= value; }
+    }
+
+    public event EventHandler CancelarClick
+    {
+        add { CancelarButton.Click += value; }
+        remove { CancelarButton.Click -= value; }
+    }
+}</pre>
+
+<p>&quot;clienteBindingSource&quot; y &quot;paisBindingSource&quot; son controles en nuestro formulario creados al hacer databinding. Si alguien no conoce como hacer binding en winforms, aquí les dejo un mini-screencast:</p>
+<object id="scPlayer" class="embeddedObject" width="600" height="400" type="application/x-shockwave-flash" data="http://content.screencast.com/users/JoseFR/folders/Jing/media/827db12c-ddb9-410a-b83a-f8d790bd7c26/jingswfplayer.swf" >  <param name="movie" value="http://content.screencast.com/users/JoseFR/folders/Jing/media/827db12c-ddb9-410a-b83a-f8d790bd7c26/jingswfplayer.swf" />  <param name="quality" value="high" />  <param name="bgcolor" value="#FFFFFF" />  <param name="flashVars" value="thumb=http://content.screencast.com/users/JoseFR/folders/Jing/media/827db12c-ddb9-410a-b83a-f8d790bd7c26/FirstFrame.jpg&amp;containerwidth=1181&amp;containerheight=748&amp;content=http://content.screencast.com/users/JoseFR/folders/Jing/media/827db12c-ddb9-410a-b83a-f8d790bd7c26/2010-11-02_1914.swf&amp;blurover=false" />  <param name="allowFullScreen" value="true" />  <param name="scale" value="showall" />  <param name="allowScriptAccess" value="always" />  <param name="base" value="http://content.screencast.com/users/JoseFR/folders/Jing/media/827db12c-ddb9-410a-b83a-f8d790bd7c26/" />  Unable to display content. Adobe Flash is required. </object>
+
+<p>Por último el código fuente puede ser descargado desde esta <a href="http://bitbucket.org/jfromaniello/mvp-supervising-controller">enlace</a>.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-4873352007157533444' alt='' /></div>

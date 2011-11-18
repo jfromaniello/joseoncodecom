@@ -1,0 +1,27 @@
+--- 
+layout: post
+title: WebOrb/ActionScript conflicto entre nombre de variable y tipo
+tags: 
+- misc
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/03/weborbactionscript-conflicto-entre.html
+  dsq_thread_id: "321409015"
+---
+<p>En .Net es posible definir una propiedad de esta manera</p>  <pre class="c-sharp" name="code">public class Sucursal{<br /> public int Id {get; set;}<br /> public string Nombre {get; set;}<br /> public Empresa Empresa {get; set;}<br />}</pre>
+WebOrb intentará generar un ValueObject de esta manera: 
+
+<pre class="c-sharp" name="code">public class Sucursal<br />{<br /> public function Sucursal(){}<br />        public var Id:Number;<br />        public var Nombre:String;<br />        public var Empresa:Empresa;<br />}</pre>
+<font color="#ff0000">Esto no funciona en ActionScript.</font> Pero no se preocupen que aquí les traigo la solución; si se escribe la referencia completa al package no hay problema, es decir: 
+
+<pre class="c-sharp" name="code">public class Sucursal<br />{<br /> public function Sucursal(){}<br />        public var Id:Number;<br />        public var Nombre:String;<br /> public var Empresa:miAplicacion.miPaquete.etc.vo.Empresa;<br />}</pre>
+
+<p>Como si esto fuera poco, es posible decirle a WebOrb.Net que genere los scripts con esta corrección.</p>
+
+<p>Adjunto acá el archivo con la corrección.</p>
+
+<p><iframe style="border-bottom: #dde5e9 1px solid; border-left: #dde5e9 1px solid; padding-bottom: 0px; background-color: #ffffff; margin: 3px; padding-left: 0px; width: 240px; padding-right: 0px; height: 26px; border-top: #dde5e9 1px solid; border-right: #dde5e9 1px solid; padding-top: 0px" marginheight="0" src="http://cid-25432c9ed55311de.skydrive.live.com/embedrow.aspx/.Public/WebOrb-Fix?move=25432C9ED55311DE!179&amp;sid=25432C9ED55311DE!164&amp;iscopy=0" frameborder="0" marginwidth="0" scrolling="no"></iframe></p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-4216265836318436177?l=jfromaniello.blogspot.com' alt='' /></div>

@@ -1,0 +1,62 @@
+--- 
+layout: post
+title: "INotifyCollectionChanged: one step forward"
+tags: 
+- snippets
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/inotifycollectionchanged-one-step.html
+  dsq_thread_id: "314363564"
+  blogger_images: "1"
+---
+<p>How many times have you seen something like this?    <br /></p>  <pre class="brush: csharp;">public class Album : Entity, IAlbum
+{
+    public virtual Artist Artist { get;  set; }
+    public virtual string Title { get; set; }
+
+    public virtual IEnumerable&lt;Track&gt; Tracks { get; private set; }
+    public virtual void AddTrack(Track track)
+    {
+        track.Album = this;
+        Tracks.Add(track);
+    }
+    public virtual void AddTracks(IEnumerable&lt;Track&gt; tracks)
+    {
+        tracks.ForEach(AddTrack);
+        
+    }
+    public Album()
+    {
+        Tracks = new List&lt;Track&gt;();
+    }
+}</pre>
+
+<p>The question is <strong>why</strong> is better than this: </p>
+
+<pre class="brush: csharp;">public class Album : Entity, IAlbum
+{
+    public virtual Artist Artist { get;  set; }
+    public virtual string Title { get; set; }
+
+    public virtual ICollection&lt;Track&gt; Tracks { get; private set; }
+
+    public Album()
+    {
+        Tracks = new EditableCollection&lt;Track&gt;();
+        Tracks.CollectionChanged += (sender, args) =&gt;
+              {
+                  if (args.Action == NotifyCollectionChangedAction.Add)
+                      args.NewItems.ForEach(track =&gt; track.Album = this);
+              };
+    }
+}</pre>
+
+<p>Then you can call album.Tracks.Add( .. ) normally. EditableCollection is from my previous <a href="http://jfromaniello.blogspot.com/2009/07/introducing-editablecollection.html">post</a>. You can do the same for the remove method.</p>
+
+<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello</div>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2240804132239952511' alt='' /></div>

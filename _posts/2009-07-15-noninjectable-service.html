@@ -1,0 +1,86 @@
+--- 
+layout: post
+title: NonInjectable Service?
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/noninjectable-service.html
+  dsq_thread_id: "314363522"
+  blogger_images: "1"
+---
+<p>If you were reading my previous posts you will notice that I am injecting entities in my IoC. This way the container can inject services in your entities. The other reason to inject entities in your container is when you container integrates very well with a proxy generator (as you can read in my examples of AOP).</p>  <p>The problem is entities are not injectable, the container should inject services in entities but not entities in services nor entities in entities.</p>  <p>So, this is my code snippet for Windsor Container.    <br />The facility: </p>  <pre class="brush: csharp;">public class NonInjectableFacility : AbstractFacility
+{
+    public const string NonInjectablePropertyKey = &quot;noninjectable&quot;;
+
+    private readonly ArrayList _nonInjectables = new ArrayList();
+
+    private void Kernel_ComponentModelCreated(ComponentModel model)
+    {
+        if (model.ExtendedProperties.Contains(ExtendWithPropertyKey))
+        {
+            _nonInjectables.Add(model.Service);
+            foreach (ComponentModel componentModel in Kernel.GraphNodes.OfType&lt;ComponentModel&gt;())
+                RemoveNonInjectables(componentModel);
+        }
+        RemoveNonInjectables(model);
+    }
+
+    private void RemoveNonInjectables(ComponentModel model)
+    {
+        List&lt;PropertySet&gt; propertiesToRemove = model.Properties
+            .Where(p =&gt; _nonInjectables.Contains(p.Property.PropertyType))
+            .ToList();
+
+        foreach (PropertySet propToRemove in propertiesToRemove)
+            model.Properties.Remove(propToRemove);
+    }
+
+    protected override void Init()
+    {
+        Kernel.ComponentModelCreated += Kernel_ComponentModelCreated;
+    }
+}</pre>
+
+<br />
+
+<p>A registration extension: 
+  <br /></p>
+
+<pre class="brush: csharp;">public static class FluentRegister
+{
+    public static ComponentRegistration&lt;T&gt; NonInjectable&lt;T&gt;(<br />this ComponentRegistration&lt;T&gt; registration)
+    {
+        registration.ExtendedProperties(<br />Property.ForKey(NonInjectableFacility.NonInjectablePropertyKey).Eq(true));
+        return registration;
+    }
+}</pre>
+
+<p>And the test: 
+  <br /></p>
+
+<pre class="brush: csharp;">[Test]
+public void should_work()
+{
+    var c = new WindsorContainer();
+    c.AddFacility&lt;NonInjectableFacility&gt;();
+
+    c.Register(Component.For&lt;IInjectableService&gt;()
+                   .ImplementedBy&lt;InjectableService&gt;());
+
+    c.Register(Component.For&lt;Service&gt;());
+
+    c.Register(Component.For&lt;ITopMostService&gt;()
+                   .ImplementedBy&lt;TopMost&gt;().NonInjectable());
+
+    c.Resolve&lt;Service&gt;().TopMostService.Should().Be.Null();
+}</pre>
+
+<p>Note: Windsor has an attribute called [DoNotWire]. 
+  <br />
+
+  <br />I took some ideas from <a href="http://bugsquash.blogspot.com/">Mauricio Scheffer</a>’s answer in this <a href="http://groups.google.com/group/castle-project-users/browse_thread/thread/f1ec737ff243c19d">thread</a> and also I’ve stolen others ideas from <a href="http://www.tunatoksoz.com/post/Implementing-EnrichWith(of-StructureMap)-with-Castle.aspx">this</a> post of <a href="http://www.tunatoksoz.com/">Tuna Toksoz.</a></p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-6671398552661024024' alt='' /></div>

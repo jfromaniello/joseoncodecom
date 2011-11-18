@@ -1,0 +1,448 @@
+--- 
+layout: post
+title: "WCF Web API: Strongly typed Resource Linker"
+tags: 
+- WCF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/03/wcf-web-api-strongly-typed-resource.html
+  blogger_images: "1"
+  dsq_thread_id: "314462332"
+---
+<p>I’ve been learning and experimenting a lot of WCF as part of my new job this week on <a href="http://tellago.com">Tellago</a>. </p>  <p>Here is something that I did this week and I’ll like to share with my readers.</p>  <blockquote>   <p><font style="background-color: #ffffff">This post uses the <a href="http://wcf.codeplex.com/">WCF Web APIs</a> Preview 3, releases on Jan 14 of 2011. The API might change in the near future.</font></p> </blockquote>  <p>One of the most important things about building Http-based REST services (wait! resources <img style="border-bottom-style: none; border-left-style: none; border-top-style: none; border-right-style: none" class="wlEmoticon wlEmoticon-winkingsmile" alt="Guiño" src="http://joseoncode.com/wp-content/uploads/images/wlEmoticon-winkingsmile5B25D.png" />) is the location. </p>  <p align="left">Let’s start with a pretty basic example (this is from ContactManager; the sample application at wcf.codeplex.com):</p>  <pre class="brush: csharp; wrap-line: false; highlight: [23];">[ServiceContract]
+[Export]
+public class ContactsResource
+{
+    private readonly IContactRepository repository;
+
+    [ImportingConstructor]
+    public ContactsResource(IContactRepository repository)
+    {
+        this.repository = repository;
+    }
+
+    [WebGet(UriTemplate = &quot;&quot;)]
+    public List&lt;Contact&gt; Get()
+    {
+        return this.repository.GetAll();
+    }
+
+    [WebInvoke(UriTemplate = &quot;&quot;, Method = &quot;POST&quot;)]
+    public Contact Post(Contact contact, HttpResponseMessage response)
+    {
+        this.repository.Post(contact);
+        response.StatusCode = HttpStatusCode.Created;
+        return contact;
+    }
+}
+
+[ServiceContract]
+[Export]
+public class ContactResource
+{
+   private readonly IContactRepository repository;
+
+   [ImportingConstructor]
+   public ContactResource(IContactRepository repository)
+   {
+       this.repository = repository;
+   }
+
+   [WebGet(UriTemplate = &quot;{id}&quot;)]
+   public Contact Get(string id, HttpResponseMessage response)
+   {
+       var contact = this.repository.Get(int.Parse(id, CultureInfo.InvariantCulture));
+       if (contact == null)
+       {
+           response.StatusCode = HttpStatusCode.NotFound;
+           response.Content = new StringContent(&quot;Contact not found&quot;);
+       }
+
+       return contact;
+   }
+
+   [WebInvoke(UriTemplate = &quot;{id}&quot;, Method = &quot;PUT&quot;)]
+   public Contact Put(string id, Contact contact, HttpResponseMessage response)
+   {
+       this.Get(id, response);
+       this.repository.Update(contact);
+       return contact;
+   }
+
+   [WebInvoke(UriTemplate = &quot;{id}&quot;, Method = &quot;DELETE&quot;)]
+   public Contact Delete(string id)
+   {
+       var intId = int.Parse(id, CultureInfo.InvariantCulture);
+       dynamic deleted = this.repository.Get(intId);
+       this.repository.Delete(intId);
+       return deleted;
+   }
+}</pre>
+
+<p>This article is focused in the method Post of the ContactsResource class. </p>
+
+<p>The highlighted line set the status of the response to <u>Created</u> (Http Code = 202). In addition to that, I’d like to add to the header response the location indicating where this new “resource” is now. </p>
+
+<p>We can do something like this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">response.StatusCode = HttpStatusCode.Created;
+response.Header.Location = ..... + &quot;contact/&quot; +  contact.Id;</pre>
+
+<p>Where “contact” come from? Well, this is in the RouteTable, which is configured in the Global.asax.cs class as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">RouteTable.Routes.AddServiceRoute&lt;ContactResource&gt;(&quot;contact&quot;, configuration);
+RouteTable.Routes.AddServiceRoute&lt;ContactsResource&gt;(&quot;contacts&quot;, configuration);</pre>
+
+<p>&#160;</p>
+
+<h1>The problem</h1>
+
+<p align="left">The problem with writing the route of the newly created resource in code as I did in the previous section, is not about “magic strings” or strongly-typeness; I can’t care less about magic strings because I am used to write tests. The main problem is:</p>
+
+<ul>
+  <li>Duplication; What is the uri template for this method? and How do I construct an Uri for this method? </li>
+
+  <li>I don’t know how is the URI template at this point without going to the method and looking at the attribute; then I’ve to go to the configuration of the routes table to see the prefix for the resource class. </li>
+</ul>
+
+<h1>The solution</h1>
+
+<p align="left">I am going to use a little bit of reflection and the RouteTables to get the uri of the resource. I started with a some simple tests as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[TestFixture]
+public class ResourceLinkerTests
+{
+    public class SampleResource
+    {
+        [WebGet]
+        public string GetSomething()
+        {
+            return string.Empty;
+        }
+
+        [WebGet(UriTemplate = &quot;Zapato/{id}/{other}&quot;)]
+        public string GetFoo(string id, 
+                            string other, 
+                            double somethingElseThanIsNotInTheRoute)
+        {
+            return string.Empty;
+        }
+
+        [WebInvoke]
+        public void PostFoo() {}
+        
+        [WebInvoke(UriTemplate = &quot;PostBar?lele={id}&quot;)]
+        public void PostBar(int id) {}
+
+        public void NotAWebMethod() {}
+    }
+    
+    [SetUp]
+    public void SetUp()
+    {
+        RouteTable.Routes.AddServiceRoute&lt;SampleResource&gt;(&quot;SuperResource&quot;, null);
+    }
+    
+    [Test]
+    public void CanGetRouteWithSimpleCase()
+    {
+        var uriResolver = new ResourceLinker(&quot;http://foo.bar&quot;);
+        var result = uriResolver.GetUri&lt;SampleResource&gt;(sr =&gt; sr.GetSomething());
+        result.ToString()
+            .Should().Be.EqualTo(&quot;http://foo.bar/SuperResource/GetSomething&quot;);
+    }
+
+
+    [Test]
+    public void CanGetValuatedUri()
+    {
+        var uriResolver = new ResourceLinker(&quot;http://foo.bar&quot;);
+        var result = uriResolver.GetUri&lt;SampleResource&gt;(sr =&gt; sr.GetFoo(&quot;1&quot;, &quot;2&quot;, 5467));
+        result.ToString()
+            .Should().Be.EqualTo(&quot;http://foo.bar/SuperResource/Zapato/1/2&quot;);
+    }
+
+    [Test]
+    public void CanGetUriForWbeInvokeWithouAttribute()
+    {
+        var uriResolver = new ResourceLinker(&quot;http://foo.bar&quot;);
+        var result = uriResolver.GetUri&lt;SampleResource&gt;(sr =&gt; sr.PostFoo());
+        result.ToString()
+            .Should().Be.EqualTo(&quot;http://foo.bar/SuperResource/PostFoo&quot;);
+    }
+
+    [Test]
+    public void CanGetAnUriForWebInvokeWithUriTemplate()
+    {
+        var uriResolver = new ResourceLinker(&quot;http://foo.bar&quot;);
+        var result = uriResolver.GetUri&lt;SampleResource&gt;(sr =&gt; sr.PostBar(123));
+        result.ToString()
+            .Should().Be.EqualTo(&quot;http://foo.bar/SuperResource/PostBar?lele=123&quot;);
+    }
+
+    [Test]
+    public void WhenTheMethodIsNotAWebMethodThenThrow()
+    {
+        var uriResolver = new ResourceLinker(&quot;http://foo.bar&quot;);
+        uriResolver.Executing(ur =&gt; ur.GetUri&lt;SampleResource&gt;(sr =&gt; sr.NotAWebMethod()))
+                    .Throws();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        RouteTable.Routes.Clear();
+    }
+}</pre>
+
+<p>As you might noticed, the <a href="http://en.wikipedia.org/wiki/System_under_test">SUT</a> is the new class ResourceLinker. The SampleResource is a sample class that I use for testing the resolution of the URIs.</p>
+
+<p align="left">ResourceLinker has only one method named GetUri. I pass a lambda to the method ( Expression&lt;Action&lt;TResource&gt;&gt; ) with the parameters. </p>
+
+<p align="left">The GetFoo method has a parameter that is not included in the UriTemplate. This is really important because the Processor infrastructure of the WCF web api allows you to inject in these methods other things.</p>
+
+<p align="left">The first problem I faced was that calling AddServiceRoute within a unit test throws the following exception:</p>
+
+<p><font color="#ff0000">SetUp : System.InvalidOperationException : 'ServiceHostingEnvironment.EnsureServiceAvailable' cannot be invoked within the current hosting environment. This API requires that the calling application be hosted in IIS or WAS.</font></p>
+
+<p>So, I made a wrapper around ServiceRoute as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public interface IPrefixedRouteType
+{
+    Type ServiceType { get; }
+    string RoutePrefix { get; }
+}
+
+public class LazyServiceRoute : RouteBase, IPrefixedRouteType
+{
+    private readonly string routePrefix;
+    private readonly HttpHostConfiguration httpHostConfiguration;
+    private readonly Type serviceType;
+    private readonly Type webHttpServiceHostFactory;
+    private readonly Lazy&lt;ServiceRoute&gt; lazyServiceRoute;
+
+    public LazyServiceRoute(string routePrefix, 
+                            HttpHostConfiguration httpHostConfiguration, 
+                            Type serviceType)
+        :this(routePrefix, httpHostConfiguration, serviceType, typeof(WebHttpServiceHostFactory))
+    {}
+
+    public LazyServiceRoute(string routePrefix, 
+                            HttpHostConfiguration httpHostConfiguration, 
+                            Type serviceType, 
+                            Type webHttpServiceHostFactory)
+    {
+        this.routePrefix = routePrefix;
+        this.httpHostConfiguration = httpHostConfiguration;
+        this.serviceType = serviceType;
+        this.webHttpServiceHostFactory = webHttpServiceHostFactory;
+        lazyServiceRoute = new Lazy&lt;ServiceRoute&gt;(CreateServiceRoute);
+    }
+
+    private ServiceRoute CreateServiceRoute()
+    {
+        var hostFactory = (IConfigurableServiceHostFactory)Activator.CreateInstance(webHttpServiceHostFactory);
+        hostFactory.Configuration = httpHostConfiguration;
+        return new ServiceRoute(routePrefix, (ServiceHostFactoryBase)hostFactory, serviceType);
+    }
+
+    public override RouteData GetRouteData(HttpContextBase httpContext)
+    {
+        return lazyServiceRoute.Value.GetRouteData(httpContext);
+    }
+
+    public override VirtualPathData GetVirtualPath(RequestContext requestContext, RouteValueDictionary values)
+    {
+        return lazyServiceRoute.Value.GetVirtualPath(requestContext, values);
+    }
+
+    public Type ServiceType
+    {
+        get { return serviceType; }
+    }
+
+    public string RoutePrefix
+    {
+        get { return routePrefix; }
+    }
+}</pre>
+
+<p align="left">This is a really simple class, it has the same constructors than the original “ServiceRoute” but it delays the creation of the ServiceRoute until the first usage<u> as a route</u> (see the field lazyServiceRoute). On the other hand LazyServiceRoute exposes the ServiceType and the RoutePrefix.</p>
+
+<p>To get some syntax sugar I created the following extension methods to the RouteCollection:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class RouteTableExtensions
+{
+    public static void AddLazyServiceRoute&lt;T&gt;(
+                this RouteCollection routeCollection, 
+                string routePrefix, 
+                HttpHostConfiguration httpHostConfiguration)
+    {
+        routeCollection.Add(new LazyServiceRoute(routePrefix, httpHostConfiguration, typeof(T)));
+    }
+
+    public static string GetRoutePrefixForType&lt;T&gt;(this RouteCollection routeCollection)
+    {
+        var routeServiceType = routeCollection
+                                    .OfType&lt;IPrefixedRouteType&gt;()
+                                    .FirstOrDefault(r =&gt; r.ServiceType == typeof (T));
+        if(routeServiceType != null) return routeServiceType.RoutePrefix;
+        return null;
+    }
+}</pre>
+
+<p>The first method is a shortcut for inserting a LazyServiceRoute to the route collection. The second one returns the prefix for a given resource type. </p>
+
+<p>Finally the implementation of the ResourceLinker is pretty straightforward (despite the amount of reflection)</p>
+
+<pre class="brush: csharp; wrap-line: false;">public interface IResourceLinker
+{
+    Uri GetUri&lt;T&gt;(Expression&lt;Action&lt;T&gt;&gt; restMethod);
+}
+
+public class ResourceLinker : IResourceLinker
+{
+    private readonly Uri baseUri;
+    
+    public ResourceLinker()
+        : this(ConfigurationManager.AppSettings[&quot;BaseUri&quot;])
+    {}
+
+    public ResourceLinker(string baseUri)
+    {
+        this.baseUri = new Uri(baseUri, UriKind.Absolute);
+    }
+
+    public Uri GetUri&lt;T&gt;(Expression&lt;Action&lt;T&gt;&gt; restMethod)
+    {
+        var methodCallExpression = (MethodCallExpression) restMethod.Body;
+        var uriTemplateForMethod = GetUriTemplateForMethod(methodCallExpression.Method);
+
+        var args = methodCallExpression.Method
+            .GetParameters()
+            .Where(p =&gt; uriTemplateForMethod.Contains(&quot;{&quot; + p.Name + &quot;}&quot;))
+            .ToDictionary(p =&gt; p.Name, p =&gt; ValuateExpression(methodCallExpression, p));
+
+        var prefix = RouteTable.Routes.GetRoutePrefixForType&lt;T&gt;();
+        var newBaseUri = new Uri(baseUri, prefix);
+        var uriMethod = new UriTemplate(uriTemplateForMethod, true);
+        return uriMethod.BindByName(newBaseUri, args);
+    }
+
+    private static string ValuateExpression(MethodCallExpression methodCallExpression, ParameterInfo p)
+    {
+        var argument = methodCallExpression.Arguments[p.Position];
+        var constantExpression = argument as ConstantExpression;
+        if(constantExpression != null) return constantExpression.Value.ToString();
+
+        //var memberExpression = (argument as MemberExpression);
+        var lambdaExpression = Expression.Lambda(argument, Enumerable.Empty&lt;ParameterExpression&gt;());
+        var result = lambdaExpression.Compile().DynamicInvoke().ToString();
+        return result;
+    }
+
+    private static string GetUriTemplateForMethod(MethodInfo method)
+    {
+        var webGet = method.GetCustomAttributes(true).OfType&lt;WebGetAttribute&gt;().FirstOrDefault();
+        if (webGet != null) return webGet.UriTemplate ?? method.Name;
+
+        var webInvoke = method.GetCustomAttributes(true).OfType&lt;WebInvokeAttribute&gt;().FirstOrDefault();
+        if (webInvoke != null) return webInvoke.UriTemplate ?? method.Name;
+
+        throw new InvalidOperationException(string.Format(&quot;The method {0} is not a web method.&quot;, method.Name));
+    }
+}</pre>
+
+<p>And the code for the Post method is:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[WebInvoke(UriTemplate = &quot;&quot;, Method = &quot;POST&quot;)]
+public Contact Post(Contact contact, HttpResponseMessage response)
+{
+    this.repository.Post(contact);
+    response.StatusCode = HttpStatusCode.Created;
+    response.Header.Location =
+       resourceLinker.Get&lt;ContactResource&gt;(cr =&gt; cr.Get(contact.Id, null));
+    return contact;
+}</pre>
+
+<p>(assuming you inject IResourceLinker in your resource class)</p>
+
+<h1>Testing</h1>
+
+<p>When I was about to write my first test with the IResourceLinker I tried to mock it. But then I figure out that is better to use the real implementation along with the real routes.</p>
+
+<p>The first step is to extract the RouteTable configuration to another class;</p>
+
+<pre class="brush: csharp; wrap-line: false;">public static class RouteConfigurator
+{
+    public static void Configure(HttpHostConfiguration configuration)
+    {
+        RouteTable.Routes.AddServiceRoute&lt;ContactResource&gt;(&quot;contact&quot;, configuration);
+        RouteTable.Routes.AddServiceRoute&lt;ContactsResource&gt;(&quot;contacts&quot;, configuration);
+    }
+}</pre>
+
+<p>Then, we can write a base test fixture like this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">public class ResourceBaseTestFixture
+{
+    protected const string SampleHostRoute 
+        = &quot;http://foo.bar&quot;;
+    protected IResourceLinker resourceLinker 
+        = new ResourceLinker(SampleHostRoute);
+
+    [TestFixtureSetUp]
+    public void SetUp()
+    {
+        RouteTableConfigurator.Configure(null);    
+    }
+
+    [TestFixtureSetUp]
+    public void TearDown()
+    {
+        RouteTable.Routes.Clear();
+    }
+}</pre>
+
+<p>And then you can test as follows:</p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void WhenPOSTingAContactThenReturn202AndTheLocationOfTheContact()
+{
+    //initilization and mock of the repository.
+
+    var httpResponseMessage = new HttpResponseMessage(); 
+    
+    //act
+    resource.Post(new Contact { .... }, httpResponseMessage);
+
+    string locationOfTheNewContact =
+        resourceLinker.GetUri&lt;ContactResource&gt;(cr =&gt; cr.Get(123, null)).ToString();
+
+    httpResponseMessage.Satisfy(r =&gt; r.StatusCode == HttpStatusCode.Created
+                                  &amp;&amp; r.Headers.Location.ToString() == locationOfTheNewContact);
+}</pre>
+
+<p><u>And then I realized the first thing I should write when creating a rest service will be something like this:</u></p>
+
+<pre class="brush: csharp; wrap-line: false;">[Test]
+public void TheRouteForPostAContactShouldBeOk()
+{
+    resourceLinker.GetUri&lt;Contacts&gt;(cr =&gt; cr.Create(null, null)).ToString()
+        .Should().Be.EqualTo(SampleHostRoute + &quot;/Contacts&quot;);
+}
+
+[Test]
+public void TheRouteForRetrievingASingleContactShouldBeOk()
+{
+    resourceLinker.GetUri&lt;Contact&gt;(cr =&gt; cr.Get(123, null)).ToString()
+        .Should().Be.EqualTo(SampleHostRoute + &quot;/Contact/123&quot;);
+}</pre>
+
+<p>But that is a matter of taste, I guess <img style="border-bottom-style: none; border-left-style: none; border-top-style: none; border-right-style: none" class="wlEmoticon wlEmoticon-smile" alt="Sonrisa" src="http://joseoncode.com/wp-content/uploads/images/wlEmoticon-smile5B25D.png" /></p>
+
+<p>Happy RESTing and stay in sync, I’ll start writing some articles about WCF.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-336282574754038101' alt='' /></div>

@@ -1,0 +1,98 @@
+--- 
+layout: post
+title: Some extensions methods that I like
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/11/some-extensions-methods-that-i-like.html
+  dsq_thread_id: "314364246"
+  blogger_images: "1"
+---
+<h2>String extensions</h2>  <pre class="brush: csharp;">public static class StringExtensions
+{
+    public static string F(this string text, params object[] args)
+    {
+        return string.Format(text, args);
+    }
+}</pre>
+
+<p>This extension method is very clear and doesn't need explanation, usage:</p>
+
+<pre class="brush: csharp;">&quot;Hello, my name is {0}&quot;.F(&quot;Jose&quot;)</pre>
+
+<h2>Int extensions</h2>
+
+<pre class="brush: csharp;">public static class IntExtensions
+{
+    public static IEnumerable&lt;int&gt; To(this int start, int end)
+    {
+        return Enumerable.Range(start, end);
+    }
+}</pre>
+
+<p>1.To(10) will returns an IEnumerable<int> with elements from 1 to 10</p>
+
+<h2>Cast extension</h2>
+
+<pre class="brush: csharp;">public static class CastsExtensions
+{
+    public static T To&lt;T&gt;(this object o)
+    {
+        return (T)o;
+    }
+
+    public static T As&lt;T&gt;(this object o) where T : class
+    {
+        return o as T;
+    }
+}</pre>
+
+<p>This is self descriptive too. It allows you to cast and access a property with a more cleaner syntax: someObject.To&lt;IDataErrorInfo&gt;().Errors </p>
+
+<h2>Datetime extensions</h2>
+
+<pre class="brush: csharp;">public static class DateTimeExtensions
+{
+    public static DateTime FromNow(this TimeSpan self)
+    {
+        return DateTime.Now.Add(self);
+    }
+    public static DateTime From(this TimeSpan self, DateTime dateTime)
+    {
+        return dateTime.Add(self);
+    }
+    public static TimeSpan Days(this int days)
+    {
+        return TimeSpan.FromDays(days);
+    }
+}</pre>
+
+<p>I really like this extension method:</p>
+
+<pre class="brush: csharp;">10.Days().FromNow()
+    .Should().Be.EqualTo(DateTime.Today.AddDays(10));
+
+10.Days().From(new DateTime(2009, 10, 10))
+    .Should().Be.EqualTo(new DateTime(2009, 10, 20));</pre>
+
+<h2>Enumerable extensions</h2>
+
+<pre class="brush: csharp;">public static class EnumerableExtensionsMethods
+{
+    public static void ForEach&lt;T&gt;(
+            this IEnumerable&lt;T&gt; enumerable, 
+            Action&lt;T&gt; action)
+    {
+        foreach (T item in enumerable)
+        {
+            action(item);
+        }
+    }
+}</pre>
+
+<p>But, I already explained this in this <a href="http://jfromaniello.blogspot.com/2009/07/foreach-method-in-every-icollection.html">post</a>.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7667058963213519898' alt='' /></div>

@@ -1,0 +1,73 @@
+--- 
+layout: post
+title: Diferentes tipos de Cast en .Net
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/09/diferentes-typos-de-cast-en-net.html
+  dsq_thread_id: "314363893"
+  blogger_images: "1"
+---
+<p><em>Advertencia: Este artículo esta principalmente destinado para principiantes de .Net.</em></p>  <p>Hace mucho tiempo que tenía ganas de explicar acerca de las diferentes formas de hacer casting en .net puesto que me he encontrado muchas veces con malos usos de las diferentes sintaxis provistas por el framework. Si bien en este post los ejemplos estan CSharp, lo mismo se aplica para Vb.Net.</p>  <h4>Por qué necesito castear?</h4>  <p>La definición de MSDN es la siguiente:</p>  <blockquote>   <p>Dado que los objetos son polimórficos, es posible que una variable de un tipo de clase base contenga un tipo derivado. Para tener acceso al método del tipo derivado, es necesario volver a convertir el valor al tipo derivado.</p> </blockquote>  <p>Para simplificar los ejemplos voy a utilizar el siguiente dominio:</p>  <p align="center"><a href="http://joseoncode.com/wp-content/uploads/2011/06/2009-09-20_1723%5B3%5D.png"><img style="border-bottom: 0px; border-left: 0px; display: inline; border-top: 0px; border-right: 0px" title="2009-09-20_1723" border="0" alt="2009-09-20_1723" src="http://joseoncode.com/wp-content/uploads/images/2009-09-20_1723_thumb5B15D.png" width="380" height="338" /></a>&#160; <br /><em>(Tomé esta imagen de algún post de <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a>)</em></p>  <h2>Caso 1: 100% de seguridad de su tipo derivado</h2>  <p>Hay algunos casos donde tenemos 100% de certeza de que el objeto en la variable es un derivado del tipo al cual queremos castear. Por lo tanto se usa una conversión explicita de la siguiente forma:</p>  <pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">var </span>reptil = (<span style="color: #2b91af">Reptil</span>) someAnimal;
+<span style="color: #2b91af">Console</span>.WriteLine(reptil.BodyTemperature);</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<h3>MAL:</h3>
+
+<pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">var </span>reptil = someAnimal <span style="color: blue">as </span><span style="color: #2b91af">Reptil</span>;
+<span style="color: #2b91af">Console</span>.WriteLine(reptil.BodyTemperature);</pre>
+
+<p></p>
+
+<p>A continuación voy a explicar por que esta mal, y para que se utiliza el operador “as”.</p>
+
+<h2>Caso 2: No tengo seguridad acerca del tipo derivado</h2>
+
+<p>Hacer una conversión explicita como se explico en el caso 1 producirá una excepción del tipo <strong>InvalidCastException en caso de que el objeto presente en la variable no sea derivado del tipo al cual quiero castear</strong>. Por lo tanto en caso de no conocer si es un derivado de dicho tipo, utilizaremos el operador “as” la particularidad de este operador es que en caso de no serlo el resultado es null. Por lo tanto, nunca se debería utilizar este operador sin la correspondiente validación que el resultado del casteo sea nulo;</p>
+
+<pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">var </span>reptil = someAnimal <span style="color: blue">as </span><span style="color: #2b91af">Reptil</span>;
+<span style="color: blue">if</span>(reptil != <span style="color: blue">null</span>)
+    <span style="color: #2b91af">Console</span>.WriteLine(reptil.BodyTemperature);</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<h3>MAL:</h3>
+
+<pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">if</span>(someAnimal <span style="color: blue">is </span><span style="color: #2b91af">Reptil</span>)
+{
+    <span style="color: #2b91af">Reptil </span>reptil = (<span style="color: #2b91af">Reptil</span>) someAnimal;
+    <span style="color: #2b91af">Console</span>.WriteLine(reptil.BodyTemperature);
+}</pre>
+
+<p>El problema de este código, es que estoy realizando dos operaciones de cast la primera para verificar si la variable es del tipo Reptil, y la segunda donde realizó el cast. Por lo tanto este código es mas costoso que el anterior y esto nos lleva al caso 3.</p>
+
+<h2>Caso 3: Necesito solamente saber si el objeto presente en una variable es de una clase derivada de un tipo</h2>
+
+<p>En algunos casos es necesario saber solamente si es un derivado de un tipo especifico, es decir, no necesito realmente una conversión. </p>
+
+<pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">if</span>(someAnimal <span style="color: blue">is </span><span style="color: #2b91af">Reptil</span>)
+{
+    <span style="color: #2b91af">Console</span>.WriteLine(<span style="color: #a31515">&quot;Reptil!&quot;</span>);
+}</pre>
+
+<h3>MAL:</h3>
+
+<pre class="code"><span style="color: #2b91af">Animal </span>someAnimal = GetAnimal();
+<span style="color: blue">if</span>((someAnimal <span style="color: blue">as </span><span style="color: #2b91af">Reptil</span>) != <span style="color: blue">null</span>)
+{
+    <span style="color: #2b91af">Console</span>.WriteLine(<span style="color: #a31515">&quot;Reptil!&quot;</span>);
+}</pre>
+
+<p>
+  <br />Esto fue todo, si bien he visto algunos casos peores que los que he marcado como mal, quería exponer los mas frecuentes.</p>
+
+<p><strong>Nota:</strong> Según nos comenta <a href="http://ebersysesp.blogspot.com/">Eber Irigoyen</a> desde twitter, el último ejemplo es equivalente en términos de performance.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-883726371081806669' alt='' /></div>

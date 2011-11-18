@@ -1,0 +1,181 @@
+--- 
+layout: post
+title: "Chinook Media Manager: Asynchronous calls"
+tags: 
+- ChinookMM
+- NHibernate
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/11/chinook-media-manager-asynchronous.html
+  blogger_images: "1"
+  dsq_thread_id: "314364300"
+---
+<p>I will show in this article an approach to make an asynchronous call to the model, to prevent the user interface to freeze. If you read about WPF, you will see there is a lot of information and claims “don’t freeze the ui thread”, “build UI more responsiveness” and so on.</p>  <h2>What you should know</h2>  <p>NHibernate Sessions are not thread safe, so don’t use a single session in multiples threads. Conversation-per-Business-Transaction use the same session for a conversation. The end of the conversation flush the changes and close the session, the abort of the conversation discard changes and close the session.</p>  <p>You can’t update UI controls from a non-ui thread. Some people read this like “don’t set a ViewModel property from a non UI thread”. But this is not true, because it depends where do you raise the property changed notification thank to my friend <a href="http://schuager.com/">German Schuager</a> for reminding me <a href="http://devlicio.us/blogs/rob_eisenberg/archive/2009/09/08/dispelling-a-common-wpf-silverlight-myth.aspx">this post</a> from <a href="http://devlicio.us/blogs/rob_eisenberg">Rob Eisenberg</a>. However, I’m not using this trick for now.</p>  <p>Asynchronous code is <u><strong>HARD</strong></u> to unit test. I will like to separate the asynchronous code in few units more testable and test “in-sync”.</p>  <h1>The problem</h1>  <p>The load of the artist list is very slow and this causes the user interface to freeze. This is very irritating for the end user.</p>  <p>I will break the async problem in the following three steps:</p>  <ol>   <li>Preview: Before start the operation we want to let the user know that the operation is in-process with some message in the user interface or maybe an hourglass. </li>    <li>Process: The heavy operation. </li>    <li>Completed: The operation has ended and we want to show the result to the UI. </li> </ol>  <h1>Show me the code</h1>  <p>This my generic implementation of ICommand for make async calls.</p>  <pre class="brush: csharp; wrap-lines: false;">public class AsyncCommandWithResult&lt;TParameter, TResult&gt; 
+        : IAsyncCommandWithResult&lt;TParameter, TResult&gt;
+{
+    private readonly Func&lt;TParameter, bool&gt; _canAction;
+    private readonly Func&lt;TParameter, TResult&gt; _action;
+
+    public AsyncCommandWithResult(Func&lt;TParameter, TResult&gt; action)
+    {
+        _action = action;
+    }
+
+    public AsyncCommandWithResult(
+            Func&lt;TParameter, TResult&gt; action, 
+            Func&lt;TParameter, bool&gt; canAction)
+    {
+        _action = action;
+        _canAction = canAction;
+    }
+
+
+    public Action&lt;TParameter, TResult&gt; Completed { get; set; }
+    public Action&lt;TParameter&gt; Preview { get; set; }
+    public bool BlockInteraction { get; set; }
+
+    public void Execute(object parameter)
+    {
+        //Execute Preview
+        Preview((TParameter)parameter);
+
+        //This is the async actions to take... 
+        worker.DoWork += (sender, args) =&gt;
+            {
+                args.Result = _action((TParameter)parameter);
+                
+            };
+
+        //When the work is complete, execute the postaction.
+        worker.RunWorkerCompleted += (sender, args) =&gt;{
+            Completed((TParameter) parameter, (TResult) args.Result);
+            CommandManager.InvalidateRequerySuggested();
+        };
+
+        //Run the async work.
+        worker.RunWorkerAsync();
+    }
+
+    [DebuggerStepThrough]
+    public bool CanExecute(object parameter)
+    {
+        if(BlockInteraction  &amp;&amp; worker.IsBusy )
+            return false;
+
+        return _canAction == null ? true : 
+                _canAction((TParameter)parameter);
+    }
+
+    public event EventHandler CanExecuteChanged
+    {
+        add { CommandManager.RequerySuggested += value; }
+        remove { CommandManager.RequerySuggested -= value; }
+    }
+
+    public TResult ExecuteSync(TParameter obj)
+    {
+        return _action(obj);
+    }
+
+    private readonly BackgroundWorker worker 
+            = new BackgroundWorker();
+}</pre>
+
+<h1>Testing the ViewModel</h1>
+
+<p>Here you can see the test of the three steps. None of these test involves asynchronous calls.</p>
+
+<pre class="brush: csharp;">[Test]
+public void preview_of_load_list_should_show_status_info()
+{
+    var browseArtistVm = new BrowseArtistViewModel(
+                new Mock&lt;IBrowseArtistModel&gt;().Object,
+                new Mock&lt;IViewFactory&gt;().Object);
+    
+    browseArtistVm.LoadListCommand.Preview(null);
+    browseArtistVm.Status.Should().Be.EqualTo(&quot;Loading artists...&quot;);
+}
+
+[Test(Description = &quot;Check if the process call the model&quot;)]
+public void load_list_command_should_load_artists_coll()
+{
+    var artistModel = new Mock&lt;IBrowseArtistModel&gt;();
+
+    var artists = new List&lt;Artist&gt; {new Artist {Name = &quot;Jose&quot;}};
+
+    artistModel.Setup(am =&gt; am.GetAllArtists()).Returns(artists);
+
+    var browseArtistVm = new BrowseArtistViewModel(
+                            artistModel.Object, 
+                            new Mock&lt;IViewFactory&gt;().Object);
+
+    browseArtistVm.LoadListCommand.ExecuteSync(null);
+
+    artistModel.VerifyAll();
+}
+
+[Test]
+public void completed_of_load_l_should_load_the_list_and_change_status()
+{
+    var browseArtistVm = new BrowseArtistViewModel(
+                new Mock&lt;IBrowseArtistModel&gt;().Object,
+                new Mock&lt;IViewFactory&gt;().Object);
+
+    var artists = new List&lt;Artist&gt;();
+
+    browseArtistVm.LoadListCommand.Completed(null, artists);
+
+    browseArtistVm.Artists.Should().Be.SameInstanceAs(artists);
+    browseArtistVm.Status.Should().Be.EqualTo(&quot;Finished&quot;);
+}</pre>
+
+<h1>Implementing the ViewModel</h1>
+
+<p>The LoadListCommand of the ViewModel is:</p>
+
+<pre class="brush: csharp;">public virtual IAsyncCommandWithResult&lt;object, IList&lt;Artist&gt;&gt; LoadListCommand
+{
+    get
+    {
+        if (_loadListCommand == null)
+        {
+            _loadListCommand = 
+                new AsyncCommandWithResult&lt;object, IList&lt;Artist&gt;&gt;
+                        (o =&gt; _browseArtistModel.GetAllArtists())
+                        {
+                            BlockInteraction = true,
+                            Preview = o =&gt; Status = &quot;Loading artists...&quot;,
+                            Completed = (o, artists) =&gt;
+                                {
+                                    Artists = artists;
+                                    Status = &quot;Finished&quot;;
+                                }
+                        };
+        }
+        return _loadListCommand;
+    }
+}</pre>
+
+<h1>Final conclusion</h1>
+
+<p>You must to remember that an NHibernate Session should be used in only one thread. This model for Browsing Artists has only one method with EndMode = End. This means session-per-call, so each time I click the LoadCommand the model start a new conversation and session. If you have a ViewModel with multiples operations within the same Conversation better you use something else, or use AsyncCommand everywhere within the VM.</p>
+
+<p>There are a lot of alternatives to this approach, here are some;</p>
+
+<ul>
+  <li><a href="http://msdn.microsoft.com/en-us/library/wewwczdw.aspx">Event-based asynchronous pattern</a>. </li>
+
+  <li>Use background thread directly in your ViewModel. </li>
+</ul>
+
+<p>Use this only when you need it. You don’t have to do this everywhere. Some operations are very fast and inexpensive.</p>
+
+<p>Divide and conquer; I really like this way of testing. Don’t bring asynchronous things to your unit tests.</p>
+
+<div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello</div>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-2044133121155685347' alt='' /></div>

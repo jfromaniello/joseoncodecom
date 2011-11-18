@@ -1,0 +1,257 @@
+--- 
+layout: post
+title: "Linq specifications: from Argentina with Love"
+tags: 
+- Linq
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/12/linq-specifications-from-argentina-with.html
+  dsq_thread_id: "315069227"
+  blogger_images: "1"
+---
+<p><em>You know, like “from Rusia with love”, this is the Criolla version.</em></p>  <p>Well, I was talking with my friend <a href="http://fabianfigueredo.com.ar/">Fabian Figueredo</a> from <a href="http://yoprogramo.net/">YoProgramo.net</a> about specification pattern and compositions with Linq and then I figure out a nice idea that I will use soon.</p>  <p>If you read my blog, I’m using often the Dao pattern, with the interface described by <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a> <a href="http://fabiomaulo.blogspot.com/2009/09/repository-or-dao-dao.html">here</a> . The interface has these two major methods:</p>  <pre class="code"><span style="color: #2b91af">IEnumerable</span>&lt;TEntity&gt; Retrieve(<span style="color: #2b91af">Expression</span>&lt;<span style="color: #2b91af">Func</span>&lt;TEntity, <span style="color: blue">bool</span>&gt;&gt; predicate);
+<span style="color: blue">int </span>Count(<span style="color: #2b91af">Expression</span>&lt;<span style="color: #2b91af">Func</span>&lt;TEntity, <span style="color: blue">bool</span>&gt;&gt; predicate);</pre>
+
+<p>This interface is really nice and allows me to build code like this:</p>
+
+<pre class="code">dao.Retrieve(Customers.Prefered())
+dao.Retrieve(Customers.WithoutActivitySince(<span style="color: blue">new </span>DateTime(2009, 12, 01)))</pre>
+
+<p>These kind of queries are easy to write. The problem comes when you want to operate queries, let say apply boolean operators.</p>
+
+<p>What if we want:</p>
+
+<ul>
+  <li>Prefered customers without activity since a specific date. </li>
+
+  <li>Prefered customers with activity since a specific date. </li>
+
+  <li>Not prefered customers without activity since a specific date. </li>
+</ul>
+
+<p>So, the problem is that we have our specifications objects, but we need to operate.</p>
+
+<p><u>Note: I have seen a project </u><a href="http://code.google.com/p/linq-specifications/"><u>linq-specifications</u></a><u>, but it seems to not help with this task.</u></p>
+
+<h1>The solution</h1>
+
+<p>Imagine an in-memory (fake) dao of strings:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">public class SampleRepository : ReadOnlyCollection&lt;string&gt;, IDaoQueryable&lt;string&gt;
+{
+    public SampleRepository() : base(new []{&quot;Jose&quot;, &quot;Manuel&quot;, &quot;Julian&quot;})
+    {}
+
+    public IEnumerable&lt;string&gt; Retrieve(Specification&lt;string&gt; specfication)
+    {
+        return this.AsQueryable().Where(specfication.Spec());
+    }
+}</pre>
+
+<p>The tests:</p>
+
+<pre class="brush: csharp; wrap-lines: false;">[Test]
+public void adhoc_should_work()
+{
+    var specification = new AdHocSpecification&lt;string&gt;(n =&gt; n.StartsWith(&quot;J&quot;));
+
+    var result = new SampleRepository()
+                        .Retrieve(specification);
+
+    result.Satisfy(r =&gt; r.Contains(&quot;Jose&quot;)
+                      &amp;&amp; r.Contains(&quot;Julian&quot;)
+                      &amp;&amp; !r.Contains(&quot;Manuel&quot;));
+}
+
+[Test]
+public void negate_should_work()
+{
+    var specification = new NegateSpecification&lt;string&gt;(n =&gt; n.StartsWith(&quot;J&quot;));
+
+    var result = new SampleRepository()
+                        .Retrieve(specification);
+
+    result.Satisfy(r =&gt; !r.Contains(&quot;Jose&quot;)
+                      &amp;&amp; !r.Contains(&quot;Julian&quot;)
+                      &amp;&amp; r.Contains(&quot;Manuel&quot;));
+}
+
+[Test]
+public void and_should_work()
+{
+    var startWithJ = new AdHocSpecification&lt;string&gt;(n =&gt; n.StartsWith(&quot;J&quot;));
+    var endsWithE = new AdHocSpecification&lt;string&gt;(n =&gt; n.EndsWith(&quot;e&quot;));
+
+    var result = new SampleRepository()
+                        .Retrieve(startWithJ &amp; endsWithE);
+
+    result.Satisfy(r =&gt; !r.Contains(&quot;Jose&quot;)
+                      &amp;&amp; !r.Contains(&quot;Julian&quot;)
+                      &amp;&amp; r.Contains(&quot;Manuel&quot;));
+}
+
+
+[Test]
+public void or_should_work()
+{
+    var startWithJ = new AdHocSpecification&lt;string&gt;(n =&gt; n.StartsWith(&quot;J&quot;));
+    var endsWithN = new AdHocSpecification&lt;string&gt;(n =&gt; n.EndsWith(&quot;n&quot;));
+
+    var result = new SampleRepository()
+                        .Retrieve(startWithJ | endsWithN);
+
+    result.Satisfy(r =&gt; r.Contains(&quot;Jose&quot;)
+                      &amp;&amp; r.Contains(&quot;Julian&quot;)
+                      &amp;&amp; !r.Contains(&quot;Manuel&quot;));
+}
+
+[Test]
+public void combination_sample_should_work()
+{
+    var startWithJ = new AdHocSpecification&lt;string&gt;(n =&gt; n.StartsWith(&quot;J&quot;));
+    var endsWithN = new AdHocSpecification&lt;string&gt;(n =&gt; n.EndsWith(&quot;n&quot;));
+    
+
+    var result = new SampleRepository()
+                        .Retrieve(startWithJ | !endsWithN);
+        
+    result.Satisfy(r =&gt; r.Contains(&quot;Jose&quot;)
+                      &amp;&amp; !r.Contains(&quot;Julian&quot;)
+                      &amp;&amp; !r.Contains(&quot;Manuel&quot;));
+}</pre>
+
+<p>As you can see I want binary operators &amp;, | , and !. </p>
+
+<h1>The solution:</h1>
+
+<pre class="brush: csharp; wrap-lines: false;">public abstract class Specification&lt;T&gt;
+{
+    public abstract Expression&lt;Func&lt;T, bool&gt;&gt; Spec();
+
+    public static Specification&lt;T&gt; operator &amp;(Specification&lt;T&gt; spec1, Specification&lt;T&gt; spec2)
+    {
+        return new AndSpecification&lt;T&gt;(spec1.Spec(), spec2.Spec());
+    }
+
+    public static Specification&lt;T&gt; operator |(Specification&lt;T&gt; spec1, Specification&lt;T&gt; spec2)
+    {
+        return new OrSpecification&lt;T&gt;(spec1.Spec(), spec2.Spec());
+    }
+    public static Specification&lt;T&gt; operator !(Specification&lt;T&gt; spec1)
+    {
+        return new NegateSpecification&lt;T&gt;(spec1.Spec());
+    }
+}
+
+public class AdHocSpecification&lt;T&gt; :Specification&lt;T&gt;
+{
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _specification;
+
+    public AdHocSpecification(Expression&lt;Func&lt;T, bool&gt;&gt; specification)
+    {
+        _specification = specification;
+    }
+
+    public override Expression&lt;Func&lt;T, bool&gt;&gt; Spec()
+    {
+        return _specification;
+    }
+}
+public class AndSpecification&lt;T&gt; : Specification&lt;T&gt;
+{
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _spec1;
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _spec2;
+
+    public AndSpecification(Expression&lt;Func&lt;T, bool&gt;&gt; spec1, Expression&lt;Func&lt;T, bool&gt;&gt; spec2)
+    {
+        _spec1 = spec1;
+        _spec2 = spec2;
+    }
+
+    public override Expression&lt;Func&lt;T, bool&gt;&gt; Spec()
+    {
+        ParameterExpression param = Expression.Parameter(typeof(T),&quot;x&quot;);
+        return Expression.Lambda&lt;Func&lt;T, bool&gt;&gt;(
+            Expression.AndAlso(
+                Expression.Invoke(_spec1, param), 
+                Expression.Invoke(_spec2, param)), param);
+    }
+}
+
+public class OrSpecification&lt;T&gt; : Specification&lt;T&gt;
+{
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _spec1;
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _spec2;
+
+    public OrSpecification(Expression&lt;Func&lt;T, bool&gt;&gt; spec1, Expression&lt;Func&lt;T, bool&gt;&gt; spec2)
+    {
+        _spec1 = spec1;
+        _spec2 = spec2;
+    }
+
+    public override Expression&lt;Func&lt;T, bool&gt;&gt; Spec()
+    {
+        ParameterExpression param = Expression.Parameter(typeof(T), &quot;x&quot;);
+        return Expression.Lambda&lt;Func&lt;T, bool&gt;&gt;(
+            Expression.OrElse(
+                Expression.Invoke(_spec1, param),
+                Expression.Invoke(_spec2, param)), param);
+    }
+}
+
+public class NegateSpecification&lt;T&gt; : Specification&lt;T&gt;
+{
+    private readonly Expression&lt;Func&lt;T, bool&gt;&gt; _expression;
+
+    public NegateSpecification(Expression&lt;Func&lt;T, bool&gt;&gt; expression)
+    {
+        _expression = expression;
+    }
+
+    public override Expression&lt;Func&lt;T, bool&gt;&gt; Spec()
+    {
+        ParameterExpression param = Expression.Parameter(typeof(T), &quot;x&quot;);
+        return Expression.Lambda&lt;Func&lt;T, bool&gt;&gt;(Expression.Not(Expression.Invoke(_expression, param)), param);
+    }
+}</pre>
+
+<p>Note: </p>
+
+<ul>
+  <li>I’ve defined the three operators in the base class for specifications. </li>
+
+  <li>Lambda expressions are lazy-constructed. </li>
+</ul>
+
+<p>The AdHoc, And, Or and Negate specification are not meant to be used directly.&#160; You must write your own specifications inheriting from Specification&lt;T&gt; and then you can operate when needed.</p>
+
+<p>That said; I don’t write specifications for less important queries </p>
+
+<h2>Less important note: Yes this work with Nhibernate Linq (criteria version) and should work with EF.</h2>
+
+<pre class="brush: csharp; wrap-lines: false;">var spec1 = new AdHocSpecification&lt;Person&gt;(p =&gt; p.FirstName.StartsWith(&quot;A&quot;));
+var spec2 = new AdHocSpecification&lt;Person&gt;(p =&gt; p.LastName.StartsWith(&quot;A&quot;));
+
+using(var s = sf.OpenSession())
+using (var tx = s.BeginTransaction())
+{
+    s.Save(new Person {FirstName = &quot;Alberto&quot;, LastName = &quot;Arnaldo&quot;});
+    tx.Commit();
+}
+
+using(var s = sf.OpenSession())
+using(var tx = s.BeginTransaction())
+{
+    var result = s.Linq&lt;Person&gt;().Where((spec1 &amp; spec2).Spec());
+    result.Count().Satisfy(r =&gt; r == 1);
+    tx.Commit();
+}</pre>
+
+<p>The generated sql query is:</p>
+
+<pre class="brush: sql; wrap-lines: false;">21:01:55,906 DEBUG SQL:0 - SELECT count(*) as y0_ FROM Person this_ WHERE (this_.FirstName like @p0 and this_.LastName like @p1);@p0 = 'A%', @p1 = 'A%'</pre>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-7278595532389502170' alt='' /></div>

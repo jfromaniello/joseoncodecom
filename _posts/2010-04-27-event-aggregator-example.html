@@ -1,0 +1,56 @@
+--- 
+layout: post
+title: Event Aggregator example
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/04/event-aggregator-example.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314364572"
+---
+<p>The idea behind the Event Aggregation is to build loosely coupled components. In this post I’d like to introduce you a simple scenario for event aggregation.</p>  <p>Imagine that you are building the <a href="http://www.microsoft.com/downloads/details.aspx?displaylang=es&amp;FamilyID=c243a5ae-4bd1-4e3d-94b8-5a0f62bf7796">Microsoft Sql Server Management Studio Express</a>, the “shell” of this program looks as follows:</p> <a href="http://joseoncode.com/wp-content/uploads/2011/06/2010-04-27_10561.png"><img class="embeddedObject" border="0" src="http://joseoncode.com/wp-content/uploads/2011/06/2010-04-27_1056.png" width="621" height="322" /></a>   <p>This shell has a <strong>Create Connection </strong>panel and an <strong>Objects Explorer</strong> dialog. When the user press the Connect button, the connection must be added to the object explorer panel.</p>  <p>We will focus in this simple question: </p>  <blockquote>   <p>Who is responsible to notify to the Object Explorer panel that a connection has been added?</p> </blockquote>  <p>I will not talk about MVVM, MVP, WPF and Winforms, this is pure theoretically.</p>  <h1>Option A: direct notification</h1>  <p>After processing the connect operation, the Connect use case, call a method in the object explorer:</p>  <p>objectExplorer.Add(theNewConnection);</p>  <p>The Connect use case needs to know too much about the Object Explorer use case, it needs a reference to the object explorer, ergo this is a bad design, because it violates almost any letter in S.O.L.I.D.</p>  <h1>Option B: common events</h1>  <p>The Connect use case has an event named ConnectionAdded and the Object explorer is subscribed to this event. We are moving the problem to the other side, the Connect use case is agnostic about the Object Explorer but the Object Explorer needs to know about the Connect use case, and this solution has the same problem that the former.</p>  <h1>Option C: event publishing</h1>  <p>Object explorer is subscribed to an event named ConnectionAdded which is defined as a class.</p>  <pre class="brush: csharp;">public class ObjectExplorer{
+
+  public ObjectExplorer(IEventAggregator eventAggregator)
+  {
+     Connections = new List&lt;Connection&gt;();
+     eventAggregator.Subscribe&lt;ConnectionAdded&gt;(AddConnection);
+  }
+  
+  public IEnumerable&lt;Connection&gt; Connections{get; private set;}
+
+  private void AddConnection(ConnectionAdded connectionAdded)
+  {
+     Connections.Add(connectionAdded.Connection);
+  }
+}</pre>
+
+<p>The Connect use case publish the event when its ready;</p>
+
+<pre class="brush: csharp;">public class AddConnectionUseCase{
+
+  private IEventAggregator eventAggregator;
+
+  public AddConnectionUseCase(IEventAggregator eventAggregator)
+  {
+     this.eventAggregator = eventAggregator
+  }
+  
+  private void Connect()
+  {
+     //do stuff
+     eventAggregator.Publish&lt;ConnectionAdded&gt;(args);
+  }
+}</pre>
+
+<p>This is it. Any part of our system can publish this event, and any part of our system can be subscribed. This architecture is very extensible, flexible, easy to test and easy to maintain.</p>
+
+<p>The concept is very close to <a href="http://www.udidahan.com/2009/06/14/domain-events-salvation/">Domain Events</a>. </p>
+
+<p>You can read more on <a href="http://msdn.microsoft.com/en-us/library/cc707867.aspx">Composite Application Guidance</a>, also <a href="http://ayende.com/blog/">Ayende Rahien</a> has an artifact in his <a href="http://msdn.microsoft.com/en-us/magazine/ee819139.aspx">Effectus application</a>.</p>
+
+<p>In my next post I’ll show you a concrete implementation of IEventAggregator.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-66927022278186661' alt='' /></div>

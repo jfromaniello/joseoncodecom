@@ -1,0 +1,38 @@
+--- 
+layout: post
+title: NHibernate NLog support in Nuget
+tags: 
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/05/nhibernatenlog-support-in-nuget.html
+  dsq_thread_id: "314364981"
+  blogger_images: "1"
+---
+<p>I have created a new package that add support for writing NHibernate logs with NLog.    <br />The package is not a dll but only <a href="https://bitbucket.org/jfromaniello/nhibernate.nlog/src/142abf128c68/pack/Content/NLog-NHibernate.cs.pp">one class</a>.</p>  <p>In order to use this package, simply install with nuget:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2011-05-04_083814.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-05-04_0838" border="0" alt="2011-05-04_0838" src="http://joseoncode.com/wp-content/uploads/images/2011-05-04_0838_thumb12.png" width="685" height="423" /></a></p>  <p>This is an example app.config file:    <br /></p>  <pre class="brush: xml; wrap-line: false;">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+&lt;configuration&gt;
+  &lt;configSections&gt;
+    &lt;section name=&quot;nlog&quot; type=&quot;NLog.Config.ConfigSectionHandler, NLog&quot;/&gt;
+  &lt;/configSections&gt;
+  &lt;appSettings&gt;
+    &lt;add key=&quot;nhibernate-logger&quot; value=&quot;YourNamespace.NLogFactory, YourAssemblyName&quot;/&gt;
+  &lt;/appSettings&gt;
+
+  &lt;nlog xmlns=&quot;http://www.nlog-project.org/schemas/NLog.xsd&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
+    &lt;targets&gt;
+      &lt;target name=&quot;ds&quot; xsi:type=&quot;Console&quot;/&gt;
+    &lt;/targets&gt;
+    &lt;rules&gt;
+      &lt;logger name=&quot;NHibernate.SQL&quot; minlevel=&quot;Debug&quot; writeTo=&quot;ds&quot; /&gt;
+    &lt;/rules&gt;
+  &lt;/nlog&gt;
+&lt;/configuration&gt;</pre>
+
+<p>Remember to change “YourNamespace” and “YourAssemblyName”. That is all. 
+  <br />You don’t need to run Configure or some initialization code as in log4net.</p>
+
+<p>There is an alternative approach <a href="http://nhforge.org/wikis/howtonh/using-nlog-via-common-logging-with-nhibernate.aspx">here</a> but it is a little bit more complicated.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-1216097592935285585' alt='' /></div>

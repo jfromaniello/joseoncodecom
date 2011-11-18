@@ -1,0 +1,25 @@
+--- 
+layout: post
+title: ForEach method in every IEnumerable<T>
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/foreach-method-in-every-icollection.html
+  dsq_thread_id: "314363554"
+  blogger_images: "1"
+---
+<p><a href="http://msdn.microsoft.com/en-us/library/bwabdf9z.aspx">ForEach</a> method is wonderful, unfortunately is a member of List&lt;T&gt;.     <br />What if you want to have this method in all IEnumerable&lt;T&gt;? well, this extension method can help.</p>  <pre class="brush: csharp;">public static void ForEach&lt;T&gt;(this IEnumerable&lt;T&gt; collection, Action&lt;T&gt; action)
+{
+    foreach (var item in collection){ action(item); }            
+}</pre>
+
+<p>With this method you can do the following:</p>
+
+<pre class="brush: csharp;">&quot;a,b,c,d&quot;.Split(',').ForEach(Console.WriteLine);</pre>
+
+<p><b>Note:</b> This article was titled “ForEach method in every ICollection&lt;T&gt;”, but as suggested by <a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a> can be better with IEnumerable&lt;T&gt;, so I’ve downgraded the type of the parameter.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3294023317717406131' alt='' /></div>

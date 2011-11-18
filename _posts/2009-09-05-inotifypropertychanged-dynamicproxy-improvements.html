@@ -1,0 +1,226 @@
+--- 
+layout: post
+title: "INotifyPropertyChanged & DynamicProxy: improvements"
+tags: 
+- DynamicProxy
+- uNhAddIns.WPF
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/09/inotifypropertychanged-dynamicproxy.html
+  dsq_thread_id: "314363874"
+  blogger_images: "1"
+---
+<p>I have talked before about INotifyPropertyChanged and a simple implementation with DynamicPorxy. This time I will show you some enhancements.</p>  <p>This is my IInterceptor (Castle Dynamic Proxy):</p>  <pre class="brush: csharp;">using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using Castle.Core.Interceptor;
+
+namespace uNhAddIns.ComponentBehaviors.Castle
+{
+    public class PropertyChangedInterceptor : IInterceptor
+    {
+        private PropertyChangedEventHandler _handler;
+
+        #region IInterceptor Members
+
+        public void Intercept(IInvocation invocation)
+        {
+            string methodName = invocation.Method.Name;
+
+            if (invocation.Method.DeclaringType.Equals(typeof (INotifyPropertyChanged)))
+            {
+                if (methodName == &quot;add_PropertyChanged&quot;)
+                    _handler = 
+                        (PropertyChangedEventHandler) Delegate.Combine(_handler, 
+                                                     (Delegate) invocation.Arguments[0]);
+                if (methodName == &quot;remove_PropertyChanged&quot;)
+                     _handler = (PropertyChangedEventHandler) Delegate.Remove(_handler, 
+                                                     (Delegate) invocation.Arguments[0]);
+
+                return;
+            }
+            
+            invocation.Proceed();
+
+            if (methodName.StartsWith(&quot;set_&quot;))
+                NotifyPropertyChanged(methodName, invocation.Proxy);
+        }
+
+        #endregion
+
+        protected void NotifyPropertyChanged(string methodName, object proxy)
+        {
+            string propertyName = methodName.Substring(4);
+            var args = new PropertyChangedEventArgs(propertyName);
+            OnPropertyChanged(proxy, args);
+        }
+
+        protected void OnPropertyChanged(Object sender, PropertyChangedEventArgs e)
+        {
+            PropertyChangedEventHandler eventHandler = _handler;
+            if (eventHandler != null) eventHandler(sender, e);
+        }
+    }
+}</pre>
+
+<h3>Problem: don’t notify when property doesn’t change</h3>
+
+<p>You don’t have to notify every time, only when the property <strong><u>really</u></strong> change, otherwise event-subscribers will have to do unnecessary things. So I will <u>add</u> the following test to my test suite:</p>
+
+<pre class="brush: csharp;">[Test]
+public void should_not_raise_propertychanged_when_value_doesnt_change()
+{
+    bool eventWasRaised = false;
+
+    var album = container.Resolve&lt;Album&gt;();
+    album.Title = &quot;dark side&quot;;
+
+    ((INotifyPropertyChanged)album).PropertyChanged +=
+        (sender, e) =&gt; eventWasRaised = true;;
+
+    album.Title = &quot;dark side&quot;;
+    eventWasRaised.Should().Be.False();
+}</pre>
+
+<p>This test is very easy to satisfy, we need to grab the old value before proceed the invocation.<br />This is how we treat a set_Property now:</p>
+
+<pre class="brush: csharp;">//remove the &quot;set_&quot; from the method name (for isntance set_Title)
+string propertyName = invocation.Method.Name.Substring(4);
+
+//The lastvalue is the NEW val. 
+//This is important when you are setting INDEXED properties.
+var indexes = invocation.Arguments
+              .Where((obj, index) =&gt; 
+                     index &lt; invocation.Arguments.Length - 1)
+              .ToArray();
+
+//store the current value.
+var oldValue = GetCurrentValueForProperty(invocation.Proxy,
+                                          propertyName, indexes);
+
+//store the new value
+var newValue = invocation.Arguments.Last();
+
+//proceed with the set
+invocation.Proceed();
+
+//if the value has changed, notify
+if (oldValue != newValue)
+    OnPropertyChanged(invocation.Proxy, propertyName);</pre>
+
+<h3>&#160;</h3>
+
+<h3>Problem: readonly properties</h3>
+
+<p>This problem is more complicated. Suppose you have the following class: 
+  <br /></p>
+
+<pre class="brush: csharp;">public class Person
+{
+        public virtual string FirstName { get; set; }
+        public virtual string LastName { get; set; }
+        public virtual string Address { get; set; }
+        public virtual string FullName
+        {
+            get
+            {
+                return FirstName + ' ' + LastName;
+            }
+        }
+}</pre>
+
+<p>Changing “FirstName” should raise a notification for FirstName property, the same with LastName and Address. But, when we should notify that FullName has changed?. The answer is simple whenever First or Last <u>really</u> change.</p>
+
+<blockquote>
+  <p>The call to a set property does not imply that the value has actually changed.</p>
+</blockquote>
+
+<p>The test:</p>
+
+<pre class="brush: csharp;">[Test]
+public void can_raise_property_changed_for_readonly_property()
+{
+    var person = container.Resolve&lt;Person1&gt;();
+    bool eventWasRaised = false;
+
+    ((INotifyPropertyChanged)person).PropertyChanged +=
+            (sender, e) =&gt;
+            {
+                if(e.PropertyName == &quot;FullName&quot;)
+                {
+                    person.FullName.Should().Be.EqualTo(&quot;Jose&quot;);
+                    eventWasRaised = true;
+                }
+                    
+            };
+
+    person.FirstName = &quot;Jose&quot;;
+    eventWasRaised.Should().Be.True();
+}</pre>
+
+<p>Not only we are testing that the event is raised but also that is raised after change the FirstName value. 
+  <br />I have updated the IInterceptor as follows:</p>
+
+<p></p>
+
+<pre class="brush: csharp;">private IDictionary&lt;string, PropertyInfo&gt; _readOnlyProperties;
+private IDictionary&lt;string, object&gt; _readOnlyPropertiesValues; 
+
+public void Intercept(IInvocation invocation)
+{
+    //..
+
+    //FIRST TIME - FIRST SET we grab readonly properties with values.
+    if (_readOnlyProperties == null)
+        GrabReadOnlyProperties(invocation.Proxy);
+
+    //proceed with the set
+    invocation.Proceed();
+
+    //if the value has changed, notify
+    if (oldValue != newValue)
+        OnPropertyChanged(invocation.Proxy, propertyName);
+
+    NotifyReadOnlyPropertiesChanges(invocation.Proxy);
+}
+
+private void NotifyReadOnlyPropertiesChanges(object proxy)
+{
+    foreach (var property in _readOnlyProperties)
+    {
+        object oldValue = _readOnlyPropertiesValues[property.Key];
+        object newValue = property.Value.GetValue(proxy, null);
+        if(oldValue != newValue)
+        {
+            _readOnlyPropertiesValues[property.Key] = newValue;
+            OnPropertyChanged(proxy, property.Key);
+        }
+    }
+}
+
+//this method should be called ONCE.
+private void GrabReadOnlyProperties(object proxy)
+{
+    _readOnlyProperties = proxy.GetType().GetProperties()
+                               .Where(p =&gt; p.CanWrite == false)
+                               .ToDictionary(p =&gt; p.Name, p =&gt; p);
+
+    _readOnlyPropertiesValues = _readOnlyProperties
+                                .ToDictionary(p =&gt; p.Key,
+                                   p =&gt; p.Value.GetValue(proxy, null));
+}</pre>
+
+<p>Problems: </p>
+
+<ul>
+  <li>I’m using too much reflection and this will affect the performance. </li>
+
+  <li>There are other cases where I can not intercept a change in read only properties. For instance: Invoice.Total, depends upon Invoice.Lines.UnitPrice – Invoice.Lines.Quantity. </li>
+</ul>
+
+<p>This work is part of the uNhAddIns.ComponentBehaviors.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3889311271367108140' alt='' /></div>

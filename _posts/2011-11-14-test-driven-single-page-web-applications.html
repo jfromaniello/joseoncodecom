@@ -1,0 +1,538 @@
+--- 
+layout: post
+title: Test Driven Single Page Web Applications
+tags: 
+- javascript
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "471441593"
+---
+<p>In this post I will show an easy way to drive the design of composable single page web applications by unit tests.</p>  <h1>What is a Single Page Web Application?</h1>  <p>I was introduced to this concept few months ago while working in <a href="http://moesion.com">Moesion</a> by <a href="http://professionalaspnet.com/">Chris Love</a>. Probabily you have never heard this name but for sure you are using a lot of web applications that uses this concept.</p>  <p>To put it simple, it is a web application that fits in only a single page. All the sections or pages of the application, along with the javascript, css, etc are downloaded at once or the application do it in background. The javascript logic is in charge of hiding or showing some sections of the page as the user navigates and fetching DATA from the backend and rendering it in the browser. This means that in this kind of application there is no that much server-side template rendering but client side.</p>  <p>To give you an example of this kind of application you can have a look to GMail. You will notice at a first glance that while the page may take a while to load the first time, the <u><strong>in-page navigation is super fast</strong></u>. If you look at the address bar while switching from the Inbox to the Compose page you will see something like this:</p>  <ul>   <li>https://mail.google.com/mail/?zx=yadayada&amp;shva=1#inbox </li>    <li>https://mail.google.com/mail/?zx=yadayada&amp;shva=1#compose </li> </ul>  <p>The URL changes yes, but the part of the url that is changing is the hash part and this is client side. It means that all the navigation in gmail is happening within the boundaries of your browser and at the same time you still have this “deep linking” capabilities, to put in other words; I can easily create a bookmark menu to my gmail “Compose” page or screen.</p>  <h1>The example domain</h1>  <p>For the purpose of this article I will create a GMail clone, which I have randomly named “JMail”. We will focus on some basic features like the inbox and the compose page :).</p>  <h2>“<em>Composable</em>” single page web applications</h2>  <p>Imagine that we are going to serve to the users a page like the following:</p>  <pre class="brush: xml; wrap-line: false;">&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;JMail! like the other but better&lt;/title&gt;
+        &lt;script type=&quot;text/javascript&quot; src=&quot;...&quot;&gt;&lt;/script&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div id=&quot;sidebar&quot;&gt;
+            &lt;ul&gt;
+                &lt;li&gt;&lt;a href=&quot;...&quot;&gt;InBox&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;a href=&quot;...&quot;&gt;Compose Mail&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;a href=&quot;...&quot;&gt;Sent&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;a href=&quot;...&quot;&gt;Trash&lt;/a&gt;&lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div id=&quot;inbox&quot;&gt;
+            ...
+        &lt;/div&gt;
+        &lt;div id=&quot;compose&quot; style=&quot;display:none&quot;&gt;
+            ...
+        &lt;/div&gt;
+        &lt;div id=&quot;sent&quot; style=&quot;display:none&quot;&gt;
+            ...
+        &lt;/div&gt;
+        &lt;div id=&quot;trash&quot; style=&quot;display:none&quot;&gt;
+            ...
+        &lt;/div&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>As you can see the application will fit in a single page. The different sections or screens of the application are just divs. This is the idea behind the pattern.</p>
+
+<p>I have been thinking and I reached the following conclusion:</p>
+
+<ul>
+  <li><u><strong>The fact that we are serving to the users a big fat html document doesn’t mean that we will code in a single html file.</strong></u> This seems very clear for me, if you are working on a real application you will have many pages, and just navigating the file is very hard. Also you have to think in things like source versioning, if you work on a team with other people you will easily run in conflicts. This means that we need a clear way to code and “compose” the single html file at some point. Almost every template engine or code generation tool has something like “sub-template” or what in the razor jargon we call “partials views”. </li>
+
+  <li><strong><u>The fact that we need to compose the single file doesn’t mean that we have to do it at runtime.</u></strong> If you are doing ASP.Net this might sound weird to you, but after a while, working in this way I realized that we were using a very little of razor and that what I was using it could be done at build time rather than at runtime. I know that razor has a cache, and the output cache and all that, but serving static content is something way beyond that (numbers? I don’t have yet.). This is the reason why I wrote <a href="http://joseoncode.com/2011/11/07/razorcandle-razor-from-command-line/">RazorCandle</a>, another very very interesting project that I will consider is <a href="http://middlemanapp.com/">middleman</a>. </li>
+</ul>
+
+<p>Having said that, ultimately I am going to have a Compose.cshtml, Inbox.cshtml, maybe even a sidebar.cshtml.</p>
+
+<h1>Tools</h1>
+
+<p>The tools that I will use:</p>
+
+<ul>
+  <li><a href="http://jquery.com">jQuery</a> </li>
+
+  <li><a href="http://api.jquery.com/jquery.tmpl/">jQuery.tmpl</a> </li>
+
+  <li><a href="http://docs.jquery.com/QUnit">QUnit</a> </li>
+
+  <li><a href="http://sinonjs.org/">Sinon.Js</a> </li>
+
+  <li><a href="https://github.com/jfromaniello/RazorCandle">RazorCandle</a> </li>
+
+  <li><a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">Continuous testing with Qunit and PhantomJs</a> </li>
+</ul>
+
+<h1>Our first test!</h1>
+
+<p>The first test I write is this:</p>
+
+<pre class="brush: js; wrap-line: false;">module(&quot;Inbox&quot;);
+
+test(&quot;can load the inbox mails&quot;, function() {
+    //arrange
+    this.server.respondWith(&quot;/getLastestMails&quot;,
+                            [200, { &quot;Content-Type&quot;: &quot;application/json&quot; },
+                                JSON.stringify([{
+                                    mailId: 123, 
+                                    subject: &quot;greetings from China&quot;, 
+                                    from: &quot;mom@foo.bar&quot;}
+                                ])]);
+    //act
+    jmail.inbox.loadPage();
+    this.server.respond();
+
+    //assert
+    $(&quot;div#inbox&quot;)
+        .assertContains(&quot;li.mail&quot;, &quot;it should contains a li.mail&quot;);
+
+    $(&quot;li.mail&quot;)
+        .assertContainsText(&quot;greetings from China&quot;, &quot;the mail item should show the subject somehow&quot;)
+        .assertContainsText(&quot;mom@foo.bar&quot;, &quot;the mail item should the mail somehow&quot;);
+});     </pre>
+
+<p>The first thing that I did in this test is to mock a server call; it means that “/getLastestMails” will return this fixed JSON. I am using Sinon.Js for doing this.</p>
+
+<p>The second thing is to actually execute “jmail.inbox.loadPage()” something that we don’t have yet.</p>
+
+<p>And at the last part I wrote three asserts:</p>
+
+<ul>
+  <li>the div with id “inbox” should contains a “li” with class “mail”. </li>
+
+  <li>the “li” with class “mail” should contain the “subject” of the mail. </li>
+
+  <li>the “li” with class “mail” should contain the “from” of the mail. </li>
+</ul>
+
+<p>these assertContains and assertContainsText are my own extensions to qunit, and I will talk about them in a minute.</p>
+
+<p>Of course that at this point our first test is failing because I don’t have any functionality in place yet.</p>
+
+<h1>The project structure</h1>
+
+<p>Before continue let me explain the project structure a little bit:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_1102.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 18px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-11-13_1102" border="0" alt="2011-11-13_1102" src="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_1102_thumb.png" width="231" height="545" /></a></p>
+
+<ul>
+  <li>pages: where the pages or sections of the application resides. Usually these are razor templates. </li>
+
+  <li>scripts: all the javascript files. </li>
+
+  <li>templates: here I put jquery templates, templates that are run in the client-side, usually in the form of razor files. </li>
+
+  <li>Tools: some scripts and executable that I use during development. </li>
+
+  <li>scripts/tests: in this folder I put all the qunit stuff, mock framework, tests extensions and qunit test harness. </li>
+
+  <li>scripts/tests/fixture: in this folder I only put the javascript fixtures. </li>
+
+  <li>scripts/tests/all.tests.cshtml: is a very importan file. It is the template for my qunit test harness (all.tests.<u>html</u>). I do this way because I will include in this file the razor templates that my application is going to use. </li>
+
+  <li>tools/qunit-runner/continuous.ps1: is a powershell script. it is monitoring the directory tree of the project continuously and whenever it detects a change in one of the files, it does two things: 
+    <ul>
+      <li>generate the all.tests.html file </li>
+
+      <li><a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">run qunit with phantomjs</a> over all.tests.html </li>
+    </ul>
+  </li>
+
+  <li>scripts/tests/fixtures/inbox.tests.js where our first test resides. </li>
+</ul>
+
+<h1>The qunit test harness</h1>
+
+<p>The qunit test harness is:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot; 
+                    &quot;http://www.w3.org/TR/html4/loose.dtd&quot;&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;script src=&quot;../jquery-1.6.2.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;../jQuery.tmpl.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;../jQuery.blockUI.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;../common.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;../json2.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;../jmail.inbox.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+
+        &lt;script src=&quot;qunit.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;sinon-1.2.0.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;sinon-qunit-1.0.0.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        
+        @if((bool)@Model.CI){
+            &lt;script src=&quot;Qunit.Teamcity.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        }else{
+            &lt;script src=&quot;qunit.continuous.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        }
+        &lt;script src=&quot;Util.Tests.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;link rel=&quot;stylesheet&quot; href=&quot;qunit.css&quot; type=&quot;text/css&quot; media=&quot;screen&quot; /&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;h1 id=&quot;qunit-header&quot;&gt;QUnit tests&lt;/h1&gt;
+        &lt;h2 id=&quot;qunit-banner&quot;&gt;&lt;/h2&gt;
+        &lt;div id=&quot;qunit-testrunner-toolbar&quot;&gt;&lt;/div&gt;
+        &lt;h2 id=&quot;qunit-userAgent&quot;&gt;&lt;/h2&gt;
+        &lt;ol id=&quot;qunit-tests&quot;&gt;&lt;/ol&gt;
+        &lt;div id=&quot;qunit-fixture&quot;&gt;
+            &lt;div id=&quot;container&quot;&gt;
+                @Html.Partial(@&quot;..\..\pages\compose.cshtml&quot;)
+                @Html.Partial(@&quot;..\..\pages\inbox.cshtml&quot;)
+            &lt;/div&gt;
+        &lt;/div&gt;
+        
+        @Html.Partial(@&quot;..\..\templates\mail-templates.cshtml&quot;)
+
+        @foreach (var file in System.IO.Directory.GetFiles(&quot;fixtures\\&quot;, &quot;*.js&quot;)
+                                       .Select(f =&gt; f.Replace(&quot;\\&quot;, &quot;/&quot;)))
+        {
+            &lt;script type=&quot;text/javascript&quot; src=&quot;@file&quot;&gt;&lt;/script&gt;
+        }
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>Line by line:</p>
+
+<ul>
+  <li>from 5 to 9; the scripts that I will use in the real page. </li>
+
+  <li>line 10; jmail.inbox.js one of our core javascript files for this application. </li>
+
+  <li>from 12 to 14; qunit and sinon libraries. </li>
+
+  <li>from 16 to 20; Qunit.Continuous.Js and QUnit.Temacity.js, basically both files hook to the qunit framework and display important information to the console. Continouos is meat to be used when developing locally with human readable messages, and the second one display clunky messages that only Teamcity can read :) </li>
+
+  <li>line 21: some unit testing extensions (assertContains kind of thing) </li>
+
+  <li>line 22: the stylesheet for the qunit runner. </li>
+
+  <li>from 25 to 29: not that important, some containers that qunit uses to show stuff. </li>
+
+  <li>from 30 to 35: this is <u><strong>VERY important</strong></u>. Here I put all my application sections, because the div=”qunit-fixture” has a very important behavior; qunit will restore this dive after each run and because our tests are going to modify the DOM we need it. </li>
+
+  <li>line 37; include the mail-templates, which contain Jquery templates basically. </li>
+
+  <li>from 39 to 43; include all the fixture files using a convention. </li>
+</ul>
+
+<h1>Fixing the first test</h1>
+
+<p>To fix the first test we can implement something like this in jmail.inbox.js:</p>
+
+<pre class="brush: js; wrap-line: false;">(function(){
+    
+    this.loadPage = function(){
+        $.post(&quot;/getLastestMails&quot;)
+         .done(function(mails){
+
+            $(&quot;#inboxMailTemplate&quot;)
+                .tmpl(mails)
+                .appendTo(&quot;div#inbox &gt; ul&quot;); 
+
+         });
+    };
+
+}).bind(namespace(&quot;jmail.inbox&quot;))();</pre>
+
+<p>Basically the loadPage does a POST request to get the list of emails. The result of the POST function <a href="http://joseoncode.com/2011/09/26/a-walkthrough-jquery-deferred-and-promise/">is a promise</a>, so we subscribe to the done event, and then with the result we render the “inboxMAilTemplate” and append this to the div with id equals to inbox.</p>
+
+<p>The inboxMailTemplate is inside the&#160; mail-templates.cshtml file:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;script id=&quot;inboxMailTemplate&quot; type=&quot;text/x-jquery-tmpl&quot;&gt;
+    &lt;li class=&quot;mail&quot;&gt;&lt;b&gt;${from}&lt;/b&gt; ${subject}&lt;/li&gt;
+&lt;/script&gt;</pre>
+
+<p>After these two changes we will see in the continuous testing window this:</p>
+
+<p><a href="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_2131.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 18px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-11-13_2131" border="0" alt="2011-11-13_2131" src="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_2131_thumb.png" width="515" height="262" /></a></p>
+
+<h2>What if the inbox is empty?</h2>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;when loading an empty inbox then show a message&quot;, function() {
+    this.server.respondWith(&quot;/getLastestMails&quot;,
+                            [200, { &quot;Content-Type&quot;: &quot;application/json&quot; },
+                             JSON.stringify([])]);
+    
+    jmail.inbox.loadPage();
+
+    this.server.respond();
+
+    $(&quot;div#inbox&quot;)
+        .assertNotContains(&quot;li.mail&quot;, &quot;it should contains a li.mail&quot;);
+
+    $(&quot;div#inbox&quot;)
+        .assertContainsText(&quot;The inbox is empty&quot;);
+});  </pre>
+
+<p>the console now looks as:</p>
+
+<p>&#160;<a href="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_2142.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 18px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-11-13_2142" border="0" alt="2011-11-13_2142" src="http://joseoncode.com/wp-content/uploads/images/Unit-Testing-Composable-Single-Page_10C05/2011-11-13_2142_thumb.png" width="486" height="197" /></a></p>
+
+<p>to fix this we need some changes in our jmail.inbox.js:</p>
+
+<pre class="brush: js; wrap-line: false;">(function(){
+    
+    this.loadPage = function(){
+        $.post(&quot;/getLastestMails&quot;)
+         .done(function(mails){
+            if(mails.length === 0){
+                $(&quot;#inboxEmptyTemplate&quot;)
+                    .tmpl()
+                    .appendTo(&quot;div#inbox &gt; ul&quot;);
+            }else{
+                $(&quot;#inboxMailTemplate&quot;)
+                    .tmpl(mails)
+                    .appendTo(&quot;div#inbox &gt; ul&quot;);
+            }
+         });
+    };
+
+}).bind(namespace(&quot;jmail.inbox&quot;))();</pre>
+
+<p>and in the mail-templates.cshtml we add a new template:</p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;script id=&quot;inboxEmptyTemplate&quot; type=&quot;text/x-jquery-tmpl&quot;&gt;
+    &lt;li&gt;The inbox is empty&lt;/li&gt;
+&lt;/script&gt;</pre>
+
+<h2>Display a loading message while loading the list of emails</h2>
+
+<p>&#160;</p>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;while loading the inbox it should show a loading message&quot;, function() {
+    var blockUiStub = this.stub($, &quot;blockUI&quot;);
+
+    jmail.inbox.loadPage();
+
+    ok(blockUiStub.called);
+    equal(blockUiStub.args[0][0].message, &quot;Loading mails, please wait.&quot;);
+});</pre>
+
+<p>&#160;</p>
+
+<p>here we are using the <a href="http://sinonjs.org/docs/#stubs-api">stub functionality of sinon.js</a>, it replaces the method with something you can change or assert it was called with some parameters. One of the interesting things about sinon.js is that it has a SandBox api, so when you kill the sandbox it will restore all the methods. The sandbox is automatically created and destroyed with the sinon-qunit integration.</p>
+
+<p>To make this test pass, we add a call to $.blockui({message: “Loading mails, please wait.”} before the post. We will need also to make sure we are unblocking the UI after the server respond:</p>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;after loading the inbox it should unblock the ui&quot;, function(){
+    this.server.respondWith(&quot;/getLastestMails&quot;,
+                            [200, { &quot;Content-Type&quot;: &quot;application/json&quot; },
+                                JSON.stringify([])]);
+    
+    var blockUiStub = this.stub($, &quot;unblockUI&quot;);
+    
+    jmail.inbox.loadPage();
+    this.server.respond();
+    ok(blockUiStub.called);
+});</pre>
+
+<p>so our load page method now looks like</p>
+
+<pre class="brush: js; wrap-line: false;">(function(){
+    
+    this.loadPage = function(){
+        $.blockUI({message: &quot;Loading mails, please wait.&quot;});
+        
+        $.post(&quot;/getLastestMails&quot;)
+         .done(function(mails){
+            if(mails.length === 0){
+                $(&quot;#inboxEmptyTemplate&quot;)
+                    .tmpl()
+                    .appendTo(&quot;div#inbox &gt; ul&quot;);
+            }else{
+                $(&quot;#inboxMailTemplate&quot;)
+                    .tmpl(mails)
+                    .appendTo(&quot;div#inbox &gt; ul&quot;);
+            }
+         }).always($.unblockUI);
+    };
+
+}).bind(namespace(&quot;jmail.inbox&quot;))();</pre>
+
+<h1>Navigation tests</h1>
+
+<p>For the navigation I am going to use the <a href="http://benalman.com/code/projects/jquery-bbq/docs/files/jquery-ba-bbq-js.html#jQuery.bbq.pushState">JQuery BBQ</a> pluggin, we can start with these two tests:</p>
+
+<pre class="brush: js; wrap-line: false;">module(&quot;Navigation tests&quot;);
+
+test(&quot;when navigating to the compose screen then push target=compose&quot;, function() {
+    //arrange
+    var bbqStub = this.stub($.bbq, &quot;pushState&quot;);
+    
+    //act
+    $(&quot;a#compose&quot;).click();
+
+    //assert
+    ok(bbqStub.called);
+    equal(bbqStub.args[0][0].target, &quot;compose&quot; );
+});
+
+test(&quot;when navigating to the inbox screen then push target=inbox&quot;, function() {
+    //arrange
+    var bbqStub = this.stub($.bbq, &quot;pushState&quot;);
+    
+    //act
+    $(&quot;a#inbox&quot;).click();
+
+    //assert
+    ok(bbqStub.called);
+    equal(bbqStub.args[0][0].target, &quot;inbox&quot; );
+});</pre>
+
+<p>then the implementation in a new jmail.events.js file is: </p>
+
+<pre class="brush: js; wrap-line: false;">$(document)
+.delegate(&quot;#compose&quot;, &quot;click&quot;, function(e){
+    e.preventDefault();
+
+    $.bbq.pushState({
+        target: &quot;compose&quot;
+    });
+
+    return false;
+}).delegate(&quot;#inbox&quot;, &quot;click&quot;, function(e){
+    e.preventDefault();
+
+    $.bbq.pushState({
+        target: &quot;inbox&quot;
+    });
+    
+    return false;
+});</pre>
+
+<p>The next thing we will handle, is hiding the pages when navigating:</p>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;when changing the hash to target=inbox then compose should be hide&quot;, function() {
+    //arrange
+    var getState = this.stub($.bbq, &quot;getState&quot;);
+    getState.withArgs(&quot;target&quot;).returns(&quot;inbox&quot;);
+    $(&quot;div#compose&quot;).show();
+
+    //act
+    $(window).triggerHandler(&quot;hashchange&quot;);
+
+    //assert
+    var isComposeVisible = $(&quot;div#compose&quot;).is(&quot;:visible&quot;);
+    ok(!isComposeVisible);
+});</pre>
+
+<p>of course we can start with something like</p>
+
+<pre class="brush: js; wrap-line: false;">$(window).bind(&quot;hashchange&quot;, function(e){
+    var target = $.bbq.getState(&quot;target&quot;);
+    if(target === &quot;inbox&quot;){
+        $(&quot;div#compose&quot;).hide();   
+    }
+});</pre>
+
+<p>but then we will need to handle the other way </p>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;when changing the hash to target=compose then inbox should be hide&quot;, function() {
+    //arrange
+    var getState = this.stub($.bbq, &quot;getState&quot;);
+    getState.withArgs(&quot;target&quot;).returns(&quot;compose&quot;);
+    $(&quot;div#inbox&quot;).show();
+
+    //act
+    $(window).triggerHandler(&quot;hashchange&quot;);
+
+    //assert
+    var isInboxVisible = $(&quot;div#inbox&quot;).is(&quot;:visible&quot;);
+    ok(!isInboxVisible);
+});</pre>
+
+<p>so we can now generalize the behavior to something like this: </p>
+
+<pre class="brush: js; wrap-line: false;">$(window).bind(&quot;hashchange&quot;, function(e){
+    var target = $.bbq.getState(&quot;target&quot;);
+    $(&quot;div#container &gt; div&quot;).hide();
+    $(&quot;div#&quot; + target).show();
+});</pre>
+
+<p>another thing that we should handle now is the call to the loadPage when the hash change:</p>
+
+<pre class="brush: js; wrap-line: false;">test(&quot;when changing the hash to target=inbox then call the inbox.loadPage&quot;, function() {
+    //arrange
+    var getState = this.stub($.bbq, &quot;getState&quot;),
+        jmailLoadPage = this.stub(jmail.inbox, &quot;loadPage&quot;);
+
+    getState.withArgs(&quot;target&quot;).returns(&quot;inbox&quot;);
+
+    //act
+    $(window).triggerHandler(&quot;hashchange&quot;);
+
+    //assert
+    ok(jmailLoadPage.called);
+});</pre>
+
+<p>we can generalize the behavior in a convention as follows:</p>
+
+<pre class="brush: js; wrap-line: false;">$(window).bind(&quot;hashchange&quot;, function(e){
+    var target = $.bbq.getState(&quot;target&quot;);
+    $(&quot;div#container &gt; div&quot;).hide();
+    $(&quot;div#&quot; + target).show();
+    if(jmail[target] &amp;&amp; jmail[target].loadPage){
+        jmail[target].loadPage();   
+    }
+});</pre>
+
+<h1>Wiring it all up</h1>
+
+<p>We can wire all the components in an index.cshtml page as follows: </p>
+
+<pre class="brush: xml; wrap-line: false;">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot; 
+                      &quot;http://www.w3.org/TR/html4/loose.dtd&quot;&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;script src=&quot;scripts/jquery-1.6.2.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/jQuery.tmpl.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/common.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/json2.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/jquery.ba-bbq.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/jquery.blockUI.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/jmail.inbox.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;scripts/jmail.events.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+
+        &lt;!-- since i don't have a backend i need this to show something in the ui --&gt;
+        &lt;script src=&quot;scripts/jquery.mockjax.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script type=&quot;text/javascript&quot;&gt;
+        $.mockjax({
+          url: '/getLastestMails',
+          responseTime: 1500,
+          responseText: [{ mailId: 123, subject: &quot;greetings from China&quot;,  from: &quot;mom@foo.bar&quot;},
+                          { mailId: 124, subject: &quot;pay the tax!&quot;,  from: &quot;wife@foo.bar&quot;}]
+        });
+        &lt;/script&gt;
+        &lt;!-- end mockjax--&gt;
+
+        &lt;!--since the inbox is the first page
+            this could be better!
+         --&gt;
+        &lt;script type=&quot;text/javascript&quot;&gt;
+        $(document).ready(jmail.inbox.loadPage);
+        &lt;/script&gt;
+        &lt;!--end first page loader--&gt;
+
+    &lt;/head&gt;
+    &lt;body&gt;
+@Html.Partial(@&quot;pages\menu.cshtml&quot;)
+        &lt;div id=&quot;container&quot;&gt;    
+@Html.Partial(@&quot;pages\compose.cshtml&quot;)
+@Html.Partial(@&quot;pages\inbox.cshtml&quot;)
+        &lt;/div&gt;
+    &lt;/body&gt;
+@Html.Partial(@&quot;templates\mail-templates.cshtml&quot;)    
+&lt;/html&gt;</pre>
+
+<h1>Conclusion</h1>
+
+<p>In this article I tried to show a way you can design single page web applications driven by unit tests. This is only a way you can work with html and javascript.&#160; I have not used any MV** framework like <a href="http://documentcloud.github.com/backbone/">Backbone.js</a> or <a href="http://knockoutjs.com/">Knockout</a> which will improve the design, but it wasn’t something that I missed for this example.</p>
+
+<p>The repository has the full history of each step I made and it is hosted on my <a href="https://github.com/jfromaniello/jmail">github here</a>. Go browse the code, or fork it and try implementing another functionality while running the continuous.ps script in the background. </p>
+
+<p>I hope you find this stuff useful.</p>

@@ -1,0 +1,53 @@
+--- 
+layout: post
+title: "PsWatch: monitoring a directory for changes"
+tags: 
+- powershell
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "474370260"
+---
+<p>Three months ago I published <a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">Javascript continuous testing with QUnit, PhantomJS and Powershell</a> and by that time I wrote a very clunky Powershel script to do this. I knew that there was a section of the script useful for other purposes but I was lazy to learn how to write cmdlets in powershell.</p>  <p>Few days ago I was talking with <a href="http://graemef.com/">Graeme Forster</a> in twitter and he said:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/images/PsWatch_10882/2011-11-16_1857.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 18px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2011-11-16_1857" border="0" alt="2011-11-16_1857" src="http://joseoncode.com/wp-content/uploads/images/PsWatch_10882/2011-11-16_1857_thumb.png" width="487" height="300" /></a></p>  <p>The world is small!! He actually fork my “gist” at github to do coffee-&gt;js transpilation.</p>  <p>So, I decided to create a better general purpose cmdlet and here is <a href="https://github.com/jfromaniello/pswatch">pswatch</a>. </p>  <p>To install pswatch you just run this:</p>  <pre class="brush: plain; wrap-line: false;">iex ((new-object net.webclient).DownloadString(&quot;http://bit.ly/Install-PsWatch&quot;))</pre>
+
+<p>And in order to use you should import the module and execute watch:</p>
+
+<pre class="brush: plain; wrap-line: false;">Import-Module pswatch
+
+watch c:\myfolder</pre>
+
+<p>The idea of PsWatch is that you must use the standard powershell “pipelining” mechanism, so whenever a file change, you get an object with two things:</p>
+
+<ul>
+  <li>Path: the full path to the file that has changed. </li>
+
+  <li>Operation: Created/Renamed/Updated/Deleted* </li>
+</ul>
+
+<p><em>Note: by default Deleted files are not shown, you have to add the argument –includeDeleted</em></p>
+
+<p>A more complex script will be something like this: </p>
+
+<pre class="brush: plain; wrap-line: false;">watch c:\foo\bar
+    | Get-Item 
+    | Where-Object {$_.Extension -eq &quot;.coffee&quot;}
+    | %{ coffee.exe $_.Path -c }</pre>
+
+<h1>One more tip</h1>
+
+<p>As I mention, the installation of the cmdlet fit in a single line… But if you are working on a team you might want to avoid mailing everyone “install this thing if you want to run my script”… So, just write in your script this:</p>
+
+<pre class="brush: plain; wrap-line: false;">$m = Get-Module -List pswatch 
+if(!$m) {
+    Write-Host &quot;Uh-Oh you don't have the pswatch cmdlet installed. Let me handle that for you.&quot;
+    iex ((new-object net.webclient).DownloadString(&quot;http://bit.ly/Install-PsWatch&quot;))
+} 
+
+Import-Module pswatch
+
+#Your code...</pre>
+
+<p>If it is not installed it will be automagically installed. Maybe </p>
+
+<p>I will write another post how to write this type of cmdlets-auto-installed things.</p>

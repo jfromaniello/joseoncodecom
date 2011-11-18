@@ -1,0 +1,135 @@
+--- 
+layout: post
+title: Event-driven http server in C# with Rx and HttpListener
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  dsq_thread_id: "334975153"
+---
+<p>Pretty big name? ha? In this post I will show you an alternative approach to build a simple event-driven http server in c# using the full power of <a href="http://msdn.microsoft.com/en-us/data/gg577609">Reactive Extensions</a>.     <br /></p>  <h1>Introduction</h1>  <p>I am not good for explanations so I’ll quote this very interesting <a href="http://code.danyork.com/2011/01/25/node-js-doctors-offices-and-fast-food-restaurants-understanding-event-driven-programming/">article from Dan York</a> on node.js even driven model;</p>  <blockquote>   <p>The “traditional” mode of web servers[1] has always been one of the <em>thread-based</em> model. You launch Apache or any other web server and it starts receiving connections. When it receives a connection, it holds that connection open until it has performed the request for the page or whatever other transaction was sent. If it make take a few microseconds to retrieve a page from disk or write results to a database, the web server is <em>blocking</em> on that input/output operation. (This is referred to as “<em>blocking I/O</em>“.) To scale this type of web server, you need to launch additional copies of the server (referred to as “thread-based” because each copy typically requires another operating system thread).</p>    <p>In contrast, Node.js uses an <em>event-driven</em> model where the web server accepts the request, spins it off to be handled, and <em>then goes on to service the <strong>next</strong> web request</em>. When the original request is completed, it gets back in the processing queue and when it reaches the front of the queue the results are sent back (or whatever the next action is). This model is highly efficient and scalable because the web server is basically always accepting requests because it’s not waiting for any read or write operations. (This is referred to as “<em>non-blocking I/O</em>” or “<em>event-driven I/O</em>“.)</p> </blockquote>  <h1>What is happening in .net?</h1>  <p>There are lot of things happening around this in the .Net ecosystem:</p>  <ul>   <li><a href="http://manosdemono.org/">Manos de mono</a> (not for .net but close) was designed from day zero with this concept. </li>    <li><a href="https://github.com/dnewcome/Node.net">Node.Net</a>&#160; is a node.js implementation on the .Net runtime using JScript.Net </li>    <li><a href="http://kayakhttp.com/">Kayak</a> an asynchronous http server written in c# </li>    <li><a href="https://github.com/panesofglass/frank">Frank</a> a Sinatra clone in f# </li>    <li><a href="https://github.com/NancyFx/Nancy">Nancy</a> will support <a href="https://groups.google.com/group/nancy-web-framework/browse_thread/thread/3f9a8e50216ea60e">asynchronous handlers soon</a> </li> </ul>  <h1>An alternative approach</h1>  <p>Using the HttpListener class and Reactive Extensions we can build something like this:</p>  <pre class="brush: csharp; wrap-line: false;">public class HttpServer : IObservable&lt;RequestContext&gt;, IDisposable
+{
+    private readonly HttpListener listener;
+    private readonly IObservable&lt;RequestContext&gt; stream;
+
+    public HttpServer(string url)
+    {
+        listener = new HttpListener();
+        listener.Prefixes.Add(url);
+        listener.Start();
+        stream = ObservableHttpContext();
+    }
+
+    private IObservable&lt;RequestContext&gt; ObservableHttpContext()
+    {
+        return Observable.Create&lt;RequestContext&gt;(obs =&gt;
+                            Observable.FromAsyncPattern&lt;HttpListenerContext&gt;(listener.BeginGetContext,
+                                                                             listener.EndGetContext)()
+                                      .Select(c =&gt; new RequestContext(c.Request, c.Response))
+                                      .Subscribe(obs))
+                         .Repeat()
+                         .Retry()
+                         .Publish()
+                         .RefCount();
+    }
+    public void Dispose()
+    {
+        listener.Stop();
+    }
+
+    public IDisposable Subscribe(IObserver&lt;RequestContext&gt; observer)
+    {
+        return stream.Subscribe(observer);
+    }
+}</pre>
+
+<p>Some notes about this code:</p>
+
+<ul>
+  <li>FromAsyncPattern is a nice methods that comes with Rx. This method convert a Begin/End signature to an IObservable </li>
+
+  <li>RequestContext is a tiny wrapper around HttpListener stuff. I am not going to copy the code her but you can have a look at the full source code later. </li>
+
+  <li>Repeat: If you have seen before some usages of httplistener, for sure you saw the code inside a while loop. This is the same. </li>
+
+  <li>Retry: If we get an error …. retry. </li>
+
+  <li>Publish/Refcount: this help us to create “warm” observables from a “cold” observable. It behaves somehow as a “hot” observable. You can read more <a href="http://enumeratethis.com/2010/04/17/warm-observables-with-publish-refcount/">here</a> and <a href="http://blogs.microsoft.co.il/blogs/bnaya/archive/2010/03/13/rx-for-beginners-part-9-hot-vs-cold-observable.aspx">here</a>. </li>
+</ul>
+
+<h1>An example use case</h1>
+
+<p>You can build any type of web application based in this concept. The “hello world” will be something like this:</p>
+
+<pre class="brush: csharp; wrap-line: false;">static void Main()
+{
+        //a stream os messages
+        var subject = new Subject&lt;string&gt;();
+
+        using(var server = new HttpServer(&quot;http://*:5555/&quot;))
+        {
+            var handler = server.Where(ctx =&gt; ctx.Request.Url.EndsWith(&quot;/hello&quot;))
+                  .Subscribe(ctx =&gt; ctx.Respond(new StringResponse(&quot;world&quot;)));
+
+            Console.ReadLine();
+            handler.Dispose();
+        }    
+}</pre>
+
+<p>The recommendation is that anything you do should be asynchronous. For instance, if you access to a database it must be an asynchronous operation and you must chain the callbacks/observables/Tasks etc.</p>
+
+<p>There is one more interesting use case that I would like to share, is a technique called <a href="http://en.wikipedia.org/wiki/Push_technology#Long_polling">long polling</a>:</p>
+
+<blockquote>
+  <p>Long polling is a variation of the traditional <a href="http://en.wikipedia.org/wiki/Polling_(computer_science)">polling</a> technique and allows emulation of an information push from a server to a client. With long polling, the client requests information from the server in a similar way to a normal poll. However, if the server does not have any information available for the client, instead of sending an empty response, the server holds the request and waits for some information to be available.</p>
+</blockquote>
+
+<p>So, here is the simplest example of long polling that I can think of using the afore mentioned code:</p>
+
+<pre class="brush: csharp; wrap-line: false;">class Program
+{
+    static void Main()
+    {
+        //a stream os messages
+        var subject = new Subject&lt;string&gt;();
+
+        using(var server = new HttpServer(&quot;http://*:5555/&quot;))
+        {
+            //the listeners stream and subscription
+            var listeners = server
+                    .Where(ctx =&gt; ctx.Request.HttpMethod == &quot;GET&quot;)
+                    .Subscribe(ctx =&gt; subject.Take(1) //wait the next message to end the request
+                                             .Subscribe(m =&gt; ctx.Respond(new StringResponse(m))));
+
+            //the publishing stream and subscrition
+            var publisher = server
+                .Where(ctx =&gt; ctx.Request.HttpMethod == &quot;POST&quot;)
+                .Subscribe(ctx =&gt; ctx.Request.InputStream.ReadBytes(ctx.Request.ContentLength)
+                                      .Subscribe(bts =&gt;
+                                         {
+                                           ctx.Respond(new EmptyResponse(201));
+                                           subject.OnNext(Encoding.UTF8.GetString(bts));
+                                         }));
+
+
+            Console.ReadLine();
+
+            listeners.Dispose();
+            publisher.Dispose();
+
+        }
+    }
+}</pre>
+
+<p>As you can see, we are chaining observables to do the work... So there isn't any blocking operation. Even reading from a stream is an asynchronous operation.</p>
+
+<h2>Want to see the code working?</h2>
+
+<p>there is a tiny full screen button in the botton</p>
+<object id="scPlayer"  width="640" height="405" type="application/x-shockwave-flash" data="http://content.screencast.com/users/JoseFR/folders/Jing/media/5a3be883-d2fd-41d2-a84a-f6734692bef7/jingswfplayer.swf" >  <param name="movie" value="http://content.screencast.com/users/JoseFR/folders/Jing/media/5a3be883-d2fd-41d2-a84a-f6734692bef7/jingswfplayer.swf" />  <param name="quality" value="high" />  <param name="bgcolor" value="#FFFFFF" />  <param name="flashVars" value="thumb=http://content.screencast.com/users/JoseFR/folders/Jing/media/5a3be883-d2fd-41d2-a84a-f6734692bef7/FirstFrame.jpg&amp;containerwidth=1442&amp;containerheight=809&amp;content=http://content.screencast.com/users/JoseFR/folders/Jing/media/5a3be883-d2fd-41d2-a84a-f6734692bef7/2011-06-17_1218.swf&amp;blurover=false" />  <param name="allowFullScreen" value="true" />  <param name="scale" value="showall" />  <param name="allowScriptAccess" value="always" />  <param name="base" value="http://content.screencast.com/users/JoseFR/folders/Jing/media/5a3be883-d2fd-41d2-a84a-f6734692bef7/" />  Unable to display content. Adobe Flash is required. </object>
+
+<p>Finally the code is published <a href="https://bitbucket.org/jfromaniello/asynchttplistener">here</a> opensource if you want to take this one step further or simple study.</p>
+
+<p>Special thanks to Gustavo Machado, Silvio Massari and the Nancy frameworks guys for the advices and for the bits of code that I have stole them.</p>

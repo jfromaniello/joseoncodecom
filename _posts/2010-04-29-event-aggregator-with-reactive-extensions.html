@@ -1,0 +1,211 @@
+--- 
+layout: post
+title: Event Aggregator with Reactive Extensions
+tags: 
+- ReactiveExtensions
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/04/event-aggregator-with-reactive.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314364589"
+---
+<p>This is the second part of my post about <a href="http://jfromaniello.blogspot.com/2010/04/event-aggregator-example.html">Event Aggregator</a>. The idea is to show you an easy way to create and use an event aggregator in your application.</p>  <p>The interface of <a href="http://compositewpf.codeplex.com/sourcecontrol/network/Show?projectName=CompositeWPF&amp;changeSetId=42969#839970">IEventAggregator</a> in <a href="http://compositewpf.codeplex.com/">Prism</a> looks as follows:</p>  <pre class="brush: csharp;">public interface IEventAggregator
+{
+    TEventType GetEvent&lt;TEventType&gt;() 
+        where TEventType : EventBase;
+}</pre>
+
+<p>Let’s go to see what is EventBase:</p>
+
+<pre class="brush: csharp; line-wrap: false; collapse: true;">///&lt;summary&gt;
+/// Defines a base class to publish and subscribe to events.
+///&lt;/summary&gt;
+public abstract class EventBase
+{
+    private readonly List&lt;IEventSubscription&gt; _subscriptions = new List&lt;IEventSubscription&gt;();
+
+
+    protected ICollection&lt;IEventSubscription&gt; Subscriptions
+    {
+        get { return _subscriptions; }
+    }
+
+    protected virtual SubscriptionToken InternalSubscribe(IEventSubscription eventSubscription)
+    {
+        eventSubscription.SubscriptionToken = new SubscriptionToken();
+        lock (Subscriptions)
+        {
+            Subscriptions.Add(eventSubscription);
+        }
+        return eventSubscription.SubscriptionToken;
+    }
+
+    protected virtual void InternalPublish(params object[] arguments)
+    {
+        List&lt;Action&lt;object[]&gt;&gt; executionStrategies = PruneAndReturnStrategies();
+        foreach (var executionStrategy in executionStrategies)
+        {
+            executionStrategy(arguments);
+        }
+    }
+
+    public virtual void Unsubscribe(SubscriptionToken token)
+    {
+        lock (Subscriptions)
+        {
+            IEventSubscription subscription = Subscriptions.FirstOrDefault(evt =&gt; evt.SubscriptionToken == token);
+            if (subscription != null)
+            {
+                Subscriptions.Remove(subscription);
+            }
+        }
+    }
+
+    public virtual bool Contains(SubscriptionToken token)
+    {
+        lock (Subscriptions)
+        {
+            IEventSubscription subscription = Subscriptions.FirstOrDefault(evt =&gt; evt.SubscriptionToken == token);
+            return subscription != null;
+        }
+    }
+
+    private List&lt;Action&lt;object[]&gt;&gt; PruneAndReturnStrategies()
+    {
+        List&lt;Action&lt;object[]&gt;&gt; returnList = new List&lt;Action&lt;object[]&gt;&gt;();
+
+        lock (Subscriptions)
+        {
+            for (var i = Subscriptions.Count - 1; i &gt;= 0; i--)
+            {
+                Action&lt;object[]&gt; listItem =
+                    _subscriptions[i].GetExecutionStrategy();
+
+                if (listItem == null)
+                {
+                    // Prune from main list. Log?
+                    _subscriptions.RemoveAt(i);
+                }
+                else
+                {
+                    returnList.Add(listItem);
+                }
+            }
+        }
+
+        return returnList;
+    }
+}</pre>
+
+<p>Although its look fine, I think we can do less and achieve more with <a href="http://msdn.microsoft.com/en-us/devlabs/ee794896.aspx">Reactive Extensions framework</a>. </p>
+
+<p>So, for this example my interface will look as follows:</p>
+
+<pre class="brush: csharp;">public interface IEventPublisher
+{
+  void Publish&lt;TEvent&gt;(TEvent sampleEvent);
+  IObservable&lt;TEvent&gt; GetEvent&lt;TEvent&gt;();
+}</pre>
+
+<p>The first method is for publishing a TEvent, and the second method is used to get an IObservable of TEvent. I like this approach because I leverage too many things of the reactive framework. On the other hand, there is no restriction about TEvent, in fact, any class could be an event. Another interesting point, is that <a href="http://msdn.microsoft.com/en-us/library/dd990377.aspx">IObservable is part of the framework now.</a></p>
+
+<h1>Usage examples</h1>
+
+<h2>Simple subscription</h2>
+
+<pre class="brush: csharp;">bool eventWasRaised = false;
+var eventPublisher = new EventPublisher();
+
+eventPublisher.GetEvent&lt;SampleEvent&gt;()
+    .Subscribe(se =&gt; eventWasRaised = true);
+
+eventPublisher.Publish(new SampleEvent());
+eventWasRaised.Should().Be.True();</pre>
+
+<h2>UnSubscribe</h2>
+
+<pre class="brush: csharp;">bool eventWasRaised = false;
+var eventPublisher = new EventPublisher();
+
+var subscription = eventPublisher.GetEvent&lt;SampleEvent&gt;()
+    .Subscribe(se =&gt; eventWasRaised = true);
+
+subscription.Dispose();
+eventPublisher.Publish(new SampleEvent());
+eventWasRaised.Should().Be.False();</pre>
+
+<h2>Selective subscription</h2>
+
+<pre class="brush: csharp;">bool eventWasRaised = false;
+var eventPublisher = new EventPublisher();
+
+eventPublisher.GetEvent&lt;SampleEvent&gt;()
+    .Where(se =&gt; se.Status == 1)
+    .Subscribe(se =&gt; eventWasRaised = true);
+
+eventPublisher.Publish(new SampleEvent{Status = 1});
+eventWasRaised.Should().Be.True();</pre>
+
+<h2>Subscribe to projection</h2>
+
+<pre class="brush: csharp;">bool eventWasRaised = false;
+var eventPublisher = new EventPublisher();
+
+eventPublisher.GetEvent&lt;SampleEvent&gt;()
+    .Select(se =&gt; se.Status)
+    .Subscribe(status =&gt; Console.WriteLine(status));
+
+eventPublisher.Publish(new SampleEvent{Status = 1});</pre>
+
+<h2>Observe on dispatcher</h2>
+
+<p>No matter what is the thread the event was published, execute the desired handler in the UI thread.</p>
+
+<pre class="brush: csharp;">bool eventWasRaised = false;
+var eventPublisher = new EventPublisher();
+
+eventPublisher.GetEvent&lt;SampleEvent&gt;()
+    .ObserveOnDispatcher()
+    .Select(se =&gt; se.Status)
+    .Subscribe(status =&gt; Console.WriteLine(status));
+
+eventPublisher.Publish(new SampleEvent{Status = 1});</pre>
+
+<p>These are just examples of what you can do when you combine Reactive Extensions with Event Aggregator.</p>
+
+<h1>The implementation</h1>
+
+<p>This is the whole implementation:</p>
+
+<pre class="brush: csharp; line-wrap: false;">public class EventPublisher : IEventPublisher
+{
+    private readonly ConcurrentDictionary&lt;Type, object&gt; subjects
+        = new ConcurrentDictionary&lt;Type, object&gt;();
+
+    public IObservable&lt;TEvent&gt; GetEvent&lt;TEvent&gt;()
+    {
+        var subject = 
+            (ISubject&lt;TEvent&gt;) subjects.GetOrAdd(typeof (TEvent), 
+                        t =&gt; new Subject&lt;TEvent&gt;());
+        return subject.AsObservable();
+    }
+
+    public void Publish&lt;TEvent&gt;(TEvent sampleEvent)
+    {
+        object subject;
+        if (subjects.TryGetValue(typeof(TEvent), out subject))
+        {
+            ((ISubject&lt;TEvent&gt;)subject)
+                .OnNext(sampleEvent);
+        }
+    }
+}</pre>
+
+<h1>Finally</h1>
+
+<p>Prism is just wrong. Your events should be like POCOs, put the subscription elsewhere.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5689125439842597547' alt='' /></div>

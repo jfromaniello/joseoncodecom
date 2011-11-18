@@ -1,0 +1,188 @@
+--- 
+layout: post
+title: Desenmascarando la CSLA.Net
+tags: 
+- DynamicProxy
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/08/desenmascarando-la-cslanet.html
+  dsq_thread_id: "314363681"
+  blogger_images: "1"
+---
+<p>Después de mucho tiempo sin escribir en español, quería hacer un post sobre algo que estuvimos viendo en la VAN de altnet hispano de ayer.    <br />Mas allá de no gustarme <strong>muchas cosas</strong> sobre CSLA.Net de lo que voy hablar en este post es muy particular. Lo que voy a comentar es sobre el manejo de propiedades que es como sigue:     <br />    <br /></p>  <pre class="brush: csharp;">private static PropertyInfo&lt;string&gt; LastNameProperty = 
+  RegisterProperty&lt;string&gt;(p=&gt;p.LastName);
+private string _lastName = LastNameProperty.DefaultValue;
+public string LastName
+{
+  get
+  {
+    return GetProperty(LastNameProperty, _lastName);
+  }
+  set
+  {
+    SetProperty(LastNameProperty, ref _lastName, value);
+  }
+}</pre>
+
+<p>Cada vez que veo algo así, me pregunto que es lo que “gano” con hacer eso? Y créanme que lo he visto en otro <a href="http://caliburn.codeplex.com/sourcecontrol/changeset/view/26461?projectName=caliburn#615692">lugar</a>. La respuesta suele ser diferente, a veces la función “SetProperty” en la clase base suele hacer cosas como:</p>
+
+<ul>
+  <li>Disparar el evento de la interfaz <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged.aspx">INotifyProperyChanged</a>. </li>
+
+  <li>Validar algo. </li>
+
+  <li>Establecer en algún lugar que la instancia esta Dirty, es decir con cambios pendientes de persistir. </li>
+
+  <li>También para implementar el comportamiento de IEditableObject. </li>
+
+  <li>Logging. </li>
+
+  <li>Validar acceso a alguna propiedad. </li>
+</ul>
+
+<p>Y no mucho mas que eso. No es que todas estas cosas no sean necesarias, lo que me saca de las casillas es la forma de declarar una propiedad. Tiene “MUCHO” para hacer tan “POCO”. A tal punto que definir una propiedad de mi BussinesObject puede ser un verdadero dolor de cabeza y necesite un <a href="http://sourceforge.net/projects/cslagen">generador de código</a>. Por supuesto, se comento en la VAN que si a alguien no le gusta esto, lo puede hacer “manual” que son muchas mas líneas de código. 
+
+  <br />Todas las cosas que mencione en la lista anterior ya han sido estudiadas y pueden ser realizadas perfectamente mediante AOP. La solución, como dijo <a href="http://fabiomaulo.blogspot.com/">Fabio Maulo</a> ayer es utilizar PostSharp o DynamicProxy. Estos frameworks permiten implementar el concepto de <a href="http://en.wikipedia.org/wiki/Aspect-oriented_programming">AOP</a>, de dos maneras muy diferentes, por un lado DynamicProxy a partir de una clase genera <em>dinámicamente</em> otra que hereda (en algunos casos no) de la primera y ejecuta los interceptors. Por otro lado PostSharp inyecta código <em>post</em> compilación. Mientras que PostSharp es muy potente, DynamicProxy es bastante flexible y fácil de entender para alguien que se inicie en AOP. 
+
+  <br />Como conozco poco de PostSharp, voy a explicar un poco DP. DynamicProxy de Castle (como Spring.AOP de Spring y creo que en la misma línea esta LinFu) son muy, pero muy sencillos de interpretar. 
+
+  <br />Cuando uno crea un proxy lo que se tiene que imaginar es que “una pila de interceptores con un orden especifico va a interceptar cada llamada a función de la clase que se esta proxy-ando”.´</p>
+
+<p align="left">Algo así: 
+  <br /><a href="http://joseoncode.com/wp-content/uploads/2011/06/first_thumb%5B20%5D%5B6%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="first_thumb[20]" border="0" alt="first_thumb[20]" src="http://joseoncode.com/wp-content/uploads/images/first_thumb5B205D_thumb5B45D.png" width="585" height="461" /></a>&#160; <br /></p>
+
+<p align="left">La interfaz IInterceptor tiene solamente un método:</p>
+
+<pre class="code"><span style="color: blue">public void </span>Intercept(<span style="color: #2b91af">IInvocation </span>invocation)</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p align="left">IInvocation es un objeto muy jugoso. Tiene muchas propiedades entre las que se destacan:</p>
+
+<ul>
+  <li>
+    <div align="left"><strong>Arguments</strong>: un array con los parámetros que se llamo al método. Recordemos que las propiedades al final son métodos.</div>
+  </li>
+
+  <li>
+    <div align="left"><strong>Method</strong>: es un objeto MethodInfo propio del framework, del cual podemos sacar cosas interesantísimas como el nombre del método, los attributos, custom attributes, etc.</div>
+  </li>
+
+  <li>
+    <div align="left"><strong>Proxy</strong>: la instancia del objeto proxy.</div>
+  </li>
+
+  <li>
+    <div align="left"><strong>InvocationTarget</strong>: el destino final de la invocación.</div>
+  </li>
+
+  <li>
+    <div align="left"><strong>ReturnValue</strong>: Esta es una de las mas importantes…. Este es el valor que va a devolver la función. Puedo cambiarlo, inspeccionarlo, guardarlo, hacer lo que quiera.</div>
+  </li>
+</ul>
+
+<p align="left">Luego tiene un método que se llama “<strong>Proceed</strong>”, este método lo que hace es proceder con la invocación, esto significa pasar la llamada al siguiente interceptor o finalmente al destino de la invocación. 
+
+  <br />
+
+  <br />Escribiendo un IInterceptor para NotifyPropertyChanged. Lo primero que hace falta es un buen test ;-) 
+
+  <br /></p>
+
+<pre class="brush: csharp;">[TestFixture]
+public class Test1
+{
+    [Test]
+    public void notify_on_change()
+    {
+        var proxyGen = new ProxyGenerator();
+        bool eventWasRaised = false;
+        var persona = (Persona)proxyGen.CreateClassProxy(typeof (Persona),
+                               new []{typeof(INotifyPropertyChanged)},
+                               new IInterceptor[] {new PropertyChangeInterceptor()});
+
+        ((INotifyPropertyChanged) persona).PropertyChanged += 
+            (sender, args) =&gt;
+            {
+                args.PropertyName.Should().Be.EqualTo(&quot;Nombre&quot;);
+                eventWasRaised = true;
+            };
+
+        persona.Nombre = &quot;José&quot;;
+
+        eventWasRaised.Should().Be.True();
+
+    }
+}
+
+public class Persona
+{
+    public virtual int Id { get; set; }
+    public virtual string Nombre { get; set; }
+    public virtual string Apellido { get; set; }
+}</pre>
+
+<p align="left">Notar como esta declarada la clase “Persona”, solo lo que necesito. Por la forma en que esta instanciada no se preocupen mucho por que se puede hacer unos extensions methods, y dejarla dentro del contenedor, el contenedor resolverá el Proxy. Generalmente Castle, Spring y LinFu permiten lo mismo, el generador de proxy se integra con el container. 
+  <br />
+
+  <br />Explicando el test, lo que estoy haciendo es crear una instancia proxy-ada, subscribirme al evento propertychanged y modificar la propiedad Nombre. Lo que verifico es que el evento haya sido disparado y que en los args venga el nombre de la property que modifique. 
+
+  <br />
+
+  <br />Como hago que este test pase? 
+
+  <br />
+
+  <br /></p>
+
+<pre class="brush: csharp;">public class PropertyChangeInterceptor : IInterceptor
+{
+    private PropertyChangedEventHandler _handler;
+
+    #region IInterceptor Members
+
+    public void Intercept(IInvocation invocation)
+    {
+        string methodName = invocation.Method.Name;
+
+        if (methodName == &quot;add_PropertyChanged&quot;)
+        {
+            _handler = (PropertyChangedEventHandler)
+                       Delegate.Combine(_handler, (Delegate) invocation.Arguments[0]);
+            return;
+        }
+        if (methodName == &quot;remove_PropertyChanged&quot;)
+        {
+            _handler = (PropertyChangedEventHandler)
+                       Delegate.Remove(_handler, (Delegate) invocation.Arguments[0]);
+            return;
+        }
+
+        invocation.Proceed();
+
+        if (invocation.MethodInvocationTarget.Name.StartsWith(&quot;set_&quot;))
+        {
+            if (_handler != null)
+              _handler(invocation.Proxy, new PropertyChangedEventArgs(methodName.Substring(4)));
+            }
+        }
+    }
+
+    #endregion
+}</pre>
+
+<p align="left">Lo que hago en esta clase es primero interceptar la subscripción y dessubscripción al evento “PropertyChanged”. Notar que a esas invocaciones no les doy proseguir, puesto que el destino de la invocación ni si quiera implementa INotifyPropertyChanged (en el test la interfaz fue agregada al proxy como una interface adicional). Para todas las demás llamadas las prosigo. La parte fundamental ocurre después de proseguir la invocación, si el método empezaba con “set_” asumo que el código que llama esta seteando una propiedad, por lo tanto disparo el evento, pasándole como argumentos el nombre del método sin los primeros 4 caracteres (sin el “set_”). 
+  <br />
+
+  <br />De esta forma dejo librado a su imaginación las cosas que pueden hacer con los interceptors. Aunque muchas de las que vienen con la CSLA.Net ya existen de esta forma o de otras formas mejores. 
+
+  <br />
+
+  <br />Creo que el código para hacer el bussines object verdaderamente se disminuye.
+
+  <br />
+
+  <br />Espero que el artículo haya sido de vuestro agrado y espero sus comentarios. </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-6997956063565527753' alt='' /></div>

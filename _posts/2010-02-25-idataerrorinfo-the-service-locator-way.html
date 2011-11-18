@@ -1,0 +1,63 @@
+--- 
+layout: post
+title: "IDataErrorInfo: the service locator way"
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/02/idataerrorinfo-service-locator-way.html
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_images: "1"
+  dsq_thread_id: "314364473"
+---
+<p>If you read my blog backward you will find some implementations of IDataErrorInfo. I’ve even implemented IDataErrorInfo with AOP in <a href="http://code.google.com/p/unhaddins/">unhaddins</a>. I found the interface useful when I want to show validations errors through a DataBinding infrastructure, WPF, WinForms or even Asp.Net MVC.</p>  <p>In my <a href="http://jfromaniello.blogspot.com/2010/02/testing-code-that-use-servicelocator.html">last post</a>, there are some comments about service locator:</p>  <ol>   <li>Mauricio Scheffer said; “It's just easier and more maintainable to use real dependency injection.” </li>    <li>Ivan Korneliuk said; “I prefer to inject IServiceLocator abstraction for such classes, rather than using global ServiceLocator.” </li> </ol>  <p>And I agree with both, but there are corner cases.</p>  <p>So, this is all I need to implement IDataErrorInfo in my base entity:</p>  <pre class="brush: csharp;">public class BaseEntity : ComparableEntity, IDataErrorInfo
+{
+    private static IEntityValidator entityValidator;
+
+    private static IEntityValidator EntityValidator
+    {
+        get
+        {
+            if (entityValidator == null)
+            {
+                return entityValidator 
+                        = ServiceLocator
+                                .Current
+                                .GetInstance&lt;IEntityValidator&gt;();
+            }
+            return entityValidator;
+        }
+    }
+
+    string IDataErrorInfo.this[string columnName]
+    {
+        get
+        {
+            var errors = EntityValidator
+                    .Validate(this, columnName)
+                    .Select(iv =&gt; iv.Message)
+                    .ToArray();
+            return string.Join(Environment.NewLine, errors);
+        }
+    }
+
+    string IDataErrorInfo.Error
+    {
+        get
+        {
+            var errors = EntityValidator
+                .Validate(this)
+                .Select(iv =&gt; iv.Message)
+                .ToArray();
+
+                return string.Join(Environment.NewLine, errors);
+        }
+    }
+}</pre>
+
+<p>Yes, there are some posts about dependency injection in entities, and I’ve done months ago, but it is over complicated for this case. So, with this code, I am not injecting IServiceLocator, and I am not injecting IValidatorEngine. I’m just using a good pattern :)</p>
+
+<p>You can test this code with the code in my previous post.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-3498065485817550243' alt='' /></div>

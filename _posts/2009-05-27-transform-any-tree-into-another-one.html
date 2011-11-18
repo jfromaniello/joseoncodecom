@@ -1,0 +1,43 @@
+--- 
+layout: post
+title: Transform any tree into another one
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/05/transform-any-tree-into-another-one.html
+  dsq_thread_id: "358862532"
+---
+<p></p>  <p>Sometimes I need to convert a domain object that represents a tree into another form of tree, whether to send it over the cable or simply for display it in a user control.</p>  <p>Here the code:</p>  <pre class="code"><span style="color: blue">public static </span><span style="color: rgb(43,145,175)">IEnumerable</span>&lt;TResult&gt; TransformTree&lt;TSource, TResult&gt;(
+         <span style="color: blue">this </span><span style="color: rgb(43,145,175)">IEnumerable</span>&lt;TSource&gt; enumerable,
+         <span style="color: rgb(43,145,175)">Func</span>&lt;TSource, <span style="color: rgb(43,145,175)">IEnumerable</span>, TResult&gt;  transformFunction,
+         <span style="color: rgb(43,145,175)">Func</span>&lt;TSource, <span style="color: rgb(43,145,175)">IEnumerable</span>&lt;TSource&gt;&gt; getChildrenFunction)
+{
+ <span style="color: blue">foreach </span>(<span style="color: blue">var </span>item <span style="color: blue">in </span>enumerable)
+ {
+     <span style="color: blue">yield return </span>transformFunction.Invoke(item,
+         getChildrenFunction.Invoke(item)
+                            .TransformTree(transformFunction, getChildrenFunction)
+         );
+ }
+}</pre>
+This is an extension method for IEnumerable&lt;TSource&gt; (almost any collection type) that returns an IEnumerable&lt;TResult&gt;. The second parameter is the “transform function”, in this place you must specify how transform TSource in TResult. The third parameter is the “get children function”, here you must specify how to retrieve the children from TSource. I use this function to build a graph object to put into extjs tree panel as json. Take a look at the code: 
+
+<pre class="code"><span style="color: blue">var </span>query = daoPersons.ToList().Where( x =&gt; x.Father == null)
+                          .TransformTree((person, childrenColl) =&gt; <span style="color: blue">new
+                          </span>{
+                              id = person.Id.ToString(),
+                              text = person.Name + &quot; &quot; + person.LastName,
+                              cls = <span style="color: rgb(163,21,21)">&quot;folder&quot;</span>,
+                              leaf = (person.HasChildren()),
+                              children = childrenColl
+                          }, person =&gt; person.Children);
+
+<span style="color: blue">return </span>Json(query);</pre>
+I hope you like it! 
+
+<p>PS: I think you should avoid the anonymous type for testing purpose. </p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='https://blogger.googleusercontent.com/tracker/2935908889399243312-7112470467795530924?l=jfromaniello.blogspot.com' alt='' /></div>

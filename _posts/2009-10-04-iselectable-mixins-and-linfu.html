@@ -1,0 +1,102 @@
+--- 
+layout: post
+title: "ISelectable: Mixins and LinFu"
+tags: 
+- LinFu
+- WPF
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/10/iselectable-mixins-and-linfu.html
+  blogger_images: "1"
+  dsq_thread_id: "325569813"
+---
+<p>I will show you a trivial example of mixins with LinFu in this post.   <br /><em><strong>Note:</strong> this is the first time I use LinFu stuff.</em></p>  <h3>Sample Scenario</h3>  <p>We have a Customer class as follows:</p>  <pre class="code"><span style="color: blue">public class </span><span style="color: #2b91af">Customer
+</span>{
+    <span style="color: blue">public virtual int </span>Id { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">public virtual string </span>FirstName { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+    <span style="color: blue">public virtual string </span>LastName { <span style="color: blue">get</span>; <span style="color: blue">set</span>; }
+}</pre>
+
+<p><a href="http://11011.net/software/vspaste"></a>And we have a customer repository that looks as follows:</p>
+
+<pre class="code"><span style="color: blue">public interface </span><span style="color: #2b91af">ICustomerRepository
+</span>{
+    <span style="color: #2b91af">ICollection</span>&lt;<span style="color: #2b91af">Customer</span>&gt; GetSomeCustomers();
+}</pre>
+
+<p>Now, we have a user case in WPF, that needs to display the Customer data, but we need an extra bool property named “Selected”, this property will be bound to some checkbox in the GUI. How to solve this, without a CustomerDTO nor SelectableCustomer class?</p>
+
+<h2>Mixins</h2>
+
+<p>First we start with this:</p>
+
+<pre class="brush: csharp;">public interface ISelectable
+{
+    bool Selected { get; set; }
+}
+
+public class Selectable : ISelectable
+{
+    #region ISelectable Members
+
+    public virtual bool Selected { get; set; }
+
+    #endregion
+}</pre>
+
+<p>Now, I will create an extension method named “AsSelectable”, this is my test case:</p>
+
+<pre class="brush: csharp;">[TestFixture]
+public class SelectableTestFixture
+{
+    [Test]
+    public void as_selectable_works()
+    {
+        var list = new List&lt;Customer&gt;
+                       {
+                           new Customer {FirstName = &quot;José&quot;, LastName = &quot;Romaniello&quot;},
+                           new Customer {FirstName = &quot;Juan&quot;, LastName = &quot;Perez&quot;},
+                           new Customer {FirstName = &quot;Pedro&quot;, LastName = &quot;Picolli&quot;}
+                       };
+        List&lt;Customer&gt; customerList = list.AsSelectable().ToList();
+
+        customerList[0].FirstName.Should().Be.EqualTo(&quot;José&quot;);
+        ((ISelectable) customerList[0]).Selected.Should().Be.False();
+
+        customerList[1].FirstName.Should().Be.EqualTo(&quot;Juan&quot;);
+        ((ISelectable) customerList[1]).Selected.Should().Be.False();
+    }
+}</pre>
+
+<p>And this is the code for AsSelectable with LinFu 1.0:</p>
+
+<pre class="brush: csharp;">public static class AsSelectableExtension
+{
+    private static readonly ProxyFactory refl = new ProxyFactory();
+
+    public static IEnumerable&lt;T&gt; AsSelectable&lt;T&gt;(this IEnumerable&lt;T&gt; enumerable)
+        where T : class
+    {
+        
+        
+        //Create a type that inherits from customer and implements ISelectable
+        Type selectableCustomerType = refl.CreateProxyType(typeof (T), new[] {typeof (ISelectable)});
+
+        foreach (T entity in enumerable)
+        {
+            var dynCustomer = new DynamicObject();
+            dynCustomer.MixWith(entity);
+            dynCustomer.MixWith(new Selectable());
+            yield return (T) dynCustomer.CreateDuck(selectableCustomerType);
+        }
+    }
+}</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>And for me… it looks very nice. I don’t know how to implement this with the current version of LinFu, I use the binaries from <a href="http://www.codeproject.com/KB/cs/LinFuPart2.aspx">here</a>.
+
+  <br />This works great with WPF. I hope you like it.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-1216587629028455246' alt='' /></div>

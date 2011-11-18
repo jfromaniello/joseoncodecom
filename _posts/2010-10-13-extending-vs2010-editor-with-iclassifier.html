@@ -1,0 +1,162 @@
+--- 
+layout: post
+title: Extending VS2010 editor with IClassifier
+tags: []
+
+status: publish
+type: post
+published: true
+meta: 
+  blogger_permalink: /2010/10/extending-vs2010-editor-with.html
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_blog: jfromaniello.blogspot.com
+  dsq_thread_id: "315123833"
+  blogger_images: "1"
+---
+<p>I will show you in this post some internals of my <a href="http://hqladdin.codeplex.com">HqlAddin</a> project. The scenario is that I wanted to add highlighting for specific some specific things when editing hbm.xml files, and inside the query tag:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/image%5B3%5D.png"><img style="border-right-width: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px" title="image" border="0" alt="image" src="http://joseoncode.com/wp-content/uploads/images/image_thumb5B15D.png" width="558" height="276" /></a> </p>  <p>The first thing we need is a Format like this:</p>  <pre class="brush: csharp; line-wrap: false;">/// &lt;summary&gt;
+/// Defines the string editor format for the hbm editor.
+/// &lt;/summary&gt;
+[Export(typeof(EditorFormatDefinition))]
+[ClassificationType(ClassificationTypeNames = Name)]
+[Name(Name)] //The name of the Format
+[UserVisible(true)] //this should be visible to the end user
+[Order(Before = Priority.Default)] //set the priority to be after the default classifiers
+internal sealed class StringFormat  : ClassificationFormatDefinition
+{
+
+    public const string Name = &quot;StringFormat&quot;;
+
+    /// &lt;summary&gt;
+    /// Defines the visual format for the &quot;StringClassifier&quot; classification type
+    /// &lt;/summary&gt;
+    public StringFormat()
+    {
+        DisplayName = Name;
+        ForegroundColor = Colors.DarkRed;
+    }
+}</pre>
+
+<p>Pretty easy, this class define a format named StringFormat (which is internal to my extension), the format has a custom ForegroundColor. Nothing more, the other formats are exactly like this.</p>
+
+<p>The next step is to write a <a href="http://msdn.microsoft.com/en-us/library/microsoft.visualstudio.text.classification.iclassifierprovider.aspx">IClassifierProvider</a> :</p>
+
+<pre class="brush: csharp;">[Export(typeof (IClassifierProvider))]
+[ContentType(&quot;xml&quot;)]
+internal sealed class StringClassifierProvider : IClassifierProvider
+{
+    [Import] private IClassificationTypeRegistryService classificationRegistry;
+
+    #region IClassifierProvider Members
+
+    public IClassifier GetClassifier(ITextBuffer textBuffer)
+    {
+        return textBuffer
+            .Properties
+            .GetOrCreateSingletonProperty(() =&gt; new StringClassifier(classificationRegistry));
+    }
+
+    #endregion
+}</pre>
+
+<p>This classifier provider adds a Stringclassifier to the textbuffer for the content type “xml”. There are others content types that you can use like “code”, or the very basic “text”, on the other hand you can create your own Content Types for other file extensions.</p>
+
+<p>Given the fact that all my classifier are based on regular expressions, I wrote a RegexBasedClassifier:</p>
+
+<pre class="brush: csharp;">internal abstract class RegexBasedClassifier : IClassifier
+{
+    private readonly IClassificationTypeRegistryService classificationRegistry;
+
+    protected RegexBasedClassifier(IClassificationTypeRegistryService classificationRegistry)
+    {
+        this.classificationRegistry = classificationRegistry;
+    }
+
+    public abstract string FormatterName { get; }
+
+    public abstract IEnumerable&lt;Regex&gt; Regexs { get; }
+
+
+    public IList&lt;ClassificationSpan&gt; GetClassificationSpans(SnapshotSpan span)
+    {
+        if (!span.IsInQueryTag()) return Enumerable.Empty&lt;ClassificationSpan&gt;().ToList();
+        var startline = span.Start.GetContainingLine();
+        var endline = (span.End - 1).GetContainingLine();
+        var text = span.Snapshot.GetText(new SnapshotSpan(startline.Start, endline.End));
+
+        return (from regex in Regexs
+               from match in regex.Matches(text).OfType&lt;Match&gt;()
+               select CreateSpan(span, match))
+               .ToList();
+    }
+
+    private ClassificationSpan CreateSpan(SnapshotSpan span, Match match)
+    {
+        var snapshotSpan = new SnapshotSpan(span.Snapshot, 
+                                            span.Start.Position + match.Index, 
+                                            match.Length);
+        return new ClassificationSpan(
+            snapshotSpan, 
+            classificationRegistry.GetClassificationType(FormatterName));
+    }
+
+    public event EventHandler&lt;ClassificationChangedEventArgs&gt; ClassificationChanged;
+}</pre>
+
+<p>This base class check if the current line is inside a QueryTag (IsInQueryTag call), then it find the matches for all the regex defined in the derived class, and if it found a match then it create a ClassificationSpan with the FormatterName defined in the derived class.</p>
+
+<p>So the implementations of the StringClassifier is:</p>
+
+<pre class="brush: csharp;">internal class StringClassifier : RegexBasedClassifier
+{
+    public StringClassifier(IClassificationTypeRegistryService classificationRegistry)
+        : base(classificationRegistry)
+    {
+    }
+
+    public override string FormatterName
+    {
+        get { return StringFormat.Name; }
+    }
+
+    public override IEnumerable&lt;Regex&gt; Regexs
+    {
+        get { yield return new Regex(@&quot;('[^']*(?:.[^']*)*'*)&quot;); }
+    }
+}</pre>
+
+<p>And the KeywordClassifier is this:</p>
+
+<pre class="brush: csharp;">internal class KeywordClassifier : RegexBasedClassifier
+{
+    private readonly string[] keywords = new[]
+            {
+                &quot;join&quot;, &quot;from&quot;, &quot;select&quot;,
+                &quot;new&quot;, &quot;where&quot;, &quot;and&quot;,
+                &quot;or&quot;, &quot;band&quot;, &quot;between&quot;,
+                &quot;not&quot;, &quot;join&quot;, &quot;left&quot;,
+                &quot;inner&quot;, &quot;fetch&quot;, &quot;in&quot;,
+                &quot;group&quot;, &quot;by&quot;, &quot;sum&quot;, &quot;count&quot;,
+                &quot;coalesce&quot;, &quot;null&quot;, &quot;is&quot;, &quot;like&quot;
+            };
+
+    public KeywordClassifier(IClassificationTypeRegistryService classificationRegistry)
+        : base(classificationRegistry)
+    {
+    }
+
+    public override string FormatterName
+    {
+        get { return KeywordFormat.Name; }
+    }
+
+    public override IEnumerable&lt;Regex&gt; Regexs
+    {
+        get
+        {
+            return from keyword in keywords
+                   select new Regex(string.Format(@&quot;b({0})b&quot;, keyword));
+        }
+    }
+}</pre>
+
+<p>You can look at the tests for these classes in the HqlAddin.Test project. Thats all, I hope you find it useful!</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5752415240709568024' alt='' /></div>

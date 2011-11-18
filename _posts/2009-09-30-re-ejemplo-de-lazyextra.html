@@ -1,0 +1,104 @@
+--- 
+layout: post
+title: Re-Ejemplo de Lazy=Extra
+tags: 
+- NHibernate
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/09/re-ejemplo-de-lazyextra.html
+  dsq_thread_id: "314363975"
+  blogger_images: "1"
+---
+<p>Gracias al comentario de <a href="http://fabiomaulo.blogspot.com">Fabio Maulo</a>, sobre mi anterior <a href="http://jfromaniello.blogspot.com/2009/09/nhibernate-ejemplo-practico-de.html">post</a> fue que decidí escribir escribir este post. </p>  <p>Evidentemente si alguien decide enumerar el diccionario tendremos un serio problema, ya que como antes mencioné, 3650 no es chiste. Aunque es un tema de mal uso de la api debería restringirlo de alguna manera. Entonces estuve estos últimos cinco minutos pensando como solucionarlo, y me vinieron dos ideas a la cabeza.</p>  <h2>1er Idea: Propiedad indexada en la clase moneda</h2>  <p>En vez de publicar una propiedad del tipo IDictionary&lt;DateTime, Cotizacion&gt;, publicar una propiedad indexada, por lo cual mi clase Moneda pasaría a ser así:</p>  <pre class="brush: csharp;">public class Moneda
+{
+    public virtual int Id { get; protected set; }
+    public virtual string Nombre { get; set; }
+    private readonly IDictionary&lt;DateTime, Cotizacion&gt; _cotizaciones;
+    public virtual Cotizacion this[DateTime fecha]
+    {
+        get
+        {
+            Cotizacion cotizacionBuscada;
+            if (_cotizaciones.TryGetValue(fecha, out cotizacionBuscada))
+                return cotizacionBuscada;
+            throw new InvalidOperationException(&quot;No existe cotización para la fecha buscada.&quot;);
+        }
+        set
+        {
+            _cotizaciones[fecha] = value;
+        }
+    }
+
+    public Moneda()
+    {
+        _cotizaciones = new Dictionary&lt;DateTime, Cotizacion&gt;();    
+    }
+}</pre>
+
+<p>Y cómo va a hacer NHibernate para colocar las cotizaciones en ese field PRIVADO? 
+  <br />Simple solo ponemos este tag en el mapeo de la collection:</p>
+
+<pre class="code"><span style="color: red">access</span><span style="color: blue">=</span>&quot;<span style="color: blue">field</span>&quot;</pre>
+<a href="http://11011.net/software/vspaste"></a>
+
+<p>Problema solucionado, nunca más se podrán enumerar (desde afuera) la colection.</p>
+
+<h2>2da Idea: NotEnumerableDictionary</h2>
+
+<p>Esta opción se me vino a la cabeza en el caso de que quisiera mantener la misma sintaxis que antes.</p>
+
+<p>Les presento mi NotEnumerableDictionary (lo lamento no encontré un nombre mejor):</p>
+
+<pre class="brush: csharp;">public class NotEnumerableDictionary&lt;TKey, TValue&gt;
+{
+    private readonly IDictionary&lt;TKey, TValue&gt; _dictionary;
+
+    public NotEnumerableDictionary(IDictionary&lt;TKey,TValue&gt; dictionary)
+    {
+        _dictionary = dictionary;
+    }
+
+    public virtual TValue this[TKey key]
+    {
+        get
+        {
+            return _dictionary[key];
+        }
+        set
+        {
+            _dictionary[key] = value;
+        }
+    }
+}</pre>
+
+<p>Ahora la clase Moneda quedaría así:</p>
+
+<pre class="brush: csharp;">public class Moneda
+{
+    public virtual int Id { get; protected set; }
+    public virtual string Nombre { get; set; }
+    private readonly IDictionary&lt;DateTime, Cotizacion&gt; _cotizaciones;
+
+    public virtual NotEnumerableDictionary&lt;DateTime,Cotizacion&gt; Cotizaciones
+    {
+        get
+        {
+            return new NotEnumerableDictionary&lt;DateTime, Cotizacion&gt;(_cotizaciones);
+        }
+    }
+
+    public Moneda()
+    {
+        _cotizaciones = new Dictionary&lt;DateTime, Cotizacion&gt;();    
+    }
+}</pre>
+
+<p>Y el mapeo es igual que en el primer ejemplo.</p>
+
+<p>En los dos ejemplos, de ninguna forma se puede utilizar linq para consultar esa collection. La consulta de Fabio debería ejecutarse así:</p>
+
+<pre class="brush: csharp;">moneda.Cotizaciones[DateTime.Today.AddDays(-7)]</pre>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-5351774326085640333' alt='' /></div>

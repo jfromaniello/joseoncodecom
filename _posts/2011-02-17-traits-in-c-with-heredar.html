@@ -1,0 +1,196 @@
+--- 
+layout: post
+title: Traits in C# with Heredar
+tags: 
+- Heredar
+- Mono.Cecil
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2011/02/traits-in-c-with-heredar.html
+  blogger_images: "1"
+  dsq_thread_id: "314449198"
+---
+<p><a href="http://robeisenberg.com/default.aspx">Rob Eisenberg</a> sent me a link to a JavaScript framework named <a href="http://soft.vub.ac.be/~tvcutsem/traitsjs/api.html">TraitsJS</a>. I liked <a href="http://howtonode.org/traitsjs">this example</a>:</p>  <p><a href="http://joseoncode.com/wp-content/uploads/2011/06/2-TCircle%5B4%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="2-TCircle" border="0" alt="2-TCircle" src="http://joseoncode.com/wp-content/uploads/images/2-TCircle_thumb5B25D.png" width="597" height="363" /></a></p>  <p>I thought this was interesting to try using my <a href="http://code.google.com/p/heredar/">Heredar</a> project, so here is the code for this example:</p>  <pre class="brush: csharp;">public interface IEquality
+{
+    bool Equals(IEquality other);
+    bool Differs(IEquality other);
+}
+
+public abstract class Equality : IEquality
+{
+    public abstract bool Equals(IEquality other);
+
+    public bool Differs(IEquality other)
+    {
+        return !Equals(other);
+    }
+}
+
+public interface IMagnitude : IEquality
+{
+    bool Smaller(IMagnitude other);
+    bool Greater(IMagnitude other);
+    bool Between(IMagnitude min, IMagnitude max);
+}
+
+public abstract class Magnitude : IMagnitude
+{
+    public abstract bool Smaller(IMagnitude other);
+
+    public abstract bool Equals(IEquality other);
+
+    public abstract bool Differs(IEquality other);
+
+    public bool Between(IMagnitude min, IMagnitude max)
+    {
+        return min.Smaller(this) &amp;&amp; this.Smaller(max);
+    }
+
+    public bool Greater(IMagnitude other)
+    {
+        return !Smaller(other) &amp;&amp; this.Differs(other);
+    }
+}
+
+[ExtendWith(typeof(Equality), typeof(Magnitude))]
+public class Circle
+{
+    public int Center { get; set; }
+
+    public int Radious { get; set; }
+
+    public double Area
+    {
+        get { return Math.PI * (Radious ^ 2); }
+    }
+
+    public bool Equals(IEquality other)
+    {
+        var otherCircle = other as Circle;
+        if (otherCircle == null) return false;
+        return otherCircle.Center == Center
+               &amp;&amp; otherCircle.Radious == Radious;
+
+    }
+
+    public bool Smaller(IMagnitude other)
+    {
+        var otherCircle = other as Circle;
+        if (otherCircle == null) return false;
+        return Radious &lt; otherCircle.Radious;
+    }
+}</pre>
+
+<p>This example uses a feature of Heredar called <a href="http://code.google.com/p/heredar/wiki/AbstractTemplate">Abstract Templates</a>. The weaved class looks like:</p>
+
+<pre class="brush: csharp;">public class Circle : IEquality, IMagnitude
+{
+    // Fields
+    private Equality Equality_1;
+    private Magnitude Magnitude_1;
+
+    // Methods
+    public Circle()
+    {
+        this.Equality_1 = new EqualityImpl(this);
+        this.Magnitude_1 = new MagnitudeImpl(this);
+    }
+
+    public bool Between(IMagnitude min, IMagnitude max)
+    {
+        return this.Magnitude_1.Between(min, max);
+    }
+
+    public bool Differs(IEquality other)
+    {
+        return this.Equality_1.Differs(other);
+    }
+
+    public sealed override bool Equals(IEquality other)
+    {
+        Circle otherCircle = other as Circle;
+        if (otherCircle == null)
+        {
+            return false;
+        }
+        return ((otherCircle.Center == this.Center) &amp;&amp; (otherCircle.Radious == this.Radious));
+    }
+
+    public bool Greater(IMagnitude other)
+    {
+        return this.Magnitude_1.Greater(other);
+    }
+
+    public bool Smaller(IMagnitude other)
+    {
+        Circle otherCircle = other as Circle;
+        if (otherCircle == null)
+        {
+            return false;
+        }
+        return (this.Radious &lt; otherCircle.Radious);
+    }
+
+    public double Area
+    {
+        get
+        {
+            return (3.1415926535897931 * (this.Radious ^ 2));
+        }
+    }
+
+    public int Center { get;  set; }
+
+    public int Radious { get; set; }
+
+    // Nested Types
+    private class EqualityImpl : Equality
+    {
+        // Fields
+        private Circle Circle;
+
+        // Methods
+        public EqualityImpl(Circle circle)
+        {
+            this.Circle = circle;
+        }
+
+        public override bool Equals(IEquality other)
+        {
+            return this.Circle.Equals(other);
+        }
+    }
+
+    private class MagnitudeImpl : Magnitude
+    {
+        // Fields
+        private Circle Circle;
+
+        // Methods
+        public MagnitudeImpl(Circle circle)
+        {
+            this.Circle = circle;
+        }
+
+        public override bool Differs(IEquality other)
+        {
+            return this.Circle.Differs(other);
+        }
+
+        public override bool Equals(IEquality other)
+        {
+            return this.Circle.Equals(other);
+        }
+
+        public override bool Smaller(IMagnitude other)
+        {
+            return this.Circle.Smaller(other);
+        }
+    }
+}</pre>
+
+<p>Note; There is a lot of cases that TraitJs supports and Heredar doesn’t, take this is as a work in progress.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-9114911166874019442' alt='' /></div>

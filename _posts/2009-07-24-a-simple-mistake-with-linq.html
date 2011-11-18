@@ -1,0 +1,38 @@
+--- 
+layout: post
+title: A simple mistake with LINQ
+tags: 
+- snippets
+status: publish
+type: post
+published: true
+meta: 
+  blogger_blog: jfromaniello.blogspot.com
+  blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
+  blogger_permalink: /2009/07/simple-mistake-in-linq.html
+  dsq_thread_id: "314363532"
+  blogger_images: "1"
+---
+<p>I will show you in this post a simple mistake with LINQ.    <br />Take a look to this inoffensive method:     <br /></p>  <pre class="brush: csharp;">public static IEnumerable&lt;string&gt; WithTwoChars(IEnumerable&lt;string&gt; list)
+{
+    return list.Where(s =&gt; s.Length.Equals(2));
+}</pre>
+
+<p>It takes a collection of string and returns strings with two chars. 
+  <br />
+
+  <br />This code use the above method: 
+
+  <br /></p>
+
+<pre class="brush: csharp;">IEnumerable&lt;string&gt; result = WithTwoChars(SimpleWordList());
+Console.WriteLine(&quot;Count is {0} &quot;, result.Count());
+Console.WriteLine(&quot;First item is {0} &quot;, result.ToList()[0]);</pre>
+
+<p>But…. what is the difference between this one: </p>
+
+<pre class="brush: csharp;">IEnumerable&lt;string&gt; result = WithTwohars(SimpleWordList()).ToList();
+Console.WriteLine(&quot;Count is {0} &quot;, result.Count());
+Console.WriteLine(&quot;First item is {0} &quot;, result[0]);</pre>
+
+<p>The difference is quite obviously the former method iterate over the coll twice. If you put a stopwatch you will notice the difference.</p>  <div class="blogger-post-footer">http://feeds.feedburner.com/JoseFRomaniello<img width='1' height='1' src='http://joseoncode.com/wp-content/uploads/images/2935908889399243312-4797650985261899998' alt='' /></div>
