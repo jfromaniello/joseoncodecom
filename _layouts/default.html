@@ -6,71 +6,78 @@
     <meta name="description" content="José F. Romaniello software development blog">
     <meta name="author" content="José F. Romaniello" >
     <link rel="alternate" type="application/rss+xml" title="RSS" href="http://feeds.feedburner.com/JoseFRomaniello">
-		
+        
     <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
 
     <!-- styles -->
+
+    <link rel="stylesheet" href="/css/thematic.css">
+    <link rel="stylesheet" href="/css/site.css">
+
+    <meta name="keywords" content="programming, patterns, software, development, .net, wpf, silverlight, romaniello, rest, javascript node.js programming agile ruby" />
+    <meta name="description" content="José F. Romaniello software development blog" />
+    <meta name="robots" content="all" />
+
     
-	<link rel="stylesheet" href="/css/thematic.css">
-	<link rel="stylesheet" href="/css/site.css">
-
-	<meta name="keywords" content="software, patterns, software services, development, consulting services, .net, net3fx, netfx, johnny halife, dinnernow.net, software node.js programming development agile ruby python scala windows azure" />
-	<meta name="description" content="development and consulting services. Latest technology, platform leveraging, software+services, Saas, development, agile, development practices, enterprise development, Agile, Argentina, Benefits, Careers, Endeavor, Entrepreneurship, Globalization, Global Services, Infrastructure Management, IT Jobs Outsourcing, Services Software, Development, Redmond, Seattle" />
-	<meta name="robots" content="all" />
-		
-	<!-- Geo Tagging -->
-	<meta name="geo.region" content="AR-C" />
-	<meta name="geo.placename" content="Buenos Aires" />
-	<meta name="geo.position" content="-34.608417;-58.373161" />
-	<meta name="ICBM" content="-34.608417, -58.373161" />
-	
-	<!-- Google analytics -->
-	<script type="text/javascript">
-	  // var _gaq = _gaq || [];
-	  // _gaq.push(['_setAccount', 'UA-27122823-1']);
-	  // _gaq.push(['_setDomainName', 'johnny.io']);
-	  // _gaq.push(['_trackPageview']);
-
-	  // (function() {
-	  //   var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	  //   ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	  //   var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-	  // })();
-	</script>
-		
-  </head>
-  <body>
-  	<div id="wrapper" class="hfeed">
-   		<div id="header">
-			<div id="branding">
-				<div id="blog-title"><span><a rel="home" title="Jose on Code!" href="http://joseoncode.com/">Jose on Code!</a></span></div>
-				<h1 id="blog-description">José F. Romaniello software development blog</h1>
-			</div><!--  #branding -->
-			<div id="access">
-				<div class="skip-link"><a title="Skip navigation to the content" href="#content">Skip to content</a></div><!-- .skip-link -->
-				<div class="menu"><ul class="sf-menu sf-js-enabled"><li class="page_item page-item-844"><a title="About me" href="http://joseoncode.com/about-me/">About me</a></li><li class="page_item page-item-850"><a title="Contact me" href="http://joseoncode.com/contact-me/">Contact me</a></li></ul></div>
-			</div><!-- #access -->
-		</div>
-   	</div>
-    <div class="container">
-    	<div id="content">
-  			{{ content }}
-    	</div>
+    <!-- Google analytics -->
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount','UA-3648736-5']);
+    _gaq.push(['_trackPageview'],['_trackPageLoadTime']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+    </script>
+        
+</head>
+<body>
+    <div id="wrapper" class="hfeed">
+        <div id="header">
+            <div id="branding">
+                <div id="blog-title"><span><a rel="home" title="Jose on Code!" href="http://joseoncode.com/">Jose on Code!</a></span></div>
+                <h1 id="blog-description">José F. Romaniello software development blog</h1>
+            </div><!--  #branding -->
+            <div id="access">
+                <div class="skip-link"><a title="Skip navigation to the content" href="#content">Skip to content</a></div><!-- .skip-link -->
+                <div class="menu"><ul class="sf-menu sf-js-enabled"><li class="page_item page-item-844">
+                <a title="About me" href="http://joseoncode.com/about-me/">About me</a></li><li class="page_item page-item-850">
+                <a title="Contact me" href="http://joseoncode.com/contact-me/">Contact me</a></li></ul></div>
+            </div><!-- #access -->
+        </div>
+        <div id="main">
+            <div id="container">
+                <div id="content">
+                    {{ content }}
+                </div>
+            </div>
+            <div class="aside main-aside" id="secondary">
+                <ul class="xoxo">
+                    <li class="widgetcontainer widget_rss-links" id="rss-links-2">
+                        <h3 class="widgettitle">RSS Links</h3>
+                        <ul>
+                            <li><a type="application/rss+xml" rel="alternate nofollow" title="Jose on Code! Posts RSS feed" href="http://joseoncode.com/feed/">All posts</a></li>
+                            <li><a type="application/rss+xml" rel="alternate nofollow" title="Jose on Code! Comments RSS feed" href="http://joncode.disqus.com/latest.rss">All comments</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
-  </body>
-  <!-- 
-	<div id="hcard-johnny-g-halife" class="vcard" >
-		<a class="url fn n" href="http://johnny.io">  
-			<span class="given-name">johnny</span>
-			<span class="additional-name">g</span>
-			<span class="family-name">halife</span>
-		</a>
-		<div class="adr">
-			<span class="locality">buenos aires</span>
-			<span class="country-name">argentina</span>
-		</div>
-	</div> -->
+</body> 
+    <div class="vcard" style="display: none">
+        <a href="http://joseoncode.com">  
+            <span class="given-name">jose</span>
+            <span class="additional-name">f</span>
+            <span class="family-name">romaniello</span>
+        </a>
+        <div class="adr">
+            <span class="locality">cordoba</span>
+            <span class="country-name">argentina</span>
+        </div>
+    </div>
 </html>

@@ -1,20 +1,11 @@
 ---
 layout: default
 ---
-<!-- <div class="hero-unit">
-		<span class="back"><a href="/">&laquo; Go back</a></span>
-		<ul class="navigation">
-				<li><a href="http://feeds.feedburner.com/johnny-halife"><img src="/images/rss.png"></a></li>
-				<li><a href="http://github.com/johnnyhalife"><img src="/images/github.png"></a></li>
-				<li><a href="http://twitter.com/johnnyhalife"><img src="/images/twitter.png"></a></li>
-		</ul>
-</div> -->
-
-<article>
-		<h1 class="entry-title">{{ page.title }}</h1>
-		<h6>Published on {{ page.date | date : "%Y/%m/%d"}} by JoseFR</h6>
-	  {{ page.content }}
-</article>
+<div class="hentry">
+	<h1 class="entry-title">{{ page.title }}</h1>
+	<h6>Published on {{ page.date | date : "%Y/%m/%d"}} by JoseFR</h6>
+	{{ page.content }}
+</div>
 
 <div id="related">
   <h2>Related Posts</h2>
