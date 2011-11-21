@@ -1,8 +1,8 @@
 require 'net/http'
 require 'uri'
 
-# Replace the default pygments implementation a call 
-# to an HTTP implementation of pygments in heroku cedar.
+# Replace the default pygments implementation with a call 
+# to an implementation of pygments in heroku cedar exposed through HTTP.
 module Jekyll
     class HighlightBlock < Liquid::Block
         include Liquid::StandardFilters
