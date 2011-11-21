@@ -3,21 +3,6 @@ layout: default
 title: Jose on Code
 ---
 
-<!-- <div id="home">
-	<div class="hero-unit">
-		<ul class="navigation">
-				<li><a href="http://feeds.feedburner.com/johnny-halife"><img src="images/rss.png" alt="rss"/></a></li>
-				<li><a href="http://github.com/johnnyhalife"><img src="images/github.png" alt="GitHub OSS projects"/></a></li>
-				<li><a href="http://twitter.com/johnnyhalife"><img src="images/twitter.png" alt="twitter"/></a></li>
-		</ul>
-    <h1>Howdy, people!</h1>
-    <p>My name is <strong>Johnny Halife</strong>, I'm yet another software developer that writes his thoughts on a blog. You can also
-		follow me on <span class="label notice"><a href="http://twitter.com/johnnyhalife">Twitter</a></span> or check my open source projects
-	  on <span class="label"><a href="http://github.com/johnnyhalife">GitHub</a></span>.</p>
-  </div> -->
-
-
-<!-- 	<div class="posts"> -->
 		{% for page in paginator.posts %}
 		  {% include single_page.html %}
 		{% endfor %}
@@ -34,38 +19,3 @@ title: Jose on Code
 		{% endif %}
 	{% endif %}
 </div>
-
-  	<!-- </div> -->
-<!-- 
-	<div class="pagination">
-	  <ul>
-		  {% if paginator.previous_page %}
-	    	<li class="prev"><a href="/page{{paginator.previous_page}}">&larr; Previous</a></li>
-		  {% else %}
-	    	<li class="prev disabled"><a href="#">&larr; Previous</a></li>	
-		  {% endif %}		
-
-		  {% if paginator.page == 1 %}
-	      <li class="active"><a href="#">1</a></li>
-		  {% else %}
-	      <li><a href="/">1</a></li>
-		  {% endif %}		
-			
-	    {% for count in (2..paginator.total_pages) %}
-	      {% if count == paginator.page %}
-	      <li class="active"><a href="#">{{count}}</a></li>
-	      {% else %}
-	      <li><a href="/page{{count}}">{{count}}</a></li>
-	      {% endif %}
-	    {% endfor %}
-			
-			
-			{% if paginator.next_page %}
-	    	<li class="prev"><a href="/page{{paginator.next_page}}">&rarr; Next</a></li>
-		  {% else %}
-	    	<li class="prev disabled"><a href="#">&rarr; Next</a></li>	
-		  {% endif %}
-	  </ul>
-	</div>
-</div>
-   -->
