@@ -14,115 +14,30 @@
       </form>
     </li>
 
-<!-- 
 
-  <li id="categories-2" class="widgetcontainer widget_categories"><h3 class="widgettitle">Categories</h3>
-<select name="cat" id="cat" class="postform">
-  <option value="-1">Select Category</option>
-  <option class="level-0" value="39">AOP&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="20">Asp.Net&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="21">Asp.Net MVC&nbsp;&nbsp;(4)</option>
-  <option class="level-0" value="10">Caliburn&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="36">Castle&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="13">ChinookMM&nbsp;&nbsp;(8)</option>
-  <option class="level-0" value="43">ConfORM&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="27">Continuos Integration&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="12">CpBT&nbsp;&nbsp;(4)</option>
-  <option class="level-0" value="17">Dynamic&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="11">DynamicProxy&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="22">Effectus&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="42">EntityFramework&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="5">extjs&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="38">Heredar&nbsp;&nbsp;(4)</option>
-  <option class="level-0" value="49">Hermes&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="29">HQL&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="28">Integración Continua&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="35">IoC&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="51">javascript&nbsp;&nbsp;(5)</option>
-  <option class="level-0" value="53">jquery&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="16">LinFu&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="23">Linq&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="26">LinqSpecs&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="3">misc&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="4">ModelBinder&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="37">Mono.Cecil&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="18">Moq&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="15">MundoReal&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="32">MVP&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="44">Nancy&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="30">NestIn&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="9">NHibernate&nbsp;&nbsp;(28)</option>
-  <option class="level-0" value="14">Nhibernate Validator&nbsp;&nbsp;(4)</option>
-  <option class="level-0" value="40">nuget&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="31">Patrones&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="24">PostSharp&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="54">powershell&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="50">PubSub&nbsp;&nbsp;(1)</option>
-  <option class="level-0" value="52">qunit&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="25">ReactiveExtensions&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="34">resharper&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="45">rest&nbsp;&nbsp;(8)</option>
-  <option class="level-0" value="48">RestBucks&nbsp;&nbsp;(7)</option>
-  <option class="level-0" value="6">snippets&nbsp;&nbsp;(14)</option>
-  <option class="level-0" value="1">Uncategorized&nbsp;&nbsp;(31)</option>
-  <option class="level-0" value="19">uNhAddIns&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="8">uNhAddIns.WPF&nbsp;&nbsp;(17)</option>
-  <option class="level-0" value="41">WCF&nbsp;&nbsp;(3)</option>
-  <option class="level-0" value="33">Winforms&nbsp;&nbsp;(2)</option>
-  <option class="level-0" value="7">WPF&nbsp;&nbsp;(24)</option>
-</select>
 
-<script type="text/javascript">
-/* <![CDATA[ */
-  var dropdown = document.getElementById("cat");
-  function onCatChange() {
-    if ( dropdown.options[dropdown.selectedIndex].value > 0 ) {
-      location.href = "http://joseoncode.com/?cat="+dropdown.options[dropdown.selectedIndex].value;
-    }
-  }
-  dropdown.onchange = onCatChange;
-/* ]]> */
-</script>
+    <li id="categories-2" class="widgetcontainer widget_categories"><h3 class="widgettitle">Categories</h3>
+      <select name="cat" id="cat" class="postform">
+        <option value="select-category">Select Category</option>
+      {% for tag in site.iterable.tags %}
+        <option class="level-0" value="{{tag.name}}">{{tag.name}}&nbsp;&nbsp;({{tag.posts.size}})</option>
+      {% endfor %}
+      </select>
 
-</li><li id="archives-2" class="widgetcontainer widget_archive"><h3 class="widgettitle">Archives</h3>
-    <select name="archive-dropdown" onchange="document.location.href=this.options[this.selectedIndex].value;"> <option value="">Select Month</option>   <option value="http://joseoncode.com/2011/11/"> November 2011 </option>
-  <option value="http://joseoncode.com/2011/10/"> October 2011 </option>
-  <option value="http://joseoncode.com/2011/09/"> September 2011 </option>
-  <option value="http://joseoncode.com/2011/08/"> August 2011 </option>
-  <option value="http://joseoncode.com/2011/07/"> July 2011 </option>
-  <option value="http://joseoncode.com/2011/06/"> June 2011 </option>
-  <option value="http://joseoncode.com/2011/05/"> May 2011 </option>
-  <option value="http://joseoncode.com/2011/04/"> April 2011 </option>
-  <option value="http://joseoncode.com/2011/03/"> March 2011 </option>
-  <option value="http://joseoncode.com/2011/02/"> February 2011 </option>
-  <option value="http://joseoncode.com/2011/01/"> January 2011 </option>
-  <option value="http://joseoncode.com/2010/12/"> December 2010 </option>
-  <option value="http://joseoncode.com/2010/11/"> November 2010 </option>
-  <option value="http://joseoncode.com/2010/10/"> October 2010 </option>
-  <option value="http://joseoncode.com/2010/09/"> September 2010 </option>
-  <option value="http://joseoncode.com/2010/08/"> August 2010 </option>
-  <option value="http://joseoncode.com/2010/07/"> July 2010 </option>
-  <option value="http://joseoncode.com/2010/06/"> June 2010 </option>
-  <option value="http://joseoncode.com/2010/05/"> May 2010 </option>
-  <option value="http://joseoncode.com/2010/04/"> April 2010 </option>
-  <option value="http://joseoncode.com/2010/03/"> March 2010 </option>
-  <option value="http://joseoncode.com/2010/02/"> February 2010 </option>
-  <option value="http://joseoncode.com/2010/01/"> January 2010 </option>
-  <option value="http://joseoncode.com/2009/12/"> December 2009 </option>
-  <option value="http://joseoncode.com/2009/11/"> November 2009 </option>
-  <option value="http://joseoncode.com/2009/10/"> October 2009 </option>
-  <option value="http://joseoncode.com/2009/09/"> September 2009 </option>
-  <option value="http://joseoncode.com/2009/08/"> August 2009 </option>
-  <option value="http://joseoncode.com/2009/07/"> July 2009 </option>
-  <option value="http://joseoncode.com/2009/06/"> June 2009 </option>
-  <option value="http://joseoncode.com/2009/05/"> May 2009 </option>
-  <option value="http://joseoncode.com/2009/03/"> March 2009 </option>
-  <option value="http://joseoncode.com/2009/01/"> January 2009 </option>
-  <option value="http://joseoncode.com/2008/12/"> December 2008 </option>
-  <option value="http://joseoncode.com/2008/11/"> November 2008 </option>
-  <option value="http://joseoncode.com/2008/10/"> October 2008 </option>
- </select>
-</li> -->
+      <script type="text/javascript">
+      /* <![CDATA[ */
+        var dropdown = document.getElementById("cat");
+        function onCatChange() {
+          if ( dropdown.options[dropdown.selectedIndex].value != "select-category" ) {
+            location.href = "/tag/"+dropdown.options[dropdown.selectedIndex].value;
+          }
+        }
+        dropdown.onchange = onCatChange;
+      /* ]]> */
+      </script>
+
+    </li>
+
   </ul>
 </div>
 
