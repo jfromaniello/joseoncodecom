@@ -16,6 +16,13 @@
 
     <link rel="stylesheet" href="/css/thematic.css">
     <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/shCore.css">
+    <link rel="stylesheet" href="/css/shThemeDefault.css">
+
+    <script type="text/javascript" src="/js/shCore.js"></script>
+    <script type="text/javascript" src="/js/sh3.brushes.min.js"></script>
+    <script type="text/javascript" src="/js/sh3.third.brushes.min.js"></script>
 
     <meta name="keywords" content="programming, patterns, software, development, .net, wpf, silverlight, romaniello, rest, javascript node.js programming agile ruby" />
     <meta name="description" content="José F. Romaniello software development blog" />
@@ -46,7 +53,7 @@
                 <div class="skip-link"><a title="Skip navigation to the content" href="#content">Skip to content</a></div><!-- .skip-link -->
                 <div class="menu"><ul class="sf-menu sf-js-enabled"><li class="page_item page-item-844">
                 <a title="About me" href="/about-me/">About me</a></li><li class="page_item page-item-850">
-                <a title="Contact me" href="http://joseoncode.com/contact-me/">Contact me</a></li></ul></div>
+                <a title="Contact me" href="/contact-me/">Contact me</a></li></ul></div>
             </div><!-- #access -->
         </div>
         <div id="main">
@@ -81,4 +88,14 @@
             <span class="country-name">argentina</span>
         </div>
     </div>
+
+    <script type="text/javascript">
+        SyntaxHighlighter.config.strings.expandSource = '+ expand source';
+        SyntaxHighlighter.config.strings.help = '?';
+        SyntaxHighlighter.config.strings.alert = 'SyntaxHighlighter\n\n';
+        SyntaxHighlighter.config.strings.noBrush = 'Can\'t find brush for: ';
+        SyntaxHighlighter.config.strings.brushNotHtmlScript = 'Brush wasn\'t configured for html-script option: ';
+        SyntaxHighlighter.defaults['pad-line-numbers'] = false;
+        SyntaxHighlighter.all();
+    </script>
 </html>

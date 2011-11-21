@@ -3,3 +3,4 @@ pygments: true
 paginate: 3
 exclude:  [ Gemfile, Gemfile.lock, Procfile, vendor]
 permalink: pretty
+pygments:  true
