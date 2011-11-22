@@ -47,6 +47,6 @@ I did some modifications in my clone:
 * I wrote an ejekyll extension, which replace the pygments rendering stuff in jekyll with a pygments version hosted in the cloud that I can access with http. I did this because I couldn't install pygments on heroku because it is python.
 * I added the [tag_category_iterator.rb](https://github.com/jfromaniello/joseoncodecom/blob/master/_extensions/tag_category_iterator/tag_category_iterator.rb) ejekyll extension. This extension is an slightly modified version from kismetik. What it does is to add three properties to the "site" template data tags, categories and archives. I used this thing to generate the drop down selectors at the right of this page.
 
-If you like these four things, you can clon my repository or simple copy the files.
+If you like these four things, you can clon [my repository](https://github.com/jfromaniello/joseoncodecom) or simple copy the files.
 
 And that's all I hope I haven't messed up the rss thingy :). 
