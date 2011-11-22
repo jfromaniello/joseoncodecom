@@ -8,6 +8,19 @@
 	<div class="entry-content" >
   	{{ page.content }}
   	</div>
+  	<div class="entry-utility">
+  		<span class="cat-links">Posted in
+  			{% for tag in page.tags %}
+		  	<a rel="category tag" href="/tag/{{tag}}" rel="nofollow">{{tag}}</a>
+			{% endfor %}
+  		</span> 
+  		
+  		<span class="meta-sep meta-sep-tag-links">|</span> 
+  		
+  		<span class="comments-link">
+  			<a title="Comment on PsWatch: {{ page.title }}" 
+  				href="http://joseoncode.com{{ page.url }}#disqus_thread">0 Comments and 0 Reactions</a>
+  		</span>
+  	</div>
 </article>
-
 <hr />
