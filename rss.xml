@@ -4,15 +4,15 @@ layout: nil
 <?xml version="1.0"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>coyled.com</title>
-    <link>http://coyled.com/</link>
-    <atom:link href="http://coyled.com/rss.xml" rel="self" type="application/rss+xml" />
-    <description>stuff from coyled</description>
+    <title>joseoncode.com</title>
+    <link>http://joseoncode.com/</link>
+    <atom:link href="http://joseoncode.com/rss.xml" rel="self" type="application/rss+xml" />
+    <description>José on Code!</description>
     <language>en-us</language>
     <pubDate>{{ site.time | date: "%a, %d %b %Y %H:%M:%S %z" }}</pubDate>
     <lastBuildDate>{{ site.time | date: "%a, %d %b %Y %H:%M:%S %z" }}</lastBuildDate>
 
-    {% for post in site.posts %}
+    {% for post in site.posts limit:10 %}
     <item>
       <title>{{ post.title }}</title>
       <link>http://coyled.com{{ post.url }}</link>
