@@ -1,0 +1,8 @@
+{% comment %}
+This is the template used to show an entry in archives.
+Archives include: "by tags" and "by time" archives.
+{% endcomment %}
+<li> 
+<a href="{{post.url}}">{{ post.title }}</a><br>
+	<span class="entry-meta">Published: {{ post.date | date: "%B %d, %Y" }}</span>
+</li>

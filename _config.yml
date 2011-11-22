@@ -4,3 +4,5 @@ paginate: 3
 exclude:  [ Gemfile, Gemfile.lock, Procfile, vendor]
 permalink: pretty
 pygments:  true
+archive_title_prefix: "Jose on Code! archive: \""
+tag_title_prefix: "Jose on Code! tag: \""
