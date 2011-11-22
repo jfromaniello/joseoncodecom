@@ -6,3 +6,4 @@ permalink: pretty
 pygments:  true
 archive_title_prefix: "Jose on Code! archive: \""
 tag_title_prefix: "Jose on Code! tag: \""
+baseurl: http://joseoncode.com
