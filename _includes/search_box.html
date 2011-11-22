@@ -35,7 +35,18 @@
         dropdown.onchange = onCatChange;
       /* ]]> */
       </script>
+    </li>
 
+    <li class="widgetcontainer widget_archive" id="archives-2"><h3 class="widgettitle">Archives</h3>
+     <select onchange="document.location.href=this.options[this.selectedIndex].value;" 
+             name="archive-dropdown"> 
+      <option value="">Select Month</option>   
+      {% for period in site.iterable.archives %}
+      <option value="http://joseoncode.com/{{period["year"]}}/{{period["month"]}}/">
+      {{period["month_name"]}} {{period["year"]}} ({{period["posts"].size}}) 
+      </option>
+      {% endfor %}
+     </select>
     </li>
 
   </ul>

@@ -34,7 +34,15 @@ module Jekyll
     result = proceed.call
     result['site']['iterable'] = {
       'categories' => site_instance.make_iterable(site_instance.categories, :index => 'name', :items => 'posts'),
-      'tags' => site_instance.make_iterable(site_instance.tags, :index => 'name', :items => 'posts')
+      'tags' => site_instance.make_iterable(site_instance.tags, :index => 'name', :items => 'posts'),
+      #added by Jose
+      'archives' => site_instance.posts.group_by{ |c| {"month" => "%02d" % c.date.month, 
+                                                       "year" => c.date.year.to_s(), 
+                                                       "month_name" => c.date.strftime("%B") } }
+                    .each{ |period,posts| period["posts"] = posts }
+                    .map{ |period, posts| period }
+                    .reverse()
+      ##############
     }
     result
   end
