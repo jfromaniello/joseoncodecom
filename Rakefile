@@ -1,13 +1,15 @@
-desc 'notify search engines'
+desc 'push to github and heroku'
 task :default do
 	puts '* Pushing to github'
 	`git push origin`
-	
+
 	puts '* Deploying to heroku'
 	`git push heroku`
 	
 	Rake::Task["sitemap"].invoke
 end
+
+desc 'notify search engines'
 task :sitemap do
   begin
     require 'net/http'
