@@ -1,1 +1,1 @@
-web:  ejekyll --server $PORT
+web:  bundle exec thin start -p $PORT
