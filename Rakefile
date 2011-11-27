@@ -51,3 +51,9 @@ task :new_post, :title do |t, args|
     post.puts "---"
   end
 end
+
+task :runwindows do
+	puts '* Changing the codepage'
+	`chcp 65001`
+	`ejekyll --server --auto`
+end
