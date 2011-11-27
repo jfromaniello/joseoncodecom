@@ -24,7 +24,8 @@ Instead I added a new rake task as follows:
 	task :runwindows do
 		puts '* Changing the codepage'
 		`chcp 65001`
-		`ejekyll --server --auto`
+		puts '* Running Jekyll'
+		`jekyll --server --auto`
 	end
 	
 and now I can execute jekyll with:
