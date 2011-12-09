@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "How I use Jing when writing a blog post in markdown"
+title: "How I use Jing to add screenshots in markdown"
 date: 2011-12-09 00:35
 tags: 
 - jekyll
