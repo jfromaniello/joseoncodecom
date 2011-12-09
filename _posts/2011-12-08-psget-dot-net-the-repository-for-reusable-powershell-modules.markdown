@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "PsGet.Net the repository for reusable powershell modules"
+title: "PsGet.Net a repository of reusable powershell modules"
 date: 2011-12-08 23:02
 tags: 
 - powershell
@@ -17,19 +17,19 @@ This is something really needed in the powershell echosystem; a centralized plac
 [PsGet](http://psget.net/) is a powershell pure-module you can easily install it with one line:
 
 {% highlight bash %}
-    (new-object Net.WebClient).DownloadString("http://psget.net/GetPsGet.ps1") | iex
+(new-object Net.WebClient).DownloadString("http://psget.net/GetPsGet.ps1") | iex
 {% endhighlight %}
 
 And then you have to import the module as any other powershell module before using it:
 
 {% highlight bash %}
-    Import-Module PsGet
+Import-Module PsGet
 {% endhighlight %}
 
 and then you can start using it. There is only one important command for now which is Install-Module. For instance if you want to install my PsWatch script, you do:
 
 {% highlight bash %}
-    Install-Module PsWatch
+Install-Module PsWatch
 {% endhighlight %}
 
 and you are done!
@@ -39,7 +39,7 @@ and you are done!
 Another interesting thing about PsGet is that you don't need to publish something to the repository in order to install it. You can use the modifiers -ModuleName to set the name of the module, and -ModuleUrl to provide an url where the module content is served as plain text:
 
 {% highlight bash %}
-    Install-Module -ModuleUrl https://mydomain.com/mymodule.psm1 -ModuleName my-module
+Install-Module -ModuleUrl https://mydomain.com/mymodule.psm1 -ModuleName my-module
 {% endhighlight %}
 
 If you want to take a look to the scripts already published you can look [here](http://psget.net/directory/).
