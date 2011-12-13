@@ -78,9 +78,19 @@ module Jekyll
     #  +site+ is the global Site object.
     def generate_content(site)
       result   = ''
+
+      #Add first pages
+      result += entry("/index.html", Time.new, "daily", site, "1.0")
+      result += entry("/about-me/", DateTime.new(2010, 12, 1, 12, 0, 0, 0), "never", site, "1.0")
+      result += entry("/contact-me/",  DateTime.new(2010, 12, 1, 12, 0, 0, 0), "never", site, "1.0")
+      # result += entry("/#{Time.new.year}/#{Time.new.month}/",  Time.new, "weekly", site, "1.0")
+      
+
+
             
       # Next, find all the posts.
       posts = site.site_payload['site']['posts']
+      
       for post in posts do
         if post.data.has_key?('changefreq')
           changefreq = post.data["changefreq"]
@@ -89,7 +99,7 @@ module Jekyll
         end
         url = post.url
         url = url[0..-11] if url=~/\/index.html$/
-        result += entry(url, post.date, changefreq, site)
+        result += entry(url, post.date, changefreq, site, "0.9")
       end
       
         result
@@ -107,7 +117,7 @@ module Jekyll
     #  +changefreq+ is the frequency with which the page is expected to change (this information is used by
     #    e.g. the Googlebot). This may be specified in the page's YAML front matter. If it is not set, nothing
     #    is output for this property.
-    def entry(path, date, changefreq, site)
+    def entry(path, date, changefreq, site, priority)
       # Remove the trailing slash from the baseurl if it is present, for consistency.
       baseurl = site.config['baseurl'] || "http://joseoncode.com"
       baseurl = baseurl[0..-2] if baseurl=~/\/$/
@@ -115,6 +125,7 @@ module Jekyll
       "
   <url>
       <loc>#{baseurl}#{path}</loc>
+      <priority>#{priority}</priority>
       <lastmod>#{date.strftime("%Y-%m-%d")}</lastmod>#{if changefreq.length > 0
           "\n      <changefreq>#{changefreq}</changefreq>" end}
   </url>"
