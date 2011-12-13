@@ -12,14 +12,6 @@ use Rack::TryStatic,
 
 map '/' do
   # otherwise 404 NotFound
-  req = Rack::Request.new(env)
-  ends_with_dash = (req.path =~ /\/$/) != nil
-  ends_with_html = (req.path =~ /\.html$/) != nil
-  run Proc.new {|env| [302, {'Location' => req.query_string.empty? ? "#{path}/" : "#{path}/?#{query_string}"}, ["infinity 0.1"]] } if !ends_with_dash
-end
-
-map '/' do
-  # otherwise 404 NotFound
   run Proc.new {|env| [404, {"Content-Type" => "text/html"}, ["Not Found... Sorry!"]] }
 end
 
