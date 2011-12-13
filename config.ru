@@ -11,7 +11,7 @@ use Rack::TryStatic,
 
 map '/' do
   # otherwise 404 NotFound
-  run Proc.new {|env| [404, {"Content-Type" => "text/html"}, ["Not Found. We miss this page."]] }
+  run Proc.new {|env| [404, {"Content-Type" => "text/html"}, ["Not Found... Sorry!"]] }
 end
 
 # I use a wrong character for this article and was causing lot of headaches
