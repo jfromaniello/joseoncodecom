@@ -19,7 +19,7 @@ layout: nil
 		<title>{{ post.title }}</title>
 		<link type="text/html" rel="alternate" href="http://joseoncode.com{{ post.url }}"/>
 		<updated>{{ post.date | date_to_xmlschema }}</updated>
-		<id>http://joseoncode.com{{ post.id }}</id>
+		<id>http://joseoncode.com{{ post.id }}/</id>
 		<author>
 			<name>José F. Romaniello</name>
 			<uri>http://joseoncode.com/</uri>
