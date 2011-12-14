@@ -8,7 +8,7 @@ use Rack::CommonLogger
 use Rack::TryStatic, 
     :root => "_site",   # static files root dir
     :urls => %w[/],     # match all requests 
-    :try => ['.html', 'index.html'] # try these postfixes sequentially
+    :try => ['.html', 'index.html', '/index.html'] # try these postfixes sequentially
 
 map '/' do
   # otherwise 404 NotFound
