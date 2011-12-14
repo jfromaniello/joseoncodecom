@@ -9,7 +9,9 @@
     <meta name="copyright" content="José F. Romaniello" />
     <meta name="DC.title" content="Jose on Code!" />
     <meta name="keywords" content=".NET, C#, Romaniello, José, Jose, blog, node, ruby, wcf, wpf, cloud, programming, patterns, joseoncode.com - Jose on Code!" />
-    <meta name="robots" content="{{ page.meta-robots ||  "all" }}" />
+    {% if page.meta-robots %}
+    <meta name="robots" content="{{ page.meta-robots }}" />
+    {% endif %}
     <meta name="application-name" content="Jose on Code!" />
 
     <link rel="me" type="text/html" href="http://profiles.google.com/jfromaniello?rel=me"> 
