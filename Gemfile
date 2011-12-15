@@ -6,6 +6,6 @@ gem 'RedCloth'
 gem 'jekyll'
 gem 'jekyll_ext'
 gem 'rdiscount'
-gem 'rack'
-gem 'rack-try_static'
+gem 'rack', "= 1.1.0"
+gem 'rack-contrib'
 gem 'thin'

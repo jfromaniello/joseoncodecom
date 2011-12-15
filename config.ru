@@ -1,9 +1,14 @@
 require 'rack'
 require 'rack/contrib/try_static'
+require 'rack/contrib/static_cache'
 
 system("ejekyll")
 
 use Rack::CommonLogger
+
+use Rack::StaticCache, 
+    :urls => ["/css", "/js" ], :root => "_site",
+    :duration => 0.5
 
 use Rack::TryStatic, 
     :root => "_site",   # static files root dir
