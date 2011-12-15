@@ -250,7 +250,7 @@ ul.sf-menu li li li:hover ul, ul.sf-menu li li li.sfHover ul {
     text-transform: uppercase;
 }
 .entry-meta a {
-    color: #666666;
+    /*color: #666666;*/
     text-decoration: none;
 }
 .entry-meta a:active, .entry-meta a:hover {
