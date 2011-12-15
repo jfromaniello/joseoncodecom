@@ -4,7 +4,7 @@ module Jekyll
     def initialize(site, base, dir, period, posts)
       @site = site
       @base = base
-      @dir = dir
+      @dir = "/" + dir
       @name = 'index.html'
       self.process(@name)
       self.read_yaml(File.join(base, '_layouts'), 'archive_index.html')

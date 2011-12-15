@@ -12,6 +12,10 @@
     {% if page.meta-robots %}
     <meta name="robots" content="{{ page.meta-robots }}" />
     {% endif %}
+    {% if page.url %}
+    <link rel="canonical" href="http://joseoncode.com{{page.url | replace:'index.html',''}}" />
+    {% endif %}
+    
     <meta name="application-name" content="Jose on Code!" />
 
     <link rel="me" type="text/html" href="http://profiles.google.com/jfromaniello?rel=me"> 
