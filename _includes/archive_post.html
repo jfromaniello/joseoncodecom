@@ -7,7 +7,7 @@ Archives include: "by tags" and "by time" archives.
 	<span class="entry-meta">Published: {{ post.date | date: "%B %d, %Y" }}</span>
 	<span class="entry-meta cat-links">Posted in
 	{% for tag in post.tags %}
-		<a rel="category tag" href="/tag/{{tag}}" rel="nofollow">{{tag}}</a>
+		<a rel="nofollow" href="/tag/{{tag}}">{{tag}}</a>
 	{% endfor %}
 	</span> 
 
