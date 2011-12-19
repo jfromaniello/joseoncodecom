@@ -13,6 +13,9 @@
     {% if page.meta-robots %}
     <meta name="robots" content="{{ page.meta-robots }}" />
     {% endif %}
+    {% if paginator.page > 1 %}
+    <meta name="robots" content="noindex, noarchive, follow" />
+    {% endif %}
     {% if page.url %}
     <link rel="canonical" href="http://joseoncode.com{{page.url | replace:'index.html',''}}" />
     {% endif %}
