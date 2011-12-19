@@ -4,4 +4,4 @@ This blog uses [Jekyll](https://github.com/mojombo/jekyll) and [Jekyll Extension
 
 All the infrastracture to run this blog is open sourced under the [MIT license](http://www.opensource.org/licenses/mit-license.php).
 
-The exact content of the articles (the _posts folder) are Copyright by the José F. Romaniello.
+The exact content of the articles (the _posts folder) are Copyright by José F. Romaniello.
