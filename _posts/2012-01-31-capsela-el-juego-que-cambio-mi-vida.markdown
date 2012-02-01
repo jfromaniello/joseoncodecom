@@ -27,7 +27,7 @@ Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemá
 
 *  Cápsula motor: El motor incorporado es alimentado de la pila externa. Sí usted desea cambiar el sentido de la rotación del motor, invierta la posición del cable de la batería. Sí usted desea usar la caja del interruptor, colocar los cables como se indica en el diseño. Estar bien atento de no mojar el motor, corre el riesgo de dañarlo.
 
-*  Cápsula de reducción de velocidad a estado multiple: Esta cápsula reduce la velocidad del eje, y al mismo tiempo aumenta el momento de torsión o la fuerza de rotación. Para un buen funcionamiento del motor, el mismo debe ser conectado al eje de enrtada. Si por error es colocado al eje de salida, el motor no se movera. Para saber cual es el eje de entrada, hagalo rotar con el dedo. El eje de entrada es el que rota facilmente.
+*  Cápsula de reducción de velocidad a estado multiple: Esta cápsula reduce la velocidad del eje, y al mismo tiempo aumenta el momento de torsión o la fuerza de rotación. Para un buen funcionamiento del motor, el mismo debe ser conectado al eje de entrada. Si por error es colocado al eje de salída, el motor no se moverá. Para saber cual es el eje de entrada, hágalo rotar con el dedo. El eje de entrada es el que rota fácilmente.
 
 *  Cápsula de cambio de la marcha: Esta cápsula combina la función del cambio de la velocidad con la cápsula de la rueda y diente en una sola unidad. De este modo se puede reducir la velocidad del eje y cambiar la dirección de la fuerza motriz directamente en angúlo recto.
 
