@@ -62,7 +62,7 @@ Que en mi opinión sintetiza muchisimos años de la historia de la mecánica.
 Lo que se pueden armar
 ======================
 
-Con las partes antes mencionadas se podía armar este tipo de cosas:
+Con las partes antes mencionadas se puede armar este tipo de cosas:
 
 ![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-07.jpg)
 
@@ -97,6 +97,6 @@ Por empezar no estudie ingeniería mecánica. Sin embargo me abrió la cabeza, l
 
 Despertó en mí un deseo e interés por la ingeniería. Visto hacia atrás, encuentro muchas similitudes entre mi trabajo actual como desarrollador de software y este juego. De hecho cualquier ingeniería se asemeja; "aquí están tus herramientas y estos son los bloques que puedes utilizar, ahora construye lo que quieras! el único límite es tu imaginación!!". Tal vez ahora no se aplica "lo que quieras", mas bien lo que otro quiera. Pero como a muchos de los mejores profesionales con los que he trabajado les sucede, nuestro trabajo se convierte en nuestro hobby y es ahí cuando dejamos volar nuestra imaginación de nuevo, al igual que el José de 10 años sentado en su habitación, pensando que inventar.
 
-Mi mamá guardo todas las partes del juego a pesar de que yo las ignoré por mucho tiempo, y hace dos años ya, encontré una persona en mercadolibre que vendía el suyo. A pesar de que era una versión que traía menos partes que el que ya tenía y de que había sido usado, estaba en excelentes condiciones. Ahora tengo 2 Capsela, y a veces armamos cosas muy alocadas con mi hija Valentina (6 años).
+Mi mamá guardó todas las partes del juego a pesar de que yo las ignoré por mucho tiempo, y hace dos años ya, encontré una persona en mercadolibre que vendía el suyo. A pesar de que era una versión que traía menos partes que el que ya tenía y de que había sido usado, estaba en excelentes condiciones. Ahora tengo 2 Capsela, y a veces armamos cosas muy alocadas con mi hija Valentina (6 años).
 
 Para terminar este artículo, me gustaría felicitar a las personas que diseñaron este jueguete, moriría de felicidad si alguno de ellos leyera esto, y agradecer a mis padres, Gines y Franca, por haberlo comprado en Toys"R"Us en 1995.
