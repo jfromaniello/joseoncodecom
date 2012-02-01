@@ -60,7 +60,7 @@ Que en mi opinión sintetiza muchisimos años de la historia de la mecánica.
 
 
 Lo que se pueden armar
-=============================
+======================
 
 Con las partes antes mencionadas se podía armar este tipo de cosas:
 
@@ -80,6 +80,15 @@ Con las partes antes mencionadas se podía armar este tipo de cosas:
 
 El manual de instrucciones trae muchos ejemplos más pero no es mi intención aburrir.
 
+
+Comercial de televisión
+=======================
+
+También encontré esta otra perlita, un comercial de TV de los años 80' supongo.
+
+<iframe width="420" height="315" src="http://www.youtube.com/embed/xXfla5LU8gc" frameborder="0" allowfullscreen></iframe>
+
+En este video se puede ver incluso un control remoto que yo nunca tuve. Como así también leí en [wikipedia](http://en.wikipedia.org/wiki/Capsela) que se fabricó un modelo que tenía una interfaz para conectar a Commodore 64, un antecesor Lego Mindstorms.
 
 ¿Cómo me afecto este juego?
 ===========================
