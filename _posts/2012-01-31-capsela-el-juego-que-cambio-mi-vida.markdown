@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Capsela, el juego que cambio mi vida"
+title: "Capsela, el juego que cambió mi vida"
 date: 2012-01-31 22:46
 tags:
 - misc 
