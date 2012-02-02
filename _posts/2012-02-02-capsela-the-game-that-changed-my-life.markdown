@@ -23,7 +23,7 @@ Mechanical capsules are beautiful, with its gears inside those are some of the m
 
 ![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-02.jpg)
 
-Unfortunately, the manual I have is in three different languages German, Italian and Icelandic, but I will do my best here. 
+Unfortunately, the manual I have is in three different languages German, Italian and Icelandic, and I can vaguely read some italian but I will do my best here with the help of Google Translate :) 
 
 *  Motor Capsule; The motor inside is fed with an external battery. If you want to change the direction of rotation, change the position of the battery wires. If you want to use the switch box, put the cables as shown in the figure. Be careful not wet the engine, risk of dammage.
 
