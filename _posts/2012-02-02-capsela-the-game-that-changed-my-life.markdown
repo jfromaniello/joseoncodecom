@@ -15,7 +15,7 @@ I couldn't found a lot of information about this game in internet nowadays. Abou
 What is this game?
 =================
 
-The game is about connecting capsules to create various kinds of "models". Each capsule has a different mechanical or electrical purposes. Those models are mostly vehicles for both water and land, although it is possible to build cranes, robots, water pumps and even a cleaner dust vacuum. While the game manual comes with a vast collection of photos with models you can create, much more interesting is to let your imagination flow and build things in your head, a "crawler crane vacuum"? sounds interesting.
+The game is about connecting capsules to create various kinds of "models". Each capsule has a different mechanical or electrical purpose. Those models are mostly vehicles for both water and land, although it is possible to build cranes, robots, water pumps and even a cleaner dust vacuum. While the game manual comes with a vast collection of photos with models you can create, much more interesting is to let your imagination flow and build things in your head, a "crawler crane vacuum"? sounds interesting.
 
 Every model starts from a fundamental capsule that contains the motor and two terminals in which you have to "connect" the power wires from the batteries (which in turn is placed inside another capsule) or a switch.
 
