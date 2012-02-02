@@ -56,7 +56,7 @@ Another interesting thing in the manual is this:
 
 ![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-05.jpg)
 
-Which my humble opinion summarizes a lot of years in the mechanical history. 
+Which in my humble opinion summarizes a lot of years in the history of mechanical engineering. 
 
 
 Things you can assemble
