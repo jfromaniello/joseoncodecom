@@ -23,7 +23,7 @@ Then you can run it in your application folder:
 $ winser -i
 {% endhighlight %}
 
-winser will take your application name from your package.json and use it as the windows service name. 
+winser will take the application name from your package.json and use it as the windows service name. 
 *You must run this command in an elevated console.*
 
 Also you can add two scripts to your package.json:
