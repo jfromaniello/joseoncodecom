@@ -1,13 +1,13 @@
 ---
 layout: post
-title: "node.js and the beauty of working on a platform that embrace opensource"
+title: "node.js and the beauty of working on a platform that embraces opensource"
 date: 2012-05-31 08:06
 tags:
 - node
 - javascript 
 ---
 
-In will show in this article one of the most beautiful things of working in node.js and how it node.js embraces and encourage opensource the right way.
+In will show in this article one of the most beautiful things of working in node.js and how it node.js embraces opensource the right way.
 
 I have been working full time in a project using node.js for [Tellago Studios](http://www.tellagostudios.com/), I have read a lot of posts about node.js being cancer, why don't using node.js, why javascripts callbacks sucks for async workflows and so on, and even if I agree with some things at some point there are things in node.js done right, things to applaud and things to learn from it. This article is about something to applaud and learn from it.  
 
@@ -124,7 +124,7 @@ It means that when trying to solve the module Bar from Foo, this thing will star
 
 and as is explained there, first it will look for Bar in the first node_modules folder.
 
-And last but not least is the fact that the node.js community understand how opensource works and they have embraced it. All modules in node.js are opensource, and almost all modules in node are in git and in github. It is easy to understand modules because all modules have almost the same file structure package.json, lib/bin folders, etc. This means there is a way to do it and most people is following that way.
+And last but not least is the fact that the node.js community understand how opensource works. All modules in node.js are opensource, and almost all modules in node are in git and in github. It is easy to understand modules because all modules have almost the same file structure package.json, lib/bin folders, etc. This means there is a way to do it and most people is following that way.
 
 I have the pleasure to assist to jsConf in Argentina and listen to [[4] Isaac Z. Schlueter](http://blog.izs.me/) current *curator* of node.js and creator of npm and it is not surprising that the technical thing explained here is in the same line that the principles he encourage. Unfortunately the talk is not online (yet? saw it was being recorded) neither his slides but I found slides from another very similar talk [[5] TacoConf Anarchism](http://blog.izs.me/post/23048895912/tacoconf-anarchism)
 
