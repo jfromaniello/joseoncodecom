@@ -69,4 +69,6 @@ pre {
     overflow: auto;
     max-height: 600px;
     padding: 3px;
+    padding-right: 10px;
+    padding-left: 20px;
 }
