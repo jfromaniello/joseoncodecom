@@ -52,7 +52,7 @@
 .highlight .sb { color: #dd2200; background-color: #fff0f0 } /* Literal.String.Backtick */
 .highlight .sc { color: #dd2200; background-color: #fff0f0 } /* Literal.String.Char */
 .highlight .sd { color: #dd2200; background-color: #fff0f0 } /* Literal.String.Doc */
-.highlight .s2 { color: #dd2200; background-color: #fff0f0 } /* Literal.String.Double */
+.highlight .s2 { color: #dd2200;  } /* Literal.String.Double. It was background-color: #fff0f0 before :(; */
 .highlight .se { color: #0044dd; background-color: #fff0f0 } /* Literal.String.Escape */
 .highlight .sh { color: #dd2200; background-color: #fff0f0 } /* Literal.String.Heredoc */
 .highlight .si { color: #3333bb; background-color: #fff0f0 } /* Literal.String.Interpol */
