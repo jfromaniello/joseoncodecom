@@ -9,7 +9,7 @@ tags:
 
 In will show in this article one of the most beautiful things of working in node.js and how it node.js embraces opensource the right way.
 
-I have been working full time in a project using node.js for [Tellago Studios](http://www.tellagostudios.com/), I have read a lot of posts about node.js being cancer, why don't using node.js, why javascripts callbacks sucks for async workflows and so on, and even if I agree with some things at some point there are things in node.js done right, things to applaud and things to learn from it. This article is about something to applaud and learn from it.  
+I have been working full time in a project using node.js for [Tellago Studios](http://www.tellagostudios.com/), I have read a lot of posts about node.js being cancer, why node.js sucks, why ruby is better, why javascripts callbacks for async workflows are complex and so on, and even if I agree with some things at some point there are things in node.js done right, things to applaud and things to learn from it. This article is about something to applaud.  
 
 # tl;dr
 
@@ -83,7 +83,7 @@ As crazy as it might sound, we can easily do this in OUR package.json:
 }
 {% endhighlight %}
 
-run **npm install** and you are done. Your project and most important, your local instance of the package Foo is using the fork of your Bar. Your team will be able to work with and everyone is happy. We can even omit the pull request if I find is something useful only in my project or something that should not be on the main repository of bar.
+run **npm install** and you are done. Your project and most important, your local instance of the package Foo is using the your fork of Bar. Your team will be able to work with and everyone will be happy. We can even omit the pull request if we find that is something useful only in our project or something that should not be on the main repository.
 
 We can also release our project as opensource and no one is going to be affected.
 
@@ -91,7 +91,7 @@ Whats the price for a feature like this in a programming language / platform?
 
 # How does it works?
 
-There are few things involved in this.
+There are few things that make this possible.
 
 The first thing is the ability of **npm** to install things from a git repository as explained in [[2] npm install](http://npmjs.org/doc/install.html) the package could be:
 
@@ -129,8 +129,8 @@ And last but not least is the fact that the node.js community understand how ope
 I have the pleasure to assist to jsConf in Argentina and listen to [[4] Isaac Z. Schlueter](http://blog.izs.me/) current *curator* of node.js and creator of npm and it is not surprising that the technical thing explained here is in the same line that the principles he encourage. Unfortunately the talk is not online (yet? saw it was being recorded) neither his slides but I found slides from another very similar talk [[5] TacoConf Anarchism](http://blog.izs.me/post/23048895912/tacoconf-anarchism)
 
 
-[[1] Node.js: Modules - All together](http://nodejs.org/docs/latest/api/modules.html#modules_all_together)
-[[2] npm install](http://npmjs.org/doc/install.html)
-[[3] node-inspector](https://github.com/dannycoates/node-inspector) 
-[[4] Isaac Z. Schlueter](http://blog.izs.me/)
-[[5] TacoConf Anarchism](http://blog.izs.me/post/23048895912/tacoconf-anarchism)
+* [[1] Node.js: Modules - All together](http://nodejs.org/docs/latest/api/modules.html#modules_all_together)
+* [[2] npm install](http://npmjs.org/doc/install.html)
+* [[3] node-inspector](https://github.com/dannycoates/node-inspector) 
+* [[4] Isaac Z. Schlueter](http://blog.izs.me/)
+* [[5] TacoConf Anarchism](http://blog.izs.me/post/23048895912/tacoconf-anarchism)
