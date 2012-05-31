@@ -7,7 +7,7 @@ tags:
 - javascript 
 ---
 
-In will show in this article one of the most beautiful things of working in node.js and how it node.js embraces opensource the right way.
+In this article I will show one of the most beautiful things of working with node.js and how noders do open source in the right way.
 
 I have been working full time in a project using node.js for [Tellago Studios](http://www.tellagostudios.com/), I have read a lot of posts about node.js being cancer, why node.js sucks, why ruby is better, why javascripts callbacks for async workflows are complex and so on, and even if I agree with some things at some point there are things in node.js done right, things to applaud and things to learn from it. This article is about something to applaud.  
 
@@ -36,16 +36,16 @@ If you look at the your project folder you will see a tree like this:
 
 {% highlight text %}
 myproject/
-    server.js
-    package.json
-    node_modules/
-        foo/
-            package.json
-            node_modules/
-            bar/
-                package.json
-                node_modules/
-                    another/
+  server.js
+  package.json
+  node_modules/
+    foo/
+      package.json
+      node_modules/
+        bar/
+          package.json
+          node_modules/
+            another/
 {% endhighlight %}
 
 Now suppose that you find a bug, you fire up [[3] node-inspector](https://github.com/dannycoates/node-inspector) and you start digging in your modules, then you figure out that the problem is in the module "bar". 
