@@ -58,7 +58,7 @@ Now, the flow will be something like this:
 4. Push to your fork of the project
 5. Do a pull request to the project owner[s]
 
-So far this is are the standards steps you will take in any platform, even in .net. Because node.js developers take so **serious** this opensource business it is very likely that your pull request will be at least reviewed or discussed the same day. 
+So far these are the standards steps you will take in any platform, even in .net. Because node.js developers take so **serious** this opensource business it is very likely that your pull request will be at least reviewed or discussed the same day. 
 
 **But what if not?**
 
