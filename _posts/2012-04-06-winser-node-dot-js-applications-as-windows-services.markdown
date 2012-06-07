@@ -7,7 +7,7 @@ tags:
  - javascript
 ---
 
-[WinSer](https://github.com/jfromaniello/winser) is a new node.js module I have created to install node.js applications as windows services.
+[WinSer](http://jfromaniello.github.com/winser) is a new node.js module I have created to install node.js applications as windows services.
 
 First you install the package:
 
