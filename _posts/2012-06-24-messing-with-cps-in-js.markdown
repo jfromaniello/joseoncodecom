@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Changing everything to CPS in JavaScript"
+title: "Messing with CPS in JavaScript"
 date: 2012-06-24 21:00
 tags: 
 - javascript
