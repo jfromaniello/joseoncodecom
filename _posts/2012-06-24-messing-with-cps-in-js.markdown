@@ -11,8 +11,8 @@ tags:
 
 I wont explain what is [Continuation Passing Style](http://en.wikipedia.org/wiki/Continuation-passing_style).
 
-Let's invent a problem
-======================
+The example
+===========
 
 Imagine that we need to create a function to retrieve the **arrival date** for a given **flight number** and **departure date**. The **departure date** is optional and if not specified, then we have to fetch the last flight with the flight number first. 
 
