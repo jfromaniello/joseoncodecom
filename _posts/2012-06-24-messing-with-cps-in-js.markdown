@@ -23,11 +23,11 @@ Something like this:
  * Fetch the arrival date for a given flight and departure date.
  * If departure date is not specified, then return last flight arrival date.
  */
-function getArrivalDate(flight, departureDate){
+function getArrivalDate(flightNumber, departureDate){
   if(!departureDate){
-    departureDate = request.getJson("http//airline.com/api/flights/" + flight + "/last/").departureDate;
+    departureDate = request.getJson("http//airline.com/api/flights/" + flightNumber + "/last/").departureDate;
   }
-  return request.getJson("http//airline.com/api/flights/" + flight + "/schedules/" + departureDate).arrival;
+  return request.getJson("http//airline.com/api/flights/" + flightNumber + "/schedules/" + departureDate).arrival;
 }
 {% endhighlight %}
 
@@ -97,7 +97,7 @@ var flow = {
 then we can define our getArrivalDate as this:
 
 {% highlight javascript %}
-function getArrivalDate(flight, departureDate, callback){
+function getArrivalDate(flightNumber, departureDate, callback){
   flow.if(!departureDate, function(next){
     request.getJson("http//airline.com/api/flights/" + flightNumber + "/last/", next);
   }, function(err, flight){
