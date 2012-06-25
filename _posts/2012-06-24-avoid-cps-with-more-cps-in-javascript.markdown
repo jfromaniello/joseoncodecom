@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Avoid CPS by doing more CPS in javascript"
+title: "Enhance CPS with more CPS in JavaScript"
 date: 2012-06-24 21:00
 tags: 
 - javascript
