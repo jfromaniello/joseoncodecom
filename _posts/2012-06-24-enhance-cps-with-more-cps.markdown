@@ -77,8 +77,8 @@ Now is better. By sure you can do something better than this using one of the ga
 
 But for the sake of this experiment let's try to do something different now.
 
-Writing an CPS - IF statement
-=============================
+A CPS IF statement
+==================
 
 With a function like this:
 
