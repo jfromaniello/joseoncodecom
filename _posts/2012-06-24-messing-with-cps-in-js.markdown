@@ -125,7 +125,7 @@ The other way!
 
 Another way is to avoid CPS at all. If you look at:
 
-* [C# async-awayt](http://bit.ly/MIVgZ6)
+* [C# async-await](http://bit.ly/MIVgZ6)
 * [F# asynchronous workflows](http://msdn.microsoft.com/en-us/library/dd233250.aspx)
 * [Iced CoffeeScript](http://maxtaco.github.com/coffee-script/)
 * [ecmascript vNext discussion?](http://wiki.ecmascript.org/doku.php?id=strawman:deferred_functions)
