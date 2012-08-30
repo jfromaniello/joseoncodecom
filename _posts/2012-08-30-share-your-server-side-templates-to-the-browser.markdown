@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Share server-side templates with the browser using AMD and Jam"
+title: "Share server-side templates with the browser using AMD"
 date: 2012-08-30 10:04
 tags: 
 - node.js
