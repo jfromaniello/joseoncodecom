@@ -6,7 +6,9 @@ tags:
 - node
 ---
 
-For the node knockout we are working on an application that allows anybody to create a live stream of content for a social event.
+For the node knockout we are working on an application that allows anybody to create a live stream of content for a social event, imagine a basketball game or a programming competition :).
+
+The events come in realtime and you can enable desktop notifications.
 
 You can point your friends with a [link](http://jsarg.nko3.jit.su/streams/509e6645253e55b264000001) but also you can be embed on any page:
 
