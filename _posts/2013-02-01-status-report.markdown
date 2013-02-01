@@ -17,7 +17,7 @@ After Tellago I took some time to try new ideas on my own, while I was looking f
 
 After two months or so in this situation I found an amazing and talented group of people to work with. [Matías Woloski][3] was leaving SouthWorks and planning something with [Eugenio Pace][4]. They told me about their plans and it feel like a great people to work with. I enjoy every day I work with them and I am very thankful for having this opportunity.
 
-So what are we up to? The company names is [Qraftlabs][5] which is a word that mix Quality, Craft and Lab and describes us very well. In the last few months we have been doing a little of consultancy and at the same time a new product which I think is looking great and going to be a success called [Auth0][6].
+So what are we up to? The company name is [Qraftlabs][5] which is a word that mix Quality, Craft and Lab and describes us very well. In the last few months we have been doing a little of consultancy and at the same time a new product which I think is looking great and going to be a success called [Auth0][6].
 
 Auth0 make it easy for small startups to sell their services to companies. Lets say you have product which is an *issue tracker* and this product authenticate users through google, now suppose that bigcompany.com wants to use your product but they want/need their employees to use their @bigcompany.com accounts and they want to be able to share issues with their employees. Your product will have to support some weird combinations of identity providers like office365, adfs, google (apps), etc. and also be able to query these directories. Auth0 does this for you and we have prepared a lot of docs and samples about it. If your are interested in Auth0 follow [our blog][7] and [twitter][8].
 
