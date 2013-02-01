@@ -15,7 +15,7 @@ The most important thing about my last project in Tellago is that it gave me a l
 
 After Tellago I took some time to try new ideas on my own, while I was looking for a more stable job. I had some very good job offers but I have to admit that I am very picky about jobs now. Which is bad because at the same time I need money to live and maintain a family :). 
 
-After two months or so in this situation I found an amazing and talented group of people to work with. [Matías Woloski][3] was leaving SouthWorks and planning something with [Eugenio Pace][4]. They told me about their plans and it feel like a great people to work with. I enjoy every day I work with them and I am very thankful for having this opportunity.
+After two months or so in this situation I found an amazing and talented group of people to work with. [Matías Woloski][3] was leaving SouthWorks and planning something with [Eugenio Pace][4]. They told me about their plans and it felt like a great people to work with. I enjoy every day I work with them and I am very thankful for having this opportunity.
 
 So what are we up to? The company name is [Qraftlabs][5] which is a word that mix Quality, Craft and Lab and describes us very well. In the last few months we have been doing a little of consultancy and at the same time a new product which I think is looking great and going to be a success called [Auth0][6].
 
