@@ -15,7 +15,7 @@ The most important thing about my last project in Tellago is that it gave me a l
 
 After Tellago I took some time to try new ideas on my own, while I was looking for a more stable job. I had some very good job offers but I have to admit that I am very picky about jobs now. Which is bad because at the same time I need money to live and maintain a family :). 
 
-After two months or so in this situation I found an amazing and talented group of people to work with. [Matías Woloski][3] was leaving SouthWorks and planning something with [Eugenio Pace][4]. They told me about their plans and it feel like a great people to work. I enjoy every day I work with them and I am very thankful for having this opportunity.
+After two months or so in this situation I found an amazing and talented group of people to work with. [Matías Woloski][3] was leaving SouthWorks and planning something with [Eugenio Pace][4]. They told me about their plans and it feel like a great people to work with. I enjoy every day I work with them and I am very thankful for having this opportunity.
 
 ![team](http://joseoncodecom.ipage.com/wp-content/uploads/images/2013-02-01_0911.png)
 
