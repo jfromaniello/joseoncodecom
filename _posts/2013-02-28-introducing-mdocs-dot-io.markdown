@@ -19,7 +19,7 @@ But we wanted to use mdocs just as we use google docs, this means being able to 
 
 So, when you go to [mdocs.io](http://mdocs.io) you will see an option to connect mdocs to your company either by using __google apps__, __office365__ or __adfs__. In order to complete this process you will need to involve an admin of the domain. If you are no the admin, you can follow the procedure which is about 2 clicks and send the link at the end of the process to your admin.
 
-After you have finished this process you can login with your account in [mdocs.io](http://mdocs.io) or you can bookmark a link like [http://mdocs.io/e/yourcompany.com](http://mdocs.io/e/yourcompany.com) in which case you will see a prompt of google like this:
+After you have finished this process you can login with your account in [mdocs.io](http://mdocs.io) or you can bookmark a link like __http://mdocs.io/e/yourcompany.com__ in which case you will see a prompt of google like this:
 
 ![](http://joseoncodecom.ipage.com/dump/2013-02-28_1941.png)
 
