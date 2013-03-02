@@ -815,6 +815,15 @@ li.content-column {
     body {
         min-width: 0;
     }
+
+    #branding{
+        padding: 10px;
+        width: 90%;
+    }
+
+    #siteinfo {
+        width: 100%;
+    }
     #main{
         width: 100%;
     } 
