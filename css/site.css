@@ -815,6 +815,10 @@ li.content-column {
     body {
         min-width: 0;
     }
+    
+    .menu {
+        width: 100%;
+    }
 
     #branding{
         padding: 10px;
