@@ -807,13 +807,9 @@ li.content-column {
  
 /* Landscape phone to portrait tablet */
 @media (max-width: 767px) { 
-
-}
- 
-/* Landscape phones and down */
-@media (max-width: 480px) {
     body {
         min-width: 0;
+        overflow-x: hidden;
     }
     
     .menu {
@@ -845,5 +841,8 @@ li.content-column {
     #secondary {
         float: none;
     }
-    body { overflow-x: hidden; }
+}
+ 
+/* Landscape phones and down */
+@media (max-width: 480px) {
 }
