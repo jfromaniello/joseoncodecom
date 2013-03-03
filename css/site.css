@@ -841,4 +841,5 @@ li.content-column {
     #secondary {
         float: none;
     }
+    body { overflow-x: hidden; }
 }
