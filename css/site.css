@@ -829,6 +829,7 @@ li.content-column {
     } 
     #container{
         width: 90%;
+        float: none;
     }
     #content {
         width: 100%
