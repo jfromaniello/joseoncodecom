@@ -93,13 +93,6 @@ blockquote {
 blockquote em, blockquote i, blockquote cite {
     font-style: normal;
 }
-pre {
-    font: 11px/18px Monaco,monospace;
-    margin-bottom: 18px;
-}
-code {
-    font: 11px Monaco,monospace;
-}
 abbr, acronym {
     border-bottom: 1px dotted #333333;
     cursor: help;
@@ -271,9 +264,6 @@ body, input, textarea {
 }
 p, ul, ol, dd, pre {
     margin-bottom: 22px;
-}
-pre, code {
-    font: 14px/22px Monaco,monospace;
 }
 blockquote {
     color: #666666;

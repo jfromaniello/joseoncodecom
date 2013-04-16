@@ -11,7 +11,7 @@ I have been using a little module from Isaac Schlueter named [Supervisor](https:
 
 Suppose you have a Makefile like this:
 
-{% highlight text %}
+{% highlight bash %}
 REPORTER ?= spec
 
 test: 
@@ -24,7 +24,7 @@ test:
 
 You can add another target as follows:
 
-{% highlight text %}
+{% highlight bash %}
 watch: 
 	./node_modules/.bin/supervisor -q -n exit -e 'node|js|json|config' -x make test
 {% endhighlight %}

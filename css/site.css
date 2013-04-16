@@ -4,9 +4,6 @@ body, input, textarea {
 p, ul, ol, dd, pre {
     margin-bottom: 22px;
 }
-pre, code {
-    font: 14px/22px Monaco,monospace;
-}
 blockquote {
     color: #666666;
     font-style: italic;
@@ -845,4 +842,11 @@ li.content-column {
  
 /* Landscape phones and down */
 @media (max-width: 480px) {
+}
+
+pre {
+    border: 1px solid #CCC;
+    display: block;
+    overflow: auto;
+    max-height: 600px;
 }
