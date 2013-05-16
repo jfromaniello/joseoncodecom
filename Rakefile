@@ -6,10 +6,10 @@ posts_dir    = "_posts"
 desc 'push to github, deploy to heroku and finally notify search engines about the sitemap.xml'
 task :default do
 	puts '* Pushing to github'
-	`git push origin`
+	`git push origin master`
 
 	puts '* Deploying to heroku'
-	`git push heroku`
+	`git push heroku master`
 	
 	#notify search engines
 	Rake::Task["sitemap"].invoke
