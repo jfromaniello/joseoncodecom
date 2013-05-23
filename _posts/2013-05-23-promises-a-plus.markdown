@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Promises A+ and the Q"
+title: "Promises A+ and Q"
 date: 2013-05-23 08:04
 tags: 
 ---
