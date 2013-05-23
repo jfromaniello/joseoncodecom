@@ -9,7 +9,7 @@ Two years ago I published a blog post about [jQuery promises](http://joseoncode.
 
 The important specification here is [__Promises A+__](http://promises-aplus.github.io/promises-spec/)
 
-![promisesalogo](https://rawgithub.com/promises-aplus/promises-spec/master/logo.svg) 
+<img src="https://rawgithub.com/promises-aplus/promises-spec/master/logo.svg" alt="promisesalogo" style="width: 216px;">
 
 The specification is very short, readable and useful. Go read it.
 
@@ -45,7 +45,7 @@ Every promise has a ```then``` method that receive two arguments (or two callbac
 
 <iframe width="100%" height="300" src="http://jsfiddle.net/jfromaniello/qdmgy/1/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
 
-In this example I'm returning a value in the first callback this makes the returned promise to be fulfilled with that value (3.2.6.1 section in spec).
+In this example I'm returning a value in the first then/onfulfilled function this makes the returned promise to be fulfilled with that value (3.2.6.1 section in spec).
 
 Because this is something you do a lot, Q promises have a helper ```thenResolve```:
 
