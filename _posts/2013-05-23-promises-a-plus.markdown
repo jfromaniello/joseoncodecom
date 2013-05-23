@@ -195,6 +195,8 @@ Follow [@domenic](https://twitter.com/domenic).
 
 Read [his blogpost](http://domenic.me/2012/10/14/youre-missing-the-point-of-promises/).
 
+[Q Api Reference](https://github.com/kriskowal/q/wiki/API-Reference) is very helpful.
+
 ### Conclusion
 
 Promises are the future (of JavaScript asynchronous code). I put JavaScript there because I am sure some people are working on _better_ languages with better syntax for asynchronous flows but that doesn't feel is going to change in the short term for javascript.
