@@ -67,9 +67,7 @@ At this point we have used only the promise returned from the delay method. Anot
 
 The ```delay``` method in Q could be implemented with defer as follows: 
 
-
-<iframe width="100%" height="300" src="http://jsfiddle.net/jfromaniello/pUAJ5/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
-
+<iframe width="100%" height="300" src="http://jsfiddle.net/jfromaniello/enU7D/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
 
 At the point I'm writing this jQuery promises are not compatible with Promises/A and Promises/A+, so an easy way to fix this is as follows:
 
@@ -111,7 +109,7 @@ doFoo(function (err, r1) {
   });
 });
 ```
-I want you to notice the this line three times:
+I want you to notice this line three times:
 
 ```
 if (err) return handleError(err)
@@ -126,7 +124,7 @@ doFoo()
   .then(null, handleError);
 ```
 
-Because the two first ```then``` calls doesn't have a onreject handler they will pass the rejection reason to the next promise until someone handles that error. More interesting if a promise is reject none of the fulfill handlers here will be called.
+Because the two first ```then``` calls doesn't have a onreject handler they will pass the rejection reason to the next promise until someone handles that error. More interesting if a promise is rejected none of the fulfill handlers here will be called.
 
 The other interesting thing about this is that if you throw an exception inside a then call the promise will be rejected.
 
@@ -149,9 +147,9 @@ readdir('./path')
   });
 ```
 
-This nfbind method has an alias ```denodeify``` if that makes it easier to remember.
+This nfbind method has an alias ```denodeify```.
 
-There are lot more helpers but one interesting is ```nodeify```. Do you feel shame letting the world know that you use promises and want to expose an standard-old node.js api? Use nodeify:
+There are lot more helpers but the other one interesting is ```nodeify```. Do you feel shame letting the world know that you use promises and want to expose an standard-old node.js api? Use nodeify:
 
 ```
 module.exports = function (callback) {
