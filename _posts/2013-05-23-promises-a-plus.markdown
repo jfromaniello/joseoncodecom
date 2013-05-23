@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Promises A+ and the Q library"
+title: "Promises A+ and the Q"
 date: 2013-05-23 08:04
 tags: 
 ---
