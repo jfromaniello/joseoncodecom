@@ -11,7 +11,7 @@ The important specification here is [__Promises A+__](http://promises-aplus.gith
 
 <img src="https://rawgithub.com/promises-aplus/promises-spec/master/logo.svg" alt="promisesalogo" style="width: 216px;">
 
-The specification is very short, readable and useful. Go read it.
+The specification is very short, readable and useful. Go read it. It specify the interface for a Promise despite how it is created.
 
 There are several frameworks and libraries that follow this specification and this is a __GOOD__ thing, because it means that you can pass a promise from some library to other one and everyone speak the same interface.
 
@@ -72,6 +72,14 @@ The ```delay``` method in Q could be implemented with defer as follows:
 At the point I'm writing this jQuery promises are not compatible with Promises/A and Promises/A+, so an easy way to fix this is as follows:
 
 <iframe width="100%" height="300" src="http://jsfiddle.net/jfromaniello/xSU2G/2/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
+
+Despite the specification doesn't work with jQuery Promises, the Q implementation does in a straightforward way:
+
+~~~
+Q($.get('/something'))
+~~~ 
+
+You can wrap a jQuery promise with Q to convert it to Promise/A+.
 
 ### Parallelism
 
