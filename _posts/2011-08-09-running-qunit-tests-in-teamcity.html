@@ -8,9 +8,11 @@ tags:
 status: publish
 type: post
 published: true
-meta: 
-  dsq_thread_id: "381126801"
 ---
+
+> __NOTE:__ there is an enhanced version in this [gist](https://gist.github.com/kir/6641244). 
+> Also Qunit now comes with a phantomjs runner in "qunit/addons/phantomjs/runner.js".
+
 <p>In my <a href="http://joseoncode.com/2011/08/08/javascript-continuous-testing-with-qunit-phantomjs-and-powershell/">previous post</a> I shown how to use <a href="http://docs.jquery.com/Qunit">QUnit</a> and <a href="http://www.phantomjs.org/">PhantomJS</a> to do continuous testing. In this post I will show how to integrate QUnit to <a href="http://www.jetbrains.com/teamcity/">TeamCity</a>; the powerful and user-friendly continuous integration server from <a href="http://www.jetbrains.com">JetBrains</a>.</p>  <p>Running the tests is not that complicated. The challenging part is how we can let Teamcity to know the tests results. Teamcity has two options for reading tests results;</p>  <ol>   <li>By reading an xml report file (from nunit, mstests, junit and lot of other frameworks). </li>    <li>With <a href="http://confluence.jetbrains.net/display/TCD65/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-ServiceMessages">service messages</a>. Which basically means that our build script write special messages in the standard output that TeamCity can read. </li> </ol>  <p>I am used to use option 1 with nunit, but for this case, and since qunit doesn’t generate any xml out of the box we have to use option 2.</p>  <p>The first step is to create a file (which I call QUnit.Teamcity.js), with the following code:</p>  <pre class="brush: js; wrap-line: false;">
 //QUnit.moduleStart({ name })
 QUnit.moduleStart = function(settings){
