@@ -132,4 +132,4 @@ The implementation is quite easy:
 
 There is only one dependency, the style_html function comes from [beutify_html.js](https://github.com/einars/js-beautify/blob/master/beautify-html.js). You can remove the function call, but it allows me to see beutiful errors when a test fail:
 
-![2012-01-19_1147.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-01-19_1147.png)
+![2012-01-19_1147.png](https://s3.amazonaws.com/joseoncode.com/img/2012-01-19_1147.png)

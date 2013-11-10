@@ -16,11 +16,11 @@ The first posts that I wrote in markdown, I did something crazy: I uploaded the 
 
 Now, Jing has a very handy option to add a new button, first I went to Preferences and then to Customize Buttons:
 
-![2011-12-09_0047.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2011-12-09_0047.png)
+![2011-12-09_0047.png](https://s3.amazonaws.com/joseoncode.com/img/2011-12-09_0047.png)
 
 Next I added a new button with these settings:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2011-12-09_0050.png)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/2011-12-09_0050.png)
 
 1. Button type: FTP
 2. My FTP settings connection settings

@@ -34,10 +34,10 @@ Send-Growl MyApp NoticeType "A Title" "Some description" "http://a.link.callback
 
 And as a result, you will see something like this:
 
-![2011-12-09_1750.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2011-12-09_1750.png)
+![2011-12-09_1750.png](https://s3.amazonaws.com/joseoncode.com/img/2011-12-09_1750.png)
 
 I use this module in my continuous testing script, when I save a file, the tests suite is executed and it shows me the results as you can see in this mini screencast:
 
-![screencast](http://joseoncodecom.ipage.com/wp-content/uploads/images/tdd-continuous-growl.gif)
+![screencast](https://s3.amazonaws.com/joseoncode.com/img/tdd-continuous-growl.gif)
 
 If you want to see how test this or see my javascript continuous testing script looks in [my jmail project](https://github.com/jfromaniello/jmail/blob/master/Tools/qunit-runner/continuous.ps1).

@@ -12,7 +12,7 @@ tags:
 
 There are two projects that I like [Posh-Git](https://github.com/dahlbyk/posh-git) and [Posh-Hg](https://github.com/JeremySkinner/posh-hg). These projects add to the Powersherll terminal TAB completion and some usefull information in the prompt as shown here:
 
-![Posh-Hg screenshot](http://joseoncodecom.ipage.com/wp-content/uploads/images/2011-11-30_1527.png)
+![Posh-Hg screenshot](https://s3.amazonaws.com/joseoncode.com/img/2011-11-30_1527.png)
 
 The problem that I had is that even if it is well documented how to install each one, I couldn't make both work in the same machine. There is an answer in [stackoverflow](http://stackoverflow.com/a/4845935/234047) which is a very good starting point, but it has a problem with the path variables used and TAB completion in mercurial seems broken after.
 

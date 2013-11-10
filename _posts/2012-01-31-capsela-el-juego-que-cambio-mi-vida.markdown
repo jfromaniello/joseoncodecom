@@ -8,7 +8,7 @@ tags:
 
 En 1995 mis padres realizaron un viaje a Estados Unidos y como regalo me trajeron un juego bastante peculiar llamado Capsela. Solo mirando hacia atras puedo darme cuenta del impacto que tuvo este juego en mi vida y es por eso que hoy decidí escribir un artículo en forma de tributo.
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-01.png)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
 
 Poca información he encontrado en internet acerca de este juego en estos días. Sobre su origen podría decir que fue diseñado y fabricado en principio por "Mitsubishi Pencil Co" en la decada de 1980, luego se le dió la licencia a una empresa llamada "Play Jour" y desde ese momento fue fabricado por VTech, Kidology y algunas otras subsidiarias.
 
@@ -21,7 +21,7 @@ Todo modelo parte desde una cápsula fundamental que contiene un motor y dos ter
 
 Las cápsulas mecánicas son preciosas, con sus engranajes adentro forman algunos de los componentes más comunes que existen en las cosas mecánicas que nos rodean. La explicación en el manual es algo imperdible también, por ejemplo estas tres:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-02.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-02.jpg)
 
 Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemán, Italiano e Islandés, y ninguno es mi fuerte. Pero voy a hacer mi mejor esfuerzo:
 
@@ -31,7 +31,7 @@ Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemá
 
 *  Cápsula de cambio de la marcha: Esta cápsula combina la función del cambio de la velocidad con la cápsula de la rueda y diente en una sola unidad. De este modo se puede reducir la velocidad del eje y cambiar la dirección de la fuerza motriz directamente en angúlo recto.
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-03.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-03.jpg)
 
 *  Cápsula engranaje planetario: esta cápsula permite cambiar el sentido de la fuerza motríz en angúlo recto (90°). Sí usted instala un eje a la rueda dentada el comando puede ser transmitido en tres sentidos.
 
@@ -45,16 +45,16 @@ Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemá
 
 Luego vienen un monton de partes que pueden ser conectadas a dichas cápsulas, algunas de ellas se pueden ver en esta imágen:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-06.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-06.jpg)
 
 Para unir cada cápsula se utiliza una pieza de forma octogonal como se indica en esta figura:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-04.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-04.jpg)
 
 
 Otra perla del manual es este gráfico:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-05.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-05.jpg)
 
 Que en mi opinión sintetiza muchisimos años de la historia de la mecánica.
 
@@ -64,17 +64,17 @@ Lo que se pueden armar
 
 Con las partes antes mencionadas se puede armar este tipo de cosas:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-07.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-07.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-08.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-08.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-09.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-09.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-10.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-10.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-10.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-10.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-11.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-11.jpg)
 
 
 

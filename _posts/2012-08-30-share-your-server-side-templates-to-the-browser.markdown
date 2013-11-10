@@ -149,7 +149,7 @@ require(["zq", "/templates/product-line.js"], function($, prodTemplate){
 
 This works as expected, and if you look at the network tab in the developers tools of your browser you will see this:
 
-![2012-08-30_1231.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-08-30_1231.png)
+![2012-08-30_1231.png](https://s3.amazonaws.com/joseoncode.com/img/2012-08-30_1231.png)
 
 notice the main.js, the product-line.js, jade.runtime.js, zq.js and the dependencies of zq.
 
@@ -203,6 +203,6 @@ This is a postinstall script in my package.json:
 
 when you are in production, everything is inside the require.js file, even the templates and you don't have to change anything on the html side. The result is this:
 
-![2012-08-30_1407.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-08-30_1407.png)
+![2012-08-30_1407.png](https://s3.amazonaws.com/joseoncode.com/img/2012-08-30_1407.png)
 
 The code for this example is hosted in [github](http://github.com/jfromaniello/tedemo).

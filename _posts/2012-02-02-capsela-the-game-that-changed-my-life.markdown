@@ -8,7 +8,7 @@ tags:
 
 In 1995 my parents did a trip to USA and they bought me as a gift an special game called Capsela. Just looking back I can realize how much this game changed my life and is for this reason that I decided to write an article about it (in spanish and english!).
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-01.png)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
 
 I couldn't found a lot of information about this game in internet nowadays. About its origin, I couold say that it was designed and manufactured first by "Mitsubishi Pencil Co" in the 80's, then they gave the license to a company called "Play Jour" and since then as been manufactured by VTech, Kidology and other subsidiaries.
 
@@ -21,7 +21,7 @@ Every model starts from a fundamental capsule that contains the motor and two te
 
 Mechanical capsules are beautiful, with its gears inside those are some of the most common components that exist in the mechanical. The explanations that comes in the manual are beautiful as well:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-02.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-02.jpg)
 
 Unfortunately, the manual I have is in three different languages German, Italian and Icelandic, and I can vaguely read some italian but I will do my best here with the help of Google Translate :) 
 
@@ -31,7 +31,7 @@ Unfortunately, the manual I have is in three different languages German, Italian
 
 *  Gear shift Capsule: This capsule combines the function of changing the speed of the wheel cap and tooth in a single unit. This can reduce the shaft speed and change direction of the driving force directly at a right angle.
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-03.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-03.jpg)
 
 *  Planetary Gear Capsule: This capsule allows you to change the direction of the torque in right angle. If you install a sprocket shaft to the command it can be transmitted in three ways.
 
@@ -45,16 +45,16 @@ Unfortunately, the manual I have is in three different languages German, Italian
 
 Then you have lot of parts that can be connected to the aforementioned capsules, some of then in this picture:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-06.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-06.jpg)
 
 To connect the capsules, you have to use an octogonal piece as shown in this picture:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-04.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-04.jpg)
 
 
 Another interesting thing in the manual is this:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-05.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-05.jpg)
 
 Which in my humble opinion summarizes a lot of years in the history of mechanical engineering. 
 
@@ -64,17 +64,17 @@ Things you can assemble
 
 With the capsules you can assemble these things:
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-07.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-07.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-08.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-08.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-09.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-09.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-10.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-10.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-10.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-10.jpg)
 
-![2011-12-09_0050.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/capsela-11.jpg)
+![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-11.jpg)
 
 
 

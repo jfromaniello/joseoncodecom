@@ -34,7 +34,7 @@ Install-Module PsWatch
 
 and you are done!
 
-![2011-12-09_0004.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2011-12-09_0004.png)
+![2011-12-09_0004.png](https://s3.amazonaws.com/joseoncode.com/img/2011-12-09_0004.png)
 
 Another interesting thing about PsGet is that you don't need to publish something to the repository in order to install it. You can use the modifiers -ModuleName to set the name of the module, and -ModuleUrl to provide an url where the module content is served as plain text:
 

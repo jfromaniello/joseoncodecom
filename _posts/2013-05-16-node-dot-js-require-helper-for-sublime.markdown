@@ -12,6 +12,6 @@ I press ```⌘⇧m```, then I search the file/module I want to require and it au
 
 Here is a short video: 
 
-![](http://joseoncodecom.ipage.com/wp-content/uploads/images/require-helper.gif)
+![](https://s3.amazonaws.com/joseoncode.com/img/require-helper.gif)
 
 You can install it with the Sublime Package Control, source code is [here](https://github.com/jfromaniello/sublime-node-require).

@@ -21,14 +21,14 @@ So, when you go to [mdocs.io](http://mdocs.io) you will see an option to connect
 
 After you have finished this process you can login with your account in [mdocs.io](http://mdocs.io) or you can bookmark a link like __http://mdocs.io/e/yourcompany.com__ in which case you will see a prompt of google like this:
 
-![](http://joseoncodecom.ipage.com/dump/2013-02-28_1941.png)
+![](https://s3.amazonaws.com/joseoncode.com/img/dump/2013-02-28_1941.png)
 
 if your are not currently logged (or your adfs login, etc).
 
 Then, you will be able to share documents to your company peers:
 
 
-![](http://joseoncodecom.ipage.com/dump/2013-02-28_1944.png)
+![](https://s3.amazonaws.com/joseoncode.com/img/dump/2013-02-28_1944.png)
 
 
 ## More details

@@ -25,7 +25,7 @@ What I am going to show here is the work after several iterations at a very high
 
 ## The big picture
 
-![](http://joseoncodecom.ipage.com/wp-content/uploads/images/2013-08-25_1458.png)
+![](https://s3.amazonaws.com/joseoncode.com/img/2013-08-25_1458.png)
 
 ## What's Puppet and why is so important when using IaaS?
 
@@ -49,7 +49,7 @@ We use branches to develop new features and when it is ready we merge to master.
 
 Very often we send a branch to one of our 4 tests environments with our [hubot](https://github.com/github/hubot) (a personal bot on the chat room):
 
-![](http://joseoncodecom.ipage.com/wp-content/uploads/images/2013-08-25_1622.png)
+![](https://s3.amazonaws.com/joseoncode.com/img/2013-08-25_1622.png)
 
 -  __ui__ is our dashboard application
 -  __template-scripts__ was a branch

@@ -40,23 +40,23 @@ Note: the build process needs python 2.x installed and it should be accesible fr
 
 1-Create a new "CLR Empty Project":
 
-![2012-04-10_0953.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_0953.png)
+![2012-04-10_0953.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_0953.png)
 
 2-Do these changes to the project settings:
 
-![2012-04-10_0956.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_0956.png)
+![2012-04-10_0956.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_0956.png)
 
 3-Add these directories to the Include Directories (remember to change C:\node-v0.6.14\ with the path where you have the node.js sources)
 
-![2012-04-10_1003.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1003.png)
+![2012-04-10_1003.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1003.png)
 
 4-Change the Libraries Directories as follows:
 
-![2012-04-10_1008.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1008.png)
+![2012-04-10_1008.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1008.png)
 
 5-Add a new "C++ File (.cpp)" called "EventLog", so your solution has to look as:
 
-![2012-04-10_1043.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1043.png)
+![2012-04-10_1043.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1043.png)
 
 Note: that the cpp file that we add has to be /CLR. 
 
@@ -216,14 +216,14 @@ When you generate this project, you will have a "debug" folder *at the same leve
 There is one important file there, the ".node" file which is a dll than node can talk to.
 Now, if you can open a command line prompt and try the stuff with the node [[4]REPL](http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop), but remember that in order to write to the event log you need an elevated prompt, otherwise will happen this:
 
-![2012-04-10_1212.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1212.png)
+![2012-04-10_1212.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1212.png)
 So, you run cmd.exe as an administrator, go to the solution folder \debug and do this:
 
-![2012-04-10_1216.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1216.png)
+![2012-04-10_1216.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1216.png)
 
 Then if you open the event log you will see this:
 
-![2012-04-10_1219.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1219.png)
+![2012-04-10_1219.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1219.png)
 
 
 # Debugging
@@ -231,11 +231,11 @@ Then if you open the event log you will see this:
 You can debug your module from visual studio (that's crazy). First you need to be running Visual Studio as an admin, this is not always, it is because we are running the node's REPL as an admin in order to write to the event log.
 Once you have done the "require" call in the node REPL, go to the Debug menu of Visual Studio and then "Attach to Process" and look at the node process:
 
-![2012-04-10_1224.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1224.png)
+![2012-04-10_1224.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1224.png)
 
 Then you can set breakpoints and this will happen:
 
-![2012-04-10_1230.png](http://joseoncodecom.ipage.com/wp-content/uploads/images/2012-04-10_1230.png)
+![2012-04-10_1230.png](https://s3.amazonaws.com/joseoncode.com/img/2012-04-10_1230.png)
 
 # TODOs
 
