@@ -6,7 +6,7 @@ tags:
 - node
 ---
 
-A double-callback is in javascript hargon a callback that we expect to be called once but for some reason is called twice or more times.
+A double-callback is in javascript jargon a callback that we expect to be called once but for some reason is called twice or more times.
 
 Sometimes it is easy to discover, as in this example:
 
