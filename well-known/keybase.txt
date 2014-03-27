@@ -1,0 +1,70 @@
+==================================================================
+https://keybase.io/jose
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of http://joseoncode.com
+  * I am jose (https://keybase.io/jose) on keybase.
+  * I have a public key with fingerprint E084 A19D 285D C71D D8C2  1E56 FD13 B550 5327 DB0E
+
+To claim this, I am signing this object:
+
+{
+    "body": {
+        "key": {
+            "fingerprint": "e084a19d285dc71dd8c21e56fd13b5505327db0e",
+            "host": "keybase.io",
+            "key_id": "fd13b5505327db0e",
+            "uid": "9175d7de524f5f7d62378a10c19c6a00",
+            "username": "jose"
+        },
+        "service": {
+            "hostname": "joseoncode.com",
+            "protocol": "http:"
+        },
+        "type": "web_service_binding",
+        "version": 1
+    },
+    "ctime": 1395919646,
+    "expire_in": 157680000,
+    "prev": "778176bee56e9578e1bdf3851718595fc816a6b32e7b2316bdfe1412f86c4d37",
+    "seqno": 3,
+    "tag": "signature"
+}
+
+with the aforementioned key, yielding the PGP signature:
+
+-----BEGIN PGP MESSAGE-----
+Version: Keybase OpenPGP v0.1.1
+Comment: https://keybase.io/crypto
+
+yML3AnicbVF7UFTVH7+AiC6ZOGGQEc3cISxZYM99PbZGxCyIRHTQ5DeA232cCxfx
+3mXvsoDEFI8UpAAxGAN/EW6PxbZVRhoYHzMgrYwlM1GNDeGYNSVlRGKGgSWeZWqm
+P7r/3Dmf5/me78crQjBTUAe/cUtGVE9X0KeDv5Zi2VR4bCUu6nIFbq3Ed8PFn6Jq
+BdBhd6iaE7fi0MJRAuBlgqNliQWyzEkEgDSjyIAUadpCkwQrixaIm/FC3Qg4UIwo
+GDBJ1RGGDjZVRuh/6EsXCR6wtMzKkCYohVZYmSFIlhOARQK8xAgWS0BoQIcm7IFI
+XaQbEK8y4whxqRJCKhdr/8XqmqTLMEnS9yCn3aE7dUkvRlyh02m3BqzOCntAWwZF
+298pNlHVZDQ1Mrigw1B1DbcCpJScaiAWkDzNA56hGDMOy+2qA9rUgIJmGc6CvkAN
+dKFIluUAy4gQPQ/kaZaDQJQVkqMBCziapxWJA4zAiCQBWZEgAYNYCChAKBwjUTLJ
+on4Dlmg6biXRNYUCFGmoBZrgLHWgoc8N5S3BgkzY0tDgwN4w0/KIf7bp74vAjqi/
+1wf/MrD5za+qJ16YcD6R+czCoG3blTPW/PoN6amgbPd7m6rmEoeWf9Ey0J1VXOPp
+uM885vNdvHD6lGnZT6Oer788bx+Mo+Kurzpscs9899ZU6olOS8jKLixu+84I/lrj
+uhtevEppzU4O/dn9W2f5Qv+x8xn5d19RPgPd3c3/T6kA7Qc0NXmGrj2YMVNUfGlL
+73hRBUXO+t+pvrOTmPSeLGGKbI/WbvIcnyzYFlN6p25XQ2bPa9fb5l5+1ZtzYA4r
+POivDbdVzped7Vqrp0fWue9mqQ/mDbScw2wbzebhVuBr+jMvoYWUb9nW3E572NP0
+VPRLPQnxeX/0JuTXRH/y/LMz7tZ+XwdW31MYGrU04duQa/9b69ka+WPMZWvYsbSG
+0SnvlZpxe2W4MTJ8owbu6t8v9o3Hzk95LoduWI9lL5uKnp0/3jq6l47afuqQkfxi
+yMmH2ub7b7bHJyuJj8fjaSlBruzEFQU7fnhOHI/oDKYsHwor133f/BgzHFq0Q7if
+PvOROzLlQhRoeGQE3zv9tNG2ek1JzRL/qsZ0XItxeTPxs+aKaaerd8S0bza3t/1i
+ztiJ/dbcdLk55ejRzam+b95u2nepkLgVdhhve6P6/UM3+7bGgrrpByazmNOfNy6E
+df61vmRsLCnngyev5o4cKSu/OuZ/3f/ubbiamgjvZYclKa196B6g84fM
+=EOmn
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/jose
+
+==================================================================
