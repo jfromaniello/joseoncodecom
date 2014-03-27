@@ -26,6 +26,6 @@ map '/2011/03/30/entityframework-4-1-rc-%E2%80%93-code-first-review/' do
   run Proc.new {|env| [302, {'Location' => 'http://joseoncode.com/2011/03/30/entityframework-4-1-rc-code-first-review/'}, ["infinity 0.1"]] }
 end
 
-map '.well-known/keybase.txt' do
+map '/.well-known/keybase.txt' do
   run Proc.new {|env| [302, {'Location' => 'http://joseoncode.com/well-known/keybase.txt'}, ["infinity 0.1"]] }
 end
