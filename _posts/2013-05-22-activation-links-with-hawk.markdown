@@ -2,7 +2,7 @@
 layout: post
 title: "Activation links with Hawk"
 date: 2013-05-22 08:44
-tags: 
+tags:
 - node
 - hawk
 ---
@@ -26,25 +26,25 @@ var urljoin = require('urljoin');
 var credentials = {
   id: 'l',
   key: 'my super secret key',
-  algorithm: 'sha256' 
+  algorithm: 'sha256'
 };
 
 
 function getActivationLink (user) {
   var url = urljoin(process.env.BASE_URL, '/activate?user=' + user.email);
-  
-  var bewit = hawk.uri.getBewit(url, { 
-    credentials: credentials, 
+
+  var bewit = hawk.uri.getBewit(url, {
+    credentials: credentials,
     ttlSec:      60 * 5
   });
 
-  return url + '&bewit=' + bewit; 
+  return url + '&bewit=' + bewit;
 }
 ```
 
 I've used [url-join](https://github.com/jfromaniello/url-join) to join a BASE_URL environment variable with the path of the activation endpoint. Another thing to notice is that this MAC will be valid just for the next 5 minutes after generated the link.
 
-The resulting link will look like this ```http://mysuperapp.com/activate?email=foo@bar.com&bewit=H3424HFSDKJ4FDS```.
+The resulting link will look like this ```http://mysuperapp.com/activate?user=foo@bar.com&bewit=H3424HFSDKJ4FDS```.
 
 The next step is to handle the activation endpoint. If we are using Express we can have a middleware like this:
 
@@ -55,7 +55,7 @@ var hawk    = require('hawk');
 var credentials = {
   id: 'l',
   key: 'my super secret key',
-  algorithm: 'sha256' 
+  algorithm: 'sha256'
 };
 
 function credentialsFunc (id, callback) {
@@ -65,7 +65,7 @@ function credentialsFunc (id, callback) {
 function validateMac (req, res, next) {
   hawk.uri.authenticate(req, credentialsFunc, {}, function (err, credentials, attributes) {
     if (err) return res.send(401);
-    next();  
+    next();
   });
 }
 
@@ -82,9 +82,9 @@ app.get('/activate', validateMac, function (req, res) {
 });
 ```
 
-This is all, the benefits of this technique: 
+This is all, the benefits of this technique:
 
--  no need to query the database when activating the user. 
+-  no need to query the database when activating the user.
 -  no need to store another secret in the database.
 
-Do not thrust randomness, cryptography is your friend.
+Do not trust randomness, cryptography is your friend.
