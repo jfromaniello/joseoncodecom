@@ -85,7 +85,7 @@ Hello World
 [1]  + 24730 done       curl http://localhost:9090
 ```
 
-You will notice that the program doesn't exit until it finished processing and serving the last request. More interesting is the fact that after the SIGTERM signal it doesn't receive more requests:
+You will notice that the program doesn't exit until it finished processing and serving the last request. More interesting is the fact that after the SIGTERM signal it doesn't handle more requests:
 
 ```
 » curl http://localhost:9090 &
