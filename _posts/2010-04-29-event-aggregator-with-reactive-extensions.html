@@ -1,22 +1,22 @@
---- 
+---
 layout: post
 title: Event Aggregator with Reactive Extensions
-tags: 
+tags:
 - ReactiveExtensions
 - WPF
 status: publish
 type: post
 published: true
-meta: 
+meta:
   blogger_permalink: /2010/04/event-aggregator-with-reactive.html
   blogger_blog: jfromaniello.blogspot.com
   blogger_author: "Jos\xC3\xA9http://www.blogger.com/profile/00939999997597980426noreply@blogger.com"
   blogger_images: "1"
   dsq_thread_id: "314364589"
 ---
-<p>This is the second part of my post about <a href="http://jfromaniello.blogspot.com/2010/04/event-aggregator-example.html">Event Aggregator</a>. The idea is to show you an easy way to create and use an event aggregator in your application.</p>  <p>The interface of <a href="http://compositewpf.codeplex.com/sourcecontrol/network/Show?projectName=CompositeWPF&amp;changeSetId=42969#839970">IEventAggregator</a> in <a href="http://compositewpf.codeplex.com/">Prism</a> looks as follows:</p>  <pre class="brush: csharp;">public interface IEventAggregator
+<p>This is the second part of my post about <a href="http://joseoncode.com/2010/04/27/event-aggregator-example/">Event Aggregator</a>. The idea is to show you an easy way to create and use an event aggregator in your application.</p>  <p>The interface of <a href="http://compositewpf.codeplex.com/sourcecontrol/network/Show?projectName=CompositeWPF&amp;changeSetId=42969#839970">IEventAggregator</a> in <a href="http://compositewpf.codeplex.com/">Prism</a> looks as follows:</p>  <pre class="brush: csharp;">public interface IEventAggregator
 {
-    TEventType GetEvent&lt;TEventType&gt;() 
+    TEventType GetEvent&lt;TEventType&gt;()
         where TEventType : EventBase;
 }</pre>
 
@@ -189,8 +189,8 @@ eventPublisher.Publish(new SampleEvent{Status = 1});</pre>
 
     public IObservable&lt;TEvent&gt; GetEvent&lt;TEvent&gt;()
     {
-        var subject = 
-            (ISubject&lt;TEvent&gt;) subjects.GetOrAdd(typeof (TEvent), 
+        var subject =
+            (ISubject&lt;TEvent&gt;) subjects.GetOrAdd(typeof (TEvent),
                         t =&gt; new Subject&lt;TEvent&gt;());
         return subject.AsObservable();
     }
