@@ -28,6 +28,7 @@ GEM
     rack-contrib (1.1.0)
       rack (>= 0.9.1)
     redcarpet (2.0.0)
+    stringex (2.5.2)
     syntax (1.0.0)
     thin (1.5.1)
       daemons (>= 1.0.9)
@@ -47,4 +48,5 @@ DEPENDENCIES
   rack (= 1.1.0)
   rack-contrib
   redcarpet (= 2.0.0)
+  stringex
   thin
