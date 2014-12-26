@@ -3,7 +3,7 @@ layout: post
 title: "Capsela, el juego que cambió mi vida"
 date: 2012-01-31 22:46
 tags:
-- misc 
+- misc
 ---
 
 En 1995 mis padres realizaron un viaje a Estados Unidos y como regalo me trajeron un juego bastante peculiar llamado Capsela. Solo mirando hacia atras puedo darme cuenta del impacto que tuvo este juego en mi vida y es por eso que hoy decidí escribir un artículo en forma de tributo.
@@ -23,7 +23,7 @@ Las cápsulas mecánicas son preciosas, con sus engranajes adentro forman alguno
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-02.jpg)
 
-Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemán, Italiano e Islandés, y ninguno es mi fuerte. Pero voy a hacer mi mejor esfuerzo:
+Lamentablemente, el manual que tengo en este momento esta en tres idiomas Alemán, Italiano e Sueco, y ninguno es mi fuerte. Pero voy a hacer mi mejor esfuerzo:
 
 *  Cápsula motor: El motor incorporado es alimentado de la pila externa. Sí usted desea cambiar el sentido de la rotación del motor, invierta la posición del cable de la batería. Sí usted desea usar la caja del interruptor, colocar los cables como se indica en el diseño. Estar bien atento de no mojar el motor, corre el riesgo de dañarlo.
 
