@@ -3,27 +3,27 @@ layout: post
 title: "Capsela, the game that changed my life"
 date: 2012-02-01 09:00
 tags:
-- misc 
+- misc
 ---
 
-In 1995 my parents did a trip to USA and they bought me as a gift an special game called Capsela. Just looking back I can realize how much this game changed my life and is for this reason that I decided to write an article about it (in spanish and english!).
+In 1995 my parents went to USA and they bought me a game called Capsela. Looking back I can realize how much this game changed my life and is for this reason that I decided to write a blog post about it.
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
 
-I couldn't found a lot of information about this game in internet nowadays. About its origin, I couold say that it was designed and manufactured first by "Mitsubishi Pencil Co" in the 80's, then they gave the license to a company called "Play Jour" and since then as been manufactured by VTech, Kidology and other subsidiaries.
+I couldn't find much information about this game. About its origin, I could say that it was designed and manufactured first by "Mitsubishi Pencil Co" in the 80's, then they gave the license to a company called "Play Jour" and since then it has been manufactured by VTech, Kidology and other subsidiaries.
 
 What is this game?
 =================
 
 The game is about connecting capsules to create various kinds of "models". Each capsule has a different mechanical or electrical purpose. Those models are mostly vehicles for both water and land, although it is possible to build cranes, robots, water pumps and even a cleaner dust vacuum. While the game manual comes with a vast collection of photos with models you can create, much more interesting is to let your imagination flow and build things in your head, a "crawler crane vacuum"? sounds interesting.
 
-Every model starts from a fundamental capsule that contains the motor and two terminals in which you have to "connect" the power wires from the batteries (which in turn is placed inside another capsule) or a switch.
+Every model starts from a fundamental capsule that contains the motor and two terminals that you need to "connect" to the batteries (which in turn is placed inside another capsule) or a switch using the power wires.
 
-Mechanical capsules are beautiful, with its gears inside those are some of the most common components that exist in the mechanical. The explanations that comes in the manual are beautiful as well:
+Mechanical capsules with gears inside are beautiful, these are real common components that exist in the mechanical industry. The explanations that comes in the manual are beautiful as well:
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-02.jpg)
 
-Unfortunately, the manual I have is in three different languages German, Italian and Icelandic, and I can vaguely read some italian but I will do my best here with the help of Google Translate :) 
+Unfortunately, the manual I have is in three different languages German, Italian and Icelandic, and I can vaguely read some italian but I will do my best here with the help of Google Translate :)
 
 *  Motor Capsule; The motor inside is fed with an external battery. If you want to change the direction of rotation, change the position of the battery wires. If you want to use the switch box, put the cables as shown in the figure. Be careful not wet the engine, risk of dammage.
 
@@ -39,7 +39,7 @@ Unfortunately, the manual I have is in three different languages German, Italian
 
 *  Rotating switch Capsule: while the shaft rotates, the switch is chaging to open and closed position. The figure shows how to put the wire and the battery.
 
-*  Friction Capsule: this capsule was made to plug or unplug the command of the motor. The two gears could be unplugged with the two-point switch. 
+*  Friction Capsule: this capsule was made to plug or unplug the command of the motor. The two gears could be unplugged with the two-point switch.
 
 *  Transmission Capsule: this capsule could be connected into any other capsule to extend the gear without changing the prime mover.
 
@@ -56,7 +56,7 @@ Another interesting thing in the manual is this:
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-05.jpg)
 
-Which in my humble opinion summarizes a lot of years in the history of mechanical engineering. 
+Which in my humble opinion summarizes a lot of years in the history of mechanical engineering.
 
 
 Things you can assemble
@@ -78,22 +78,22 @@ With the capsules you can assemble these things:
 
 
 
-Television commercial
+TV commercial
 =====================
 
 I also found this tv spot (of the 80's I guess)
 
 <iframe width="420" height="315" src="http://www.youtube.com/embed/xXfla5LU8gc" frameborder="0" allowfullscreen></iframe>
 
-In this vide you can see even a remote control that I never had. I read also in [wikipedia](http://en.wikipedia.org/wiki/Capsela) that there was a model with an interface to Commodore 64, Lego Mindstorms predecessor.
+In this vide you can see even a remote control that I never had. I read also in [wikipedia](http://en.wikipedia.org/wiki/Capsela) that there was a model with an interface to Commodore 64, a Lego Mindstorms predecessor!
 
 How does this game changed me?
 ==============================
 
-I do not study Mechanical Engineering. However this open my mind, the freedom of being able to invent things. I learned for instance, that with certain components I could change the energy of the motor, and the relation between speed and power, etc.
+I didn't study Mechanical Engineering. However this open my mind, the freedom of being able to invent things. I learned for instance, that with certain components I could change how I used the energy of the motor and the relation between speed and power, etc.
 
-This awoke in me the desire and interest in engineering. Looked back and I find many similarities between my current job as a software developer and this game. In fact any engineering is like this game, "here are your tools and these are the blocks you can use, now builds what you want! The only limit is your imagination!". Maybe now is what someone else wants rather than  "whatever you want". But as many of the best professionals I've worked it happens that our work becomes our hobby and that's when we are back to our imagination, like the 10 years old Jose sitting in his room, thinking what to invent .
+I find many similarities between my current job as a software developer and this game. To be able to build something from scratch that exists only in my mind given a set of tools and the basic building blocks.
 
-My mother kept some of the parts of the toy even if I ignore the game for so long, and two years ago, I found in local website a person selling his capsela. Even if this was an smaller set (less pieces) it was in perfect condition. Now I have two capselas, and sometimes we build really crazy things with my 6yo daughter.
+My mother kept some parts of the game even if I ignored the game for so long. I found in a local website a person selling his capsela. Even if this was an smaller set with less pieces it was in very good conditions. Now I have two capselas, and sometimes we build really crazy things with my daughter.
 
-Last but not least, I would like to congratulate the people who designed this toy, I would be really happy if any of them read this and thank my parents, Gines and Franca, for having bought this at Toys "R" Us in 1995.
+Last but not least, I would like to thank the people who designed this toy, I would be really happy if any of them read this and thank my parents, Gines and Franca, for having bought this at Toys "R" Us in 1995.
