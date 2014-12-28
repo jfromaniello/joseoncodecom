@@ -801,14 +801,14 @@ li.content-column {
 @media (min-width: 768px) and (max-width: 979px) {
 
 }
- 
+
 /* Landscape phone to portrait tablet */
-@media (max-width: 767px) { 
+@media (max-width: 767px) {
     body {
         min-width: 0;
         overflow-x: hidden;
     }
-    
+
     .menu {
         width: 100%;
     }
@@ -823,7 +823,7 @@ li.content-column {
     }
     #main{
         width: 100%;
-    } 
+    }
     #container{
         width: 90%;
         float: none;
@@ -839,7 +839,7 @@ li.content-column {
         float: none;
     }
 }
- 
+
 /* Landscape phones and down */
 @media (max-width: 480px) {
 }
@@ -849,4 +849,22 @@ pre {
     display: block;
     overflow: auto;
     max-height: 600px;
+}
+
+
+
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%;
+    padding-top: 30px; height: 0; overflow: hidden;
+}
+
+.video-container iframe,
+.video-container object,
+.video-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }

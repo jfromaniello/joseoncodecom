@@ -83,9 +83,18 @@ TV commercial
 
 I also found this tv spot (of the 80's I guess)
 
-<iframe width="420" height="315" src="http://www.youtube.com/embed/xXfla5LU8gc" frameborder="0" allowfullscreen></iframe>
+<div class="video-container">
+	<iframe frameborder="0" width="560" height="315" src="http://www.youtube.com/embed/xXfla5LU8gc" allowfullscreen></iframe>
+</div>
 
-In this vide you can see even a remote control that I never had. I read also in [wikipedia](http://en.wikipedia.org/wiki/Capsela) that there was a model with an interface to Commodore 64, a Lego Mindstorms predecessor!
+
+In this video you can see even a remote control. I read also on [wikipedia](http://en.wikipedia.org/wiki/Capsela) that there was a model with an interface to Commodore 64, a Lego Mindstorms predecessor! or maybe not since [Lego Logo](http://www.applefritter.com/content/lego-tc-logo) was sold to schools in 1987.
+
+Another funny commercial:
+
+<div class="video-container">
+	<iframe frameborder="0" width="560" height="315" src="//www.youtube.com/embed/jLa9wZHiqxg?list=FLiOW62diP4LzE-HdNz5TvsQ" allowfullscreen></iframe>
+</div>
 
 How does this toy influenced me?
 ================================
@@ -99,3 +108,5 @@ My mother kept some parts of the set and I found in a local website a person sel
 Last but not least, I would like to thank the people who designed this toy, I would be really happy if any of them read this and thank my parents Gines and Franca, for having bought this at Toys "R" Us in 1995.
 
 > I mistakenly refered to Capsela as a "game", but many commenters pointed out that this is not a "game" but a "toy" or "construction set".
+
+[Hackernews Discussion](https://news.ycombinator.com/item?id=8797905).
