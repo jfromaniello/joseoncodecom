@@ -12,7 +12,7 @@ In 1995 my parents went to USA and they bought me a toy called Capsela. Looking 
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
 
-I couldn't find much information about this toy. It seems it was designed and manufactured first by "Mitsubishi Pencil Co" in the 80's, then they gave the license to a company called "Play Jour" and since then it has been manufactured by VTech, Kidology and other subsidiaries. There is also a new brand called [IQ Key](http://iq-key.com/).
+I couldn't find much information about this toy. It seems it was designed and manufactured first by "Mitsubishi Pencil Co" in the 70's, then they gave the license to a company called "Play Jour" and since then it has been manufactured by VTech, Kidology and other subsidiaries. It's being sold in 2014 by a brand called [IQ Key](http://iq-key.com/).
 
 What is this toy?
 =================
