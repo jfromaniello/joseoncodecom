@@ -6,6 +6,8 @@ tags:
 - misc
 ---
 
+[Hackernews Discussion](https://news.ycombinator.com/item?id=8797905).
+
 In 1995 my parents went to USA and they bought me a toy called Capsela. Looking back I can realize how much this toy changed my life and is for this reason that I decided to write a blog post about it.
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
