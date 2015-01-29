@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "A frecuent case of double callbacks in node.js"
+title: "A common case of double callbacks in node.js"
 date: 2013-12-27 08:06
 tags:
 - node
