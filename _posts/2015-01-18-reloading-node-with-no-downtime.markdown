@@ -68,6 +68,6 @@ This is the entry point for the application, it is a simple express application 
 
 You can test this as follows:
 
-![](http://s3.amazonaws.com/joseoncode.com/img/node_reload.png)
+![](https://s3.amazonaws.com/joseoncode.com/img/node_reload.png)
 
 I've uploaded a more [complete example](https://github.com/jfromaniello/zero-downtime-node) to github.
