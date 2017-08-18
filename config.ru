@@ -3,8 +3,6 @@ require 'rack/contrib/try_static'
 require 'rack/contrib/static_cache'
 require 'rack/ssl-enforcer'
 
-system("ejekyll")
-
 use Rack::CommonLogger
 
 if ENV['FORCE_HTTPS']
