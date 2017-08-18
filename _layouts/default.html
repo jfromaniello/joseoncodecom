@@ -128,7 +128,7 @@
                 var element = $(e),
                     clazz = element.attr('class');
 
-                if (clazz.indexOf('brush: ') === 0) {
+                if (clazz && clazz.indexOf('brush: ') === 0) {
                     var lang = clazz.match(/brush: (\w*);/)[1] || "";
                     var pre = $("<code class='" + lang + "'>" + element.html() + "</code>");
                     element.html("").append(pre);
