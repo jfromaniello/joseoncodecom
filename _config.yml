@@ -1,7 +1,7 @@
 markdown: redcarpet
 pygments: true
 paginate: 3
-exclude:  [ Gemfile, Gemfile.lock, Procfile, vendor]
+exclude:  [ Gemfile, Gemfile.lock, Procfile, vendor, Rakefile, config.ru, readme.md]
 permalink: pretty
 pygments:  true
 archive_title_prefix: "Jose on Code! archive: \""
