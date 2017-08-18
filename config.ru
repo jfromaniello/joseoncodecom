@@ -9,7 +9,7 @@ use Rack::CommonLogger
 
 if ENV['FORCE_HTTPS']
   use Rack::SslEnforcer,
-    ignore: lambda { |request| request.env["HTTP_X_FORWARDED_PROTO"].blank? },
+    ignore: lambda { |request| request.env["HTTP_X_FORWARDED_PROTO"] == "https" },
     strict: true
 end
 
