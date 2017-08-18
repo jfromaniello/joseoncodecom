@@ -12,3 +12,4 @@ gem 'redcarpet', "= 2.0.0"
 gem 'rack', "= 1.1.0"
 gem 'rack-contrib'
 gem 'thin'
+gem 'rack-ssl-enforcer'

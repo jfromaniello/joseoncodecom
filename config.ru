@@ -1,19 +1,26 @@
 require 'rack'
 require 'rack/contrib/try_static'
 require 'rack/contrib/static_cache'
+require 'rack/ssl-enforcer'
 
 system("ejekyll")
 
 use Rack::CommonLogger
 
+if ENV['FORCE_HTTPS'] == 1
+  use Rack::SslEnforcer,
+    ignore: lambda { |request| request.env["HTTP_X_FORWARDED_PROTO"].blank? },
+    strict: true
+end
+
 use Rack::StaticCache,
-    :urls => ["/css", "/js" ], :root => "_site",
-    :duration => 0.5
+  :urls => ["/css", "/js" ], :root => "_site",
+  :duration => 0.5
 
 use Rack::TryStatic,
-    :root => "_site",   # static files root dir
-    :urls => %w[/],     # match all requests
-    :try => ['.html', 'index.html', '/index.html'] # try these postfixes sequentially
+  :root => "_site",   # static files root dir
+  :urls => %w[/],     # match all requests
+  :try => ['.html', 'index.html', '/index.html'] # try these postfixes sequentially
 
 map '/' do
   # otherwise 404 NotFound
