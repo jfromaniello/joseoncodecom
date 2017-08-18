@@ -7,7 +7,7 @@ system("ejekyll")
 
 use Rack::CommonLogger
 
-if ENV['FORCE_HTTPS'] == 1
+if ENV['FORCE_HTTPS']
   use Rack::SslEnforcer,
     ignore: lambda { |request| request.env["HTTP_X_FORWARDED_PROTO"].blank? },
     strict: true
