@@ -100,3 +100,13 @@ Despertó en mí un deseo e interés por la ingeniería. Visto hacia atrás, enc
 Mi mamá guardó todas las partes del juego a pesar de que yo las ignoré por mucho tiempo, y hace dos años ya, encontré una persona en mercadolibre que vendía el suyo. A pesar de que era una versión que traía menos partes que el que ya tenía y de que había sido usado, estaba en excelentes condiciones. Ahora tengo 2 Capsela, y a veces armamos cosas muy alocadas con mi hija Valentina (6 años).
 
 Para terminar este artículo, me gustaría felicitar a las personas que diseñaron este jueguete, moriría de felicidad si alguno de ellos leyera esto, y agradecer a mis padres, Gines y Franca, por haberlo comprado en Toys"R"Us en 1995.
+
+
+## Actualización 30-01-2018
+
+Faraz Hussain escaneo los manuales originales y me envió los pdfs:
+
+-  [Capsela Mothorized Land and Water Models](http://joseoncode.com.s3.amazonaws.com/capsela/capsela.pdf)
+-  [Capsela Science Booklet](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_science_booklet.pdf)
+-  [Capsela Part List](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_part_list.pdf)
+-  [Capsela How It Works](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_how_it_works.pdf)

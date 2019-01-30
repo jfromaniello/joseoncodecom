@@ -112,3 +112,12 @@ Last but not least, I would like to thank the people who designed this toy, I wo
 > I mistakenly refered to Capsela as a "game", but many commenters pointed out that this is not a "game" but a "toy" or "construction set".
 
 [Hackernews Discussion](https://news.ycombinator.com/item?id=8797905).
+
+## Update 30-01-2018
+
+Faraz Hussain scanned the original manuals and sent me the pdfs:
+
+-  [Capsela Mothorized Land and Water Models](http://joseoncode.com.s3.amazonaws.com/capsela/capsela.pdf)
+-  [Capsela Science Booklet](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_science_booklet.pdf)
+-  [Capsela Part List](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_part_list.pdf)
+-  [Capsela How It Works](http://joseoncode.com.s3.amazonaws.com/capsela/capsela_how_it_works.pdf)
