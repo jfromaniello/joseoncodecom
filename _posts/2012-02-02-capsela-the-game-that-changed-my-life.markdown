@@ -8,20 +8,22 @@ tags:
 
 [Hackernews Discussion](https://news.ycombinator.com/item?id=8797905).
 
-In 1995 my parents went to USA and they bought me a toy called Capsela. Looking back I can realize how much this toy changed my life and is for this reason that I decided to write a blog post about it.
+In 1995 my parents went to USA and they bought me a toy called Capsela. Looking back I realized how much this toy affected my life so I decided to write a blog post about it.
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-01.png)
 
-I couldn't find much information about this toy. It seems it was designed and manufactured first by "Mitsubishi Pencil Co" in the 70's, then they gave the license to a company called "Play Jour" and since then it has been manufactured by VTech, Kidology and other subsidiaries. It's being sold in 2014 by a brand called [IQ Key](http://iq-key.com/).
+I couldn't find much information about this set but it seems it was designed and manufactured first by "Mitsubishi Pencil Co" in the 70's, then they gave the license to a company called "Play Jour" and since then it has been manufactured by VTech, Kidology and others. A similar set is sell by a brand called [IQ Key](http://iq-key.com/).
 
 What is this toy?
 =================
 
-This is toy is basically a construction set, you need to connect capsules to create various kinds of "models". Each capsule has a different mechanical or electrical purpose. Those models are mostly vehicles for both water and land, although it is possible to build cranes, robots, water pumps and even a cleaner dust vacuum. While the manual comes with a vast collection of pictures with models, much more interesting is to let your imagination flow and create things, a "crawler crane vacuum"? sounds interesting.
+This is toy is basically a construction set that allows you to build various kinds of vehicles and other artifacts by connecting capsules. Each capsule has a different mechanical or electrical purpose. The vehicles are for both land and **water**, although it is possible to build cranes, robots, water pumps and even a cleaner dust vacuum. While the manual comes with a vast collection of models, it is much more interesting to let your imagination fly and create things like a crawler crane vacuum.
 
-Every model starts from a fundamental capsule that contains the motor and two wires that you need to use to connect to the batteries, which in turn is placed inside another capsule or to a switch.
+Every model starts from a fundamental capsule that contains the motor wired to another that hold the batteries.
 
-Mechanical capsules with gears inside are beautiful, these are real common components that exist in the mechanical industry. The explanations that comes in the manual are beautiful as well:
+Mechanical capsules with gears inside are beautiful and represent real components that exist in the mechanical world.
+
+The explanations that comes in the manual are gorgeous as well:
 
 ![2011-12-09_0050.png](https://s3.amazonaws.com/joseoncode.com/img/capsela-02.jpg)
 
@@ -101,15 +103,11 @@ Another funny commercial:
 How did this toy influenced me?
 ================================
 
-I didn't study Mechanical Engineering. However this open my mind, the freedom of being able to invent things. I learned for instance, that with certain components I could change how I used the energy of the motor and the relation between speed and power, etc.
+I didn't study Mechanical Engineering. However this open my mind to the freedom of being able to invent things. I learned for instance, that with certain components I could change how I used the energy of the motor and the relation between speed and power, etc.
 
-I find many similarities between my current job as a software developer and playing with this construction set. The power of being able to build something from scratch that exists only in my mind given a set of tools and the basic building blocks.
+I find many similarities between my current job as a software developer and playing with this construction set. The power of being able to build something from scratch that exists only in my mind using a set of tools and the basic building blocks.
 
 My mother kept some parts of the set and I found in a local website a person selling his capsela. Even if this was an smaller set with less pieces it was in very good conditions. Now I have two capselas, and sometimes we build really crazy stuff with my daughter.
-
-Last but not least, I would like to thank the people who designed this toy, I would be really happy if any of them read this and thank my parents Gines and Franca, for having bought this at Toys "R" Us in 1995.
-
-> I mistakenly refered to Capsela as a "game", but many commenters pointed out that this is not a "game" but a "toy" or "construction set".
 
 [Hackernews Discussion](https://news.ycombinator.com/item?id=8797905).
 
