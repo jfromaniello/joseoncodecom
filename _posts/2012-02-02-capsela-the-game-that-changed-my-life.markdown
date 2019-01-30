@@ -98,7 +98,7 @@ Another funny commercial:
 	<iframe frameborder="0" width="560" height="315" src="//www.youtube.com/embed/jLa9wZHiqxg?list=FLiOW62diP4LzE-HdNz5TvsQ" allowfullscreen></iframe>
 </div>
 
-How does this toy influenced me?
+How did this toy influenced me?
 ================================
 
 I didn't study Mechanical Engineering. However this open my mind, the freedom of being able to invent things. I learned for instance, that with certain components I could change how I used the energy of the motor and the relation between speed and power, etc.
