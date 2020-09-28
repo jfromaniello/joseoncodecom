@@ -4,49 +4,14 @@
       <h3 class="widgettitle"><label for="q">Search</label></h3>
       <form action="/search/" method="get" id="searchform">
         <div>
-          <input type="text" tabindex="1" size="32" 
-                  onblur="if (this.value == '') {this.value = 'To search, type and hit enter';}" 
-                  onfocus="if (this.value == 'To search, type and hit enter') {this.value = '';}" 
-                  value="To search, type and hit enter" 
+          <input type="text" tabindex="1" size="32"
+                  onblur="if (this.value == '') {this.value = 'To search, type and hit enter';}"
+                  onfocus="if (this.value == 'To search, type and hit enter') {this.value = '';}"
+                  value="To search, type and hit enter"
                   name="q" id="q">
           <input type="submit" tabindex="2" id="searchsubmit">
         </div>
       </form>
-    </li>
-
-
-
-    <li id="categories-2" class="widgetcontainer widget_categories"><h3 class="widgettitle">Categories</h3>
-      <select name="cat" id="cat" class="postform">
-        <option value="select-category">Select Category</option>
-      {% for tag in site.iterable.tags %}
-        <option class="level-0" value="{{tag.name}}">{{tag.name}}&nbsp;&nbsp;({{tag.posts.size}})</option>
-      {% endfor %}
-      </select>
-
-      <script type="text/javascript">
-      /* <![CDATA[ */
-        var dropdown = document.getElementById("cat");
-        function onCatChange() {
-          if ( dropdown.options[dropdown.selectedIndex].value != "select-category" ) {
-            location.href = "/tag/"+dropdown.options[dropdown.selectedIndex].value;
-          }
-        }
-        dropdown.onchange = onCatChange;
-      /* ]]> */
-      </script>
-    </li>
-
-    <li class="widgetcontainer widget_archive" id="archives-2"><h3 class="widgettitle">Archives</h3>
-     <select onchange="document.location.href=this.options[this.selectedIndex].value;" 
-             name="archive-dropdown"> 
-      <option value="">Select Month</option>   
-      {% for period in site.iterable.archives %}
-      <option value="http://joseoncode.com/{{period["year"]}}/{{period["month"]}}/">
-      {{period["month_name"]}} {{period["year"]}} ({{period["posts"].size}}) 
-      </option>
-      {% endfor %}
-     </select>
     </li>
 
   </ul>

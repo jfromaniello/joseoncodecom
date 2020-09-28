@@ -1,4 +1,4 @@
-markdown: redcarpet
+markdown: kramdown
 pygments: true
 paginate: 3
 exclude:  [ Gemfile, Gemfile.lock, Procfile, vendor, Rakefile, config.ru, readme.md]
@@ -6,3 +6,7 @@ permalink: pretty
 pygments:  true
 archive_title_prefix: "Jose on Code! archive: \""
 tag_title_prefix: "Jose on Code! tag: \""
+
+plugins:
+  - jekyll-archives
+  - jekyll-paginate

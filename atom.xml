@@ -1,9 +1,8 @@
 ---
-layout: nil
 ---
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
- 
+
 	<title>joseoncode.com</title>
 	<link href="http://joseoncode.com/atom.xml" rel="self" type="application/atom+xml" />
 	<link href="http://joseoncode.com/"/>
@@ -27,5 +26,5 @@ layout: nil
 		<content type="html">{{ post.content | xml_escape }}</content>
 	</entry>
 	{% endfor %}
- 
+
 </feed>

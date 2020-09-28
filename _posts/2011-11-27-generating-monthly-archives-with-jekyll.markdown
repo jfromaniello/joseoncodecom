@@ -2,7 +2,7 @@
 layout: post
 title: "Generating monthly archives with Jekyll"
 date: 2011-11-27 21:23
-tags: 
+tags:
 - jekyll
 ---
 
@@ -36,7 +36,7 @@ module Jekyll
     safe true
     def generate(site)
       if site.layouts.key? 'archive_index'
-        site.posts.group_by{ |c| {"month" => c.date.month, "year" => c.date.year} }.each do |period, posts|
+        site.posts.docs.group_by{ |c| {"month" => c.date.month, "year" => c.date.year} }.each do |period, posts|
           archive_dir = File.join(period["year"].to_s(), "%02d" % period["month"].to_s())
           write_archive_index(site, archive_dir, period, posts)
         end
@@ -67,7 +67,7 @@ meta-robots: "noodp, noydir, noindex, noarchive, follow"
 <h1> Posts archive: \{\{ page.period["month"] \}\} - \{\{page.period["year"]\}\} </h1><br>
 <ul>
 {\% for post in page.period_posts \%}
-<li> 
+<li>
 	<a href="{{post.url}}">\{\{ post.title \}\}</a><br>
 	<span class="entry-meta">Published: \{\{ post.date | date: "%B %d, %Y" \}\}</span>
 </li>

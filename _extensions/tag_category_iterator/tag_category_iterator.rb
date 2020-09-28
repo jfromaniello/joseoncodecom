@@ -18,7 +18,7 @@ module Jekyll
     #       {% endfor %}
     #       </ul>
     #   {% endfor %}
-    # 
+    #
     # Returns [ {<index> => <kv_hash_key>, <items> => kv_hash[<kv_hash_key>]}, ... ]
     def make_iterable(kv_hash, options)
       options = {:index => 'name', :items => 'items'}.merge(options)
@@ -27,17 +27,17 @@ module Jekyll
         result << { options[:index] => key, options[:items] => value }
       end
       result
-    end    
+    end
   end
-  
+
   AOP.around(Site, :site_payload) do |site_instance, args, proceed, abort|
     result = proceed.call
     result['site']['iterable'] = {
       'categories' => site_instance.make_iterable(site_instance.categories, :index => 'name', :items => 'posts'),
       'tags' => site_instance.make_iterable(site_instance.tags, :index => 'name', :items => 'posts'),
       #added by Jose
-      'archives' => site_instance.posts.group_by{ |c| {"month" => "%02d" % c.date.month, 
-                                                       "year" => c.date.year.to_s(), 
+      'archives' => site_instance.posts.docs.group_by{ |c| {"month" => "%02d" % c.date.month,
+                                                       "year" => c.date.year.to_s(),
                                                        "month_name" => c.date.strftime("%B") } }
                     .each{ |period,posts| period["posts"] = posts }
                     .map{ |period, posts| period }
