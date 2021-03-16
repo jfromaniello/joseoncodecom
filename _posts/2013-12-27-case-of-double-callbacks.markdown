@@ -57,7 +57,7 @@ function (callback) {
 
 The intention of the developer with this try method is clear: to catch JSON.parse errors. But the problem is that it also catch errors thrown __inside callback__ and execute the callback with a wrong error.
 
-The solution is trivial, parse outside the try as follows:
+The solution is trivial, try/catch the `JSON.parse` and then call the callback outside:
 
 ```
 function (callback) {
